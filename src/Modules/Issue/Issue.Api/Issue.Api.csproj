@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Issue.Api</RootNamespace>
+    <AssemblyName>Issue.Api</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Issue.Application\Issue.Application.csproj" />
+    <ProjectReference Include="..\Issue.Infrastructure\Issue.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
+  </ItemGroup>
+</Project>

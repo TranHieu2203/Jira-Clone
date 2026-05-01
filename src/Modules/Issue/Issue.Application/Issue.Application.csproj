@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Issue.Application</RootNamespace>
+    <AssemblyName>Issue.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.9.2" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Issue.Domain\Issue.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Project\Project.Application\Project.Application.csproj" />
+    <ProjectReference Include="..\..\..\Modules\Workflow\Workflow.Application\Workflow.Application.csproj" />
+    <ProjectReference Include="..\..\..\Modules\CustomField\CustomField.Application\CustomField.Application.csproj" />
+  </ItemGroup>
+</Project>
