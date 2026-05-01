@@ -25,5 +25,6 @@
     <ProjectReference Include="..\..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Workflow\Workflow.Api\Workflow.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Project\Project.Api\Project.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\CustomField\CustomField.Api\CustomField.Api.csproj" />
   </ItemGroup>
 </Project>

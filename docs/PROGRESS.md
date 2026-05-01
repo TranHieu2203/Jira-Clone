@@ -19,7 +19,7 @@
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
 | P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
 | P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + 15 unit test PASS. Oracle migration + integration test defer cùng BB#12 |
-| P3 | Module CustomField + Screen | `[ ]` |
+| P3 | Module CustomField + Screen | `[~]` CustomField (definition + options + contexts + EAV value + 13 type handlers) ✅ — Screen / ScreenScheme defer P10. 20 unit test PASS |
 | P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract. 19 unit test PASS. (commit pending) |
 | P5 | Module Issue (dùng Workflow + Field) | `[ ]` |
 | P6 | Board Kanban (drag-drop, signal-based) | `[ ]` |
@@ -466,15 +466,16 @@ public interface ICustomFieldTypeHandler
 
 ### 4.6. Checklist P3 — CustomField + Screen
 
-- [ ] Tạo `Modules/CustomField/CustomField.Domain`: entities theo §4.2
-- [ ] Tạo `Modules/CustomField/CustomField.Application`:
-  - [ ] `ICustomFieldService`, `IScreenService`, `IScreenSchemeService`, `IIssueTypeScreenSchemeService`, `IIssueFieldValueService`
-  - [ ] Registry `ICustomFieldTypeHandler` + 13 built-in handlers (theo enum)
-- [ ] Tạo `CustomField.Infrastructure`: DbContext (schema `custom_field`), `IJsonColumn` binding, Migrations P/O
-- [ ] Tạo `CustomField.Api`: `CustomFieldController`, `ScreenController`, `ScreenSchemeController`, `IssueTypeScreenSchemeController`
-- [ ] Seed system fields: Summary, Description, Priority, Assignee, Reporter, Labels, DueDate, StoryPoints
-- [ ] Unit test: handler validation, indexed projection
-- [ ] Integration test: full resolve flow (Create → Edit → Search)
+- [x] Tạo `Modules/CustomField/CustomField.Domain`: CustomField (aggregate root), CustomFieldOption, CustomFieldContext, IssueFieldValue
+- [x] Tạo `Modules/CustomField/CustomField.Application`:
+  - [x] `ICustomFieldService`, `IIssueFieldValueService`
+  - [~] Screen / ScreenScheme / IssueTypeScreenScheme — **defer P10** (UI designer phase, không cần cho Issue MVP)
+  - [x] Registry `ICustomFieldTypeHandler` + 13 built-in handlers
+- [x] Tạo `CustomField.Infrastructure`: DbContext (schema `custom_field`), `IJsonColumn` binding cho ValueJson + DefaultValueJson, List&lt;Guid&gt; converter cho ProjectIds/IssueTypeIds, Postgres migration
+- [x] Tạo `CustomField.Api`: `CustomFieldsController`, `IssueFieldValuesController`, `CustomFieldModule` DI extension
+- [ ] Seed system fields (Summary, Description, Priority…) — defer cùng P5 Issue (system fields gắn với Issue domain hơn là Field domain)
+- [x] Unit test: 8 domain invariants + 9 handler tests + 3 registry/index tests = 20 PASS
+- [ ] Integration test — defer cùng BB#12
 
 ---
 
@@ -597,4 +598,5 @@ tests/
 | 2026-05-01 | claude | P2 partial — Workflow Domain + Application + 9 built-in steps. Build PASS. (commit 43746cb) |
 | 2026-05-01 | claude | P2 — thêm Infrastructure (DbContext, 3 repos, factory, Postgres migration, seeder), Api (2 controller + module DI). Wire vào Api.Host. Build sln PASS. (commit acf0960) |
 | 2026-05-01 | claude | P2 ✅ — thêm 15 unit test (domain invariants + built-in validators/post-functions), all PASS. P2 hoàn tất ngoại trừ Oracle migration + integration test. (commit b6f3230) |
-| 2026-05-01 | claude | P4 ✅ — Module Project: Workspace + Project + IssueType (auto-seed 5 type) + RoleBasedPermissionChecker (impl D6) + IIssueTypeReader contract. Postgres migration + 19 unit test PASS. Wire vào Api.Host. |
+| 2026-05-01 | claude | P4 ✅ — Module Project: Workspace + Project + IssueType (auto-seed 5 type) + RoleBasedPermissionChecker (impl D6) + IIssueTypeReader contract. Postgres migration + 19 unit test PASS. Wire vào Api.Host. (commit 4c2e821) |
+| 2026-05-01 | claude | P3 partial — Module CustomField: 4 entity (CustomField, Option, Context, IssueFieldValue) + 13 type handlers + EAV with indexed columns + 2 service + 2 controller. Postgres migration + 20 unit test PASS. Screen/ScreenScheme defer P10. Tổng 54/54 test PASS. |
