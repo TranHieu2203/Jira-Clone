@@ -18,7 +18,7 @@
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
 | P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
-| P2 | Module Workflow Engine | `[ ]` |
+| P2 | Module Workflow Engine | `[~]` Domain + Application xong, còn Infrastructure + Api + tests |
 | P3 | Module CustomField + Screen | `[ ]` |
 | P4 | Module Project + Workspace | `[ ]` |
 | P5 | Module Issue (dùng Workflow + Field) | `[ ]` |
@@ -273,11 +273,11 @@ public interface ITransitionPostFunction { string TypeKey { get; } Task ExecuteA
 
 ### 3.5. Checklist P2 — Workflow Engine
 
-- [ ] Tạo `Modules/Workflow/Workflow.Domain`: entities theo §3.2
-- [ ] Tạo `Modules/Workflow/Workflow.Application`: `IWorkflowService`, `IWorkflowEngine`, `TransitionContext`, registries
-- [ ] Built-in `ITransitionRule` impls: PERMISSION_RULE, USER_IS_ASSIGNEE, USER_IN_GROUP
-- [ ] Built-in `ITransitionValidator` impls: FIELD_REQUIRED, FIELD_HAS_VALUE, REGEX_MATCH, RESOLUTION_REQUIRED
-- [ ] Built-in `ITransitionPostFunction` impls: ASSIGN_TO_CURRENT_USER, ASSIGN_TO_REPORTER, SET_FIELD_VALUE, CLEAR_FIELD, FIRE_EVENT, ADD_COMMENT
+- [x] Tạo `Modules/Workflow/Workflow.Domain`: entities theo §3.2 (commit 43746cb)
+- [x] Tạo `Modules/Workflow/Workflow.Application`: `IWorkflowService`, `IWorkflowEngine`, `TransitionContext`, registries (commit 43746cb)
+- [x] Built-in `ITransitionRule` impls: PERMISSION_RULE, USER_IS_ASSIGNEE, USER_IN_ROLE
+- [x] Built-in `ITransitionValidator` impls: FIELD_REQUIRED, REGEX_MATCH, RESOLUTION_REQUIRED
+- [x] Built-in `ITransitionPostFunction` impls: ASSIGN_TO_CURRENT_USER, SET_FIELD_VALUE, CLEAR_FIELD
 - [ ] Tạo `Workflow.Infrastructure`: `WorkflowDbContext` (schema `workflow`), repos, migrations Postgres + Oracle
 - [ ] Tạo `Workflow.Api`: `WorkflowController` (CRUD), `TransitionController` (execute)
 - [ ] Seed default workflow ("Software Simple": To Do → In Progress → Done)
@@ -591,4 +591,5 @@ tests/
 |---|---|---|
 | 2026-05-01 | claude | Init doc — liệt kê features, đánh giá BB, design Workflow + CustomField, quyết định FE layout |
 | 2026-05-01 | claude | Lock 6 quyết định kiến trúc (D1–D6) ở §8. Sẵn sàng bắt đầu P1 |
-| 2026-05-01 | claude | P1 ✅ 9/12 BB items: AggregateRoot, IDomainEvent + dispatcher, IClock, IGuidGenerator (UUID v7), ValueObject, IJsonColumn, soft-delete filter, IPermissionChecker, ICacheService. Build solution PASS. |
+| 2026-05-01 | claude | P1 ✅ 9/12 BB items: AggregateRoot, IDomainEvent + dispatcher, IClock, IGuidGenerator (UUID v7), ValueObject, IJsonColumn, soft-delete filter, IPermissionChecker, ICacheService. Build solution PASS. (commit e505a04) |
+| 2026-05-01 | claude | P2 partial — Workflow Domain + Application + 9 built-in steps. Build PASS. (commit 43746cb) |
