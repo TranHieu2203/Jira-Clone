@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Workflow.Application</RootNamespace>
+    <AssemblyName>Workflow.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.9.2" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Workflow.Domain\Workflow.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+  </ItemGroup>
+</Project>
