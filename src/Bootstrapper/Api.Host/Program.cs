@@ -11,6 +11,7 @@ using BB.Web;
 using Identity.Api;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
+using Project.Api;
 using Sample.Api;
 using Serilog;
 using Workflow.Api;
@@ -42,6 +43,7 @@ builder.Services.AddRequestLocalization(opts =>
 
 builder.Services.AddSampleModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);
+builder.Services.AddProjectModule(builder.Configuration);
 builder.Services.AddWorkflowModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
@@ -135,9 +137,11 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var sampleDb = scope.ServiceProvider.GetRequiredService<Sample.Infrastructure.SampleDbContext>();
     var identityDb = scope.ServiceProvider.GetRequiredService<Identity.Infrastructure.IdentityDbContext>();
     var workflowDb = scope.ServiceProvider.GetRequiredService<Workflow.Infrastructure.WorkflowDbContext>();
+    var projectDb = scope.ServiceProvider.GetRequiredService<Project.Infrastructure.ProjectDbContext>();
     await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
+    await EnsureSchemaAsync(projectDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();
