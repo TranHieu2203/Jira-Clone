@@ -18,17 +18,19 @@
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
 | P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
-| P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + 15 unit test PASS. Oracle migration + integration test defer cùng BB#12 |
+| P1.6 | FE foundation (layout hybrid + 5 API services + 6 feature pages) | `[x]` Build PASS, end-to-end với BE qua nginx proxy |
+| P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + IWorkflowProvisioner (auto-clone template cho project mới) + 15 unit test PASS |
 | P3 | Module CustomField + Screen | `[~]` CustomField (definition + options + contexts + EAV value + 13 type handlers) ✅ — Screen / ScreenScheme defer P10. 20 unit test PASS |
-| P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract. 19 unit test PASS. (commit pending) |
-| P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module (Project allocator, Workflow resolver/engine, CustomField values). 15 unit test PASS |
+| P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract + IIssueNumberAllocator. 19 unit test PASS |
+| P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module. 15 unit test PASS. **Smoke test docker compose: login → workspace → project → issue → transition PASS.** |
+| P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
 | P6 | Board Kanban (drag-drop, signal-based) | `[ ]` |
 | P7 | Comment + Attachment + Activity Log | `[ ]` |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
 | P10 | Workflow Editor UI + Field Editor UI | `[ ]` |
 | P11 | Identity hoàn thiện (RBAC + Permission scheme) | `[ ]` |
-| P12 | Docker Compose + CI + Docs | `[ ]` |
+| P12 | Docker Compose + CI + Docs | `[~]` Docker compose dev OK. Còn CI + production docker + README hướng dẫn |
 
 ---
 
@@ -603,4 +605,5 @@ tests/
 | 2026-05-01 | claude | P4 ✅ — Module Project: Workspace + Project + IssueType (auto-seed 5 type) + RoleBasedPermissionChecker (impl D6) + IIssueTypeReader contract. Postgres migration + 19 unit test PASS. Wire vào Api.Host. (commit 4c2e821) |
 | 2026-05-01 | claude | P3 partial — Module CustomField: 4 entity (CustomField, Option, Context, IssueFieldValue) + 13 type handlers + EAV with indexed columns + 2 service + 2 controller. Postgres migration + 20 unit test PASS. Screen/ScreenScheme defer P10. Tổng 54/54 test PASS. (commit 45bb882) |
 | 2026-05-01 | claude | P5 ✅ — Module Issue: domain (15 fields, 8 events) + IIssueNumberAllocator (Project), IWorkflowResolver (Workflow), tích hợp engine + CustomField. 15 unit test PASS. **Tổng 69/69 test PASS.** Issue MVP tạo được PRJ-N, transition qua engine, set field values, watcher auto-add assignee. (commit c0adc76) |
-| 2026-05-02 | claude | FE foundation ✅ — Layout hybrid (top bar 48px + left sidebar contextual 240/56px) + 5 API services (Workspace, Project, Issue, Workflow, CustomField) + 6 feature pages (workspaces list/detail, projects list/detail, issues search, issue detail with transition). Angular build PASS, 7 lazy chunks. |
+| 2026-05-02 | claude | FE foundation ✅ — Layout hybrid (top bar 48px + left sidebar contextual 240/56px) + 5 API services (Workspace, Project, Issue, Workflow, CustomField) + 6 feature pages (workspaces list/detail, projects list/detail, issues search, issue detail with transition). Angular build PASS, 7 lazy chunks. (commit 00d7778) |
+| 2026-05-02 | claude | End-to-end smoke ✅ — Stack docker postgres+api+web chạy, smoke test PASS: admin login → tạo workspace `acme` → tạo project `DEMO` → tạo `DEMO-1` (auto-provision workflow scheme từ template SOFTWARE_SIMPLE) → transition Force Close → status Done. FE↔BE qua nginx proxy. Phát hiện gap → fix bằng IWorkflowProvisioner (commit 64d8625). Branch merged vào main (commit 6cfd6e4). |
