@@ -28,6 +28,7 @@ public static class WorkflowModule
         services.AddScoped<IWorkflowService, WorkflowService>();
         services.AddScoped<IWorkflowEngine, WorkflowEngine>();
         services.AddScoped<IWorkflowResolver, WorkflowResolver>();
+        services.AddScoped<IWorkflowProvisioner, WorkflowProvisioner>();
         services.AddScoped<ITransitionStepRegistry, TransitionStepRegistry>();
 
         // Built-in steps

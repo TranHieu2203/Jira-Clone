@@ -18,6 +18,7 @@ public sealed class IssueService : IIssueService
     private readonly IIssueNumberAllocator _allocator;
     private readonly IIssueTypeReader _issueTypeReader;
     private readonly IWorkflowResolver _workflowResolver;
+    private readonly IWorkflowProvisioner _workflowProvisioner;
     private readonly IWorkflowEngine _workflowEngine;
     private readonly IIssueFieldValueService _fieldValueService;
     private readonly ILogger<IssueService> _logger;
@@ -29,6 +30,7 @@ public sealed class IssueService : IIssueService
         IIssueNumberAllocator allocator,
         IIssueTypeReader issueTypeReader,
         IWorkflowResolver workflowResolver,
+        IWorkflowProvisioner workflowProvisioner,
         IWorkflowEngine workflowEngine,
         IIssueFieldValueService fieldValueService,
         ILogger<IssueService> logger)
@@ -39,6 +41,7 @@ public sealed class IssueService : IIssueService
         _allocator = allocator;
         _issueTypeReader = issueTypeReader;
         _workflowResolver = workflowResolver;
+        _workflowProvisioner = workflowProvisioner;
         _workflowEngine = workflowEngine;
         _fieldValueService = fieldValueService;
         _logger = logger;
@@ -89,8 +92,17 @@ public sealed class IssueService : IIssueService
                 ErrorType.Validation, "issue.issue_type.invalid",
                 new[] { new ResultError("ISSUE_TYPE_INVALID", "issue.issue_type.invalid", Field: "issueTypeId") });
 
-        // 2. Resolve workflow + initial status
+        // 2. Resolve workflow + initial status. Lazy-provision nếu project chưa có scheme
+        // (xảy ra với project mới — provisioner clone template SOFTWARE_SIMPLE).
         var workflowResult = await _workflowResolver.ResolveForIssueAsync(request.ProjectId, request.IssueTypeId, ct);
+        if (!workflowResult.IsSuccess && workflowResult.MessageKey == "workflow.scheme.not_found")
+        {
+            var provisionResult = await _workflowProvisioner.EnsureForProjectAsync(request.ProjectId, ct);
+            if (!provisionResult.IsSuccess)
+                return Result.Failure<IssueDto>(provisionResult.ErrorType, provisionResult.MessageKey ?? "workflow.provision.failed");
+
+            workflowResult = await _workflowResolver.ResolveForIssueAsync(request.ProjectId, request.IssueTypeId, ct);
+        }
         if (!workflowResult.IsSuccess || workflowResult.Data is null)
             return Result.Failure<IssueDto>(workflowResult.ErrorType, workflowResult.MessageKey ?? "workflow.not_found", workflowResult.Errors);
 
