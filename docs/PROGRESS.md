@@ -18,7 +18,7 @@
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
 | P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
-| P2 | Module Workflow Engine | `[~]` Domain + Application xong, còn Infrastructure + Api + tests |
+| P2 | Module Workflow Engine | `[~]` Domain + Application + Infrastructure + Api + Seeder xong (build sln PASS, đã sinh migration Postgres). Còn Oracle migration + tests |
 | P3 | Module CustomField + Screen | `[ ]` |
 | P4 | Module Project + Workspace | `[ ]` |
 | P5 | Module Issue (dùng Workflow + Field) | `[ ]` |
@@ -278,11 +278,13 @@ public interface ITransitionPostFunction { string TypeKey { get; } Task ExecuteA
 - [x] Built-in `ITransitionRule` impls: PERMISSION_RULE, USER_IS_ASSIGNEE, USER_IN_ROLE
 - [x] Built-in `ITransitionValidator` impls: FIELD_REQUIRED, REGEX_MATCH, RESOLUTION_REQUIRED
 - [x] Built-in `ITransitionPostFunction` impls: ASSIGN_TO_CURRENT_USER, SET_FIELD_VALUE, CLEAR_FIELD
-- [ ] Tạo `Workflow.Infrastructure`: `WorkflowDbContext` (schema `workflow`), repos, migrations Postgres + Oracle
-- [ ] Tạo `Workflow.Api`: `WorkflowController` (CRUD), `TransitionController` (execute)
-- [ ] Seed default workflow ("Software Simple": To Do → In Progress → Done)
+- [x] Tạo `Workflow.Infrastructure`: `WorkflowDbContext` (schema `workflow`), 3 repos, UoW, design-time factory
+- [~] Migrations: Postgres ✅ (`InitWorkflow_Postgres`). Oracle ⏳ defer cùng BB#12 (cần `IMigrationsAssembly` filter theo provider)
+- [x] Tạo `Workflow.Api`: `WorkflowsController` (designer CRUD: workflow + status + transition + step), `TransitionsController` (engine: available + execute), `WorkflowModule` DI extension
+- [x] Wire vào `Api.Host/Program.cs` + register `IClock` + `IGuidGenerator` + `IDomainEventDispatcher`
+- [x] Seed default workflow template "SOFTWARE_SIMPLE" (To Do → In Progress → Done + global Force Close)
 - [ ] Unit test: Engine logic, validator/rule/postfunction strategy
-- [ ] Integration test: transition end-to-end (Postgres + Oracle matrix)
+- [ ] Integration test: transition end-to-end (Postgres matrix)
 
 ---
 
@@ -593,3 +595,4 @@ tests/
 | 2026-05-01 | claude | Lock 6 quyết định kiến trúc (D1–D6) ở §8. Sẵn sàng bắt đầu P1 |
 | 2026-05-01 | claude | P1 ✅ 9/12 BB items: AggregateRoot, IDomainEvent + dispatcher, IClock, IGuidGenerator (UUID v7), ValueObject, IJsonColumn, soft-delete filter, IPermissionChecker, ICacheService. Build solution PASS. (commit e505a04) |
 | 2026-05-01 | claude | P2 partial — Workflow Domain + Application + 9 built-in steps. Build PASS. (commit 43746cb) |
+| 2026-05-01 | claude | P2 — thêm Infrastructure (DbContext, 3 repos, factory, Postgres migration, seeder), Api (2 controller + module DI). Wire vào Api.Host. Build sln PASS. |

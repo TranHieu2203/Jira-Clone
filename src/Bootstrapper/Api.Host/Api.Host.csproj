@@ -23,5 +23,6 @@
     <ProjectReference Include="..\..\BuildingBlocks\BB.EventBus\BB.EventBus.csproj" />
     <ProjectReference Include="..\..\Modules\Sample\Sample.Api\Sample.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflow\Workflow.Api\Workflow.Api.csproj" />
   </ItemGroup>
 </Project>

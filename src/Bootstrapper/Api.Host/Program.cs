@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
 using Sample.Api;
 using Serilog;
+using Workflow.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,12 @@ builder.Services.AddRequestLocalization(opts =>
 
 builder.Services.AddSampleModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);
+builder.Services.AddWorkflowModule(builder.Configuration);
+
+// Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
+builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
+builder.Services.AddSingleton<BB.Common.IGuidGenerator, BB.Common.UuidV7Generator>();
+builder.Services.AddScoped<BB.Common.IDomainEventDispatcher, BB.EventBus.DomainEventDispatcher>();
 
 builder.Services.AddControllers();
 
@@ -127,11 +134,14 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var bootstrapLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Bootstrap");
     var sampleDb = scope.ServiceProvider.GetRequiredService<Sample.Infrastructure.SampleDbContext>();
     var identityDb = scope.ServiceProvider.GetRequiredService<Identity.Infrastructure.IdentityDbContext>();
+    var workflowDb = scope.ServiceProvider.GetRequiredService<Workflow.Infrastructure.WorkflowDbContext>();
     await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
+    await EnsureSchemaAsync(workflowDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();
+await Workflow.Infrastructure.Seed.WorkflowSeeder.SeedDefaultsAsync(app.Services);
 
 app.Run();
 

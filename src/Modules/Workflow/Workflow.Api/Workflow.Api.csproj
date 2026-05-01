@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Workflow.Api</RootNamespace>
+    <AssemblyName>Workflow.Api</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Workflow.Application\Workflow.Application.csproj" />
+    <ProjectReference Include="..\Workflow.Infrastructure\Workflow.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
+  </ItemGroup>
+</Project>
