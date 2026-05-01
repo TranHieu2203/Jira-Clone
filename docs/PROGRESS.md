@@ -550,16 +550,18 @@ tests/
 
 ### 6.3. Checklist FE foundation (P1 cùng nhánh)
 
-- [ ] Setup Angular 18 standalone + signals + control flow mới
-- [ ] PrimeNG v18 + theme Aura override monochrome
-- [ ] @ngx-translate setup vi/en
-- [ ] `core/http/` interceptors: trace-id, auth, loading, api-response, error
-- [ ] `core/notification/` `NotificationService` (Toast success) + `ErrorDialog` (modal blocking, copy TraceId)
-- [ ] `app-shell` layout (theo §6.1)
-- [ ] `shared/ui/` 25 base components (CLAUDE.md §3.5)
-- [ ] Router structure: `/`, `/workspaces/:wsKey`, `/projects/:projectKey/:section`
-- [ ] Route guard `AuthGuard`
-- [ ] Dark mode toggle (data-theme attribute)
+- [x] Setup Angular 18 standalone + signals + control flow mới
+- [x] PrimeNG v18 + theme Aura override monochrome
+- [x] @ngx-translate setup vi/en
+- [x] `core/http/` interceptors: trace-id, auth, loading, api-response, error
+- [x] `core/notification/` `NotificationService` (Toast success) + `ErrorDialog` (modal blocking, copy TraceId)
+- [x] `app-shell` layout (theo §6.1) — Top bar (48px) + Left sidebar contextual (240/56px) + responsive
+- [x] API services cho 5 module BE: Workspace, Project, Issue, Workflow, CustomField
+- [x] Feature pages: Workspaces (list+create), Workspace detail, Projects, Project detail, Issues (search), Issue detail (with transition buttons)
+- [~] `shared/ui/` 25 base components — chỉ có `app-page-header` cho MVP, các component khác dùng PrimeNG trực tiếp (defer P10)
+- [x] Router structure: `/workspaces`, `/workspaces/:slug`, `/projects/:projectKey`, `/issues`, `/issues/:issueKey`
+- [x] Route guard `AuthGuard` (đã có)
+- [ ] Dark mode toggle UI — CSS đã sẵn `[data-theme="dark"]`, chưa có nút toggle (defer)
 
 ---
 
@@ -600,4 +602,5 @@ tests/
 | 2026-05-01 | claude | P2 ✅ — thêm 15 unit test (domain invariants + built-in validators/post-functions), all PASS. P2 hoàn tất ngoại trừ Oracle migration + integration test. (commit b6f3230) |
 | 2026-05-01 | claude | P4 ✅ — Module Project: Workspace + Project + IssueType (auto-seed 5 type) + RoleBasedPermissionChecker (impl D6) + IIssueTypeReader contract. Postgres migration + 19 unit test PASS. Wire vào Api.Host. (commit 4c2e821) |
 | 2026-05-01 | claude | P3 partial — Module CustomField: 4 entity (CustomField, Option, Context, IssueFieldValue) + 13 type handlers + EAV with indexed columns + 2 service + 2 controller. Postgres migration + 20 unit test PASS. Screen/ScreenScheme defer P10. Tổng 54/54 test PASS. (commit 45bb882) |
-| 2026-05-01 | claude | P5 ✅ — Module Issue: domain (15 fields, 8 events) + IIssueNumberAllocator (Project), IWorkflowResolver (Workflow), tích hợp engine + CustomField. 15 unit test PASS. **Tổng 69/69 test PASS.** Issue MVP tạo được PRJ-N, transition qua engine, set field values, watcher auto-add assignee. |
+| 2026-05-01 | claude | P5 ✅ — Module Issue: domain (15 fields, 8 events) + IIssueNumberAllocator (Project), IWorkflowResolver (Workflow), tích hợp engine + CustomField. 15 unit test PASS. **Tổng 69/69 test PASS.** Issue MVP tạo được PRJ-N, transition qua engine, set field values, watcher auto-add assignee. (commit c0adc76) |
+| 2026-05-02 | claude | FE foundation ✅ — Layout hybrid (top bar 48px + left sidebar contextual 240/56px) + 5 API services (Workspace, Project, Issue, Workflow, CustomField) + 6 feature pages (workspaces list/detail, projects list/detail, issues search, issue detail with transition). Angular build PASS, 7 lazy chunks. |
