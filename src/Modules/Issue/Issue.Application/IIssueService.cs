@@ -1,0 +1,22 @@
+using BB.Common;
+
+namespace Issue.Application;
+
+public interface IIssueService
+{
+    Task<Result<IssueDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<Result<IssueDto>> GetByKeyAsync(string issueKey, CancellationToken ct = default);
+    Task<Result<PagedList<IssueSummaryDto>>> SearchAsync(SearchIssuesRequest request, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<IssueSummaryDto>>> ListChildrenAsync(Guid parentIssueId, CancellationToken ct = default);
+
+    Task<Result<IssueDto>> CreateAsync(CreateIssueRequest request, CancellationToken ct = default);
+    Task<Result<IssueDto>> UpdateAsync(Guid id, UpdateIssueRequest request, CancellationToken ct = default);
+    Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<Result> ArchiveAsync(Guid id, CancellationToken ct = default);
+    Task<Result> UnarchiveAsync(Guid id, CancellationToken ct = default);
+
+    Task<Result<IssueDto>> TransitionAsync(Guid id, TransitionIssueRequest request, CancellationToken ct = default);
+
+    Task<Result<IssueDto>> AddWatcherAsync(Guid id, Guid userId, CancellationToken ct = default);
+    Task<Result<IssueDto>> RemoveWatcherAsync(Guid id, Guid userId, CancellationToken ct = default);
+}

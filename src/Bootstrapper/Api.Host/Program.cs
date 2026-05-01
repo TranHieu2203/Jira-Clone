@@ -12,6 +12,7 @@ using Identity.Api;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
 using CustomField.Api;
+using Issue.Api;
 using Project.Api;
 using Sample.Api;
 using Serilog;
@@ -47,6 +48,7 @@ builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddProjectModule(builder.Configuration);
 builder.Services.AddWorkflowModule(builder.Configuration);
 builder.Services.AddCustomFieldModule(builder.Configuration);
+builder.Services.AddIssueModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -141,11 +143,13 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var workflowDb = scope.ServiceProvider.GetRequiredService<Workflow.Infrastructure.WorkflowDbContext>();
     var projectDb = scope.ServiceProvider.GetRequiredService<Project.Infrastructure.ProjectDbContext>();
     var customFieldDb = scope.ServiceProvider.GetRequiredService<CustomField.Infrastructure.CustomFieldDbContext>();
+    var issueDb = scope.ServiceProvider.GetRequiredService<Issue.Infrastructure.IssueDbContext>();
     await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
     await EnsureSchemaAsync(customFieldDb, bootstrapLogger);
+    await EnsureSchemaAsync(issueDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

@@ -21,7 +21,7 @@
 | P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + 15 unit test PASS. Oracle migration + integration test defer cùng BB#12 |
 | P3 | Module CustomField + Screen | `[~]` CustomField (definition + options + contexts + EAV value + 13 type handlers) ✅ — Screen / ScreenScheme defer P10. 20 unit test PASS |
 | P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract. 19 unit test PASS. (commit pending) |
-| P5 | Module Issue (dùng Workflow + Field) | `[ ]` |
+| P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module (Project allocator, Workflow resolver/engine, CustomField values). 15 unit test PASS |
 | P6 | Board Kanban (drag-drop, signal-based) | `[ ]` |
 | P7 | Comment + Attachment + Activity Log | `[ ]` |
 | P8 | Sprint + Backlog | `[ ]` |
@@ -599,4 +599,5 @@ tests/
 | 2026-05-01 | claude | P2 — thêm Infrastructure (DbContext, 3 repos, factory, Postgres migration, seeder), Api (2 controller + module DI). Wire vào Api.Host. Build sln PASS. (commit acf0960) |
 | 2026-05-01 | claude | P2 ✅ — thêm 15 unit test (domain invariants + built-in validators/post-functions), all PASS. P2 hoàn tất ngoại trừ Oracle migration + integration test. (commit b6f3230) |
 | 2026-05-01 | claude | P4 ✅ — Module Project: Workspace + Project + IssueType (auto-seed 5 type) + RoleBasedPermissionChecker (impl D6) + IIssueTypeReader contract. Postgres migration + 19 unit test PASS. Wire vào Api.Host. (commit 4c2e821) |
-| 2026-05-01 | claude | P3 partial — Module CustomField: 4 entity (CustomField, Option, Context, IssueFieldValue) + 13 type handlers + EAV with indexed columns + 2 service + 2 controller. Postgres migration + 20 unit test PASS. Screen/ScreenScheme defer P10. Tổng 54/54 test PASS. |
+| 2026-05-01 | claude | P3 partial — Module CustomField: 4 entity (CustomField, Option, Context, IssueFieldValue) + 13 type handlers + EAV with indexed columns + 2 service + 2 controller. Postgres migration + 20 unit test PASS. Screen/ScreenScheme defer P10. Tổng 54/54 test PASS. (commit 45bb882) |
+| 2026-05-01 | claude | P5 ✅ — Module Issue: domain (15 fields, 8 events) + IIssueNumberAllocator (Project), IWorkflowResolver (Workflow), tích hợp engine + CustomField. 15 unit test PASS. **Tổng 69/69 test PASS.** Issue MVP tạo được PRJ-N, transition qua engine, set field values, watcher auto-add assignee. |
