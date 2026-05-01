@@ -18,7 +18,7 @@
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
 | P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
-| P2 | Module Workflow Engine | `[~]` Domain + Application + Infrastructure + Api + Seeder xong (build sln PASS, đã sinh migration Postgres). Còn Oracle migration + tests |
+| P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + 15 unit test PASS. Oracle migration + integration test defer cùng BB#12 |
 | P3 | Module CustomField + Screen | `[ ]` |
 | P4 | Module Project + Workspace | `[ ]` |
 | P5 | Module Issue (dùng Workflow + Field) | `[ ]` |
@@ -283,8 +283,8 @@ public interface ITransitionPostFunction { string TypeKey { get; } Task ExecuteA
 - [x] Tạo `Workflow.Api`: `WorkflowsController` (designer CRUD: workflow + status + transition + step), `TransitionsController` (engine: available + execute), `WorkflowModule` DI extension
 - [x] Wire vào `Api.Host/Program.cs` + register `IClock` + `IGuidGenerator` + `IDomainEventDispatcher`
 - [x] Seed default workflow template "SOFTWARE_SIMPLE" (To Do → In Progress → Done + global Force Close)
-- [ ] Unit test: Engine logic, validator/rule/postfunction strategy
-- [ ] Integration test: transition end-to-end (Postgres matrix)
+- [x] Unit test (15 tests, all PASS): domain invariants (7) + built-in validators (5) + post-functions (3)
+- [ ] Integration test: transition end-to-end (Postgres matrix) — defer cùng BB#12
 
 ---
 
@@ -595,4 +595,5 @@ tests/
 | 2026-05-01 | claude | Lock 6 quyết định kiến trúc (D1–D6) ở §8. Sẵn sàng bắt đầu P1 |
 | 2026-05-01 | claude | P1 ✅ 9/12 BB items: AggregateRoot, IDomainEvent + dispatcher, IClock, IGuidGenerator (UUID v7), ValueObject, IJsonColumn, soft-delete filter, IPermissionChecker, ICacheService. Build solution PASS. (commit e505a04) |
 | 2026-05-01 | claude | P2 partial — Workflow Domain + Application + 9 built-in steps. Build PASS. (commit 43746cb) |
-| 2026-05-01 | claude | P2 — thêm Infrastructure (DbContext, 3 repos, factory, Postgres migration, seeder), Api (2 controller + module DI). Wire vào Api.Host. Build sln PASS. |
+| 2026-05-01 | claude | P2 — thêm Infrastructure (DbContext, 3 repos, factory, Postgres migration, seeder), Api (2 controller + module DI). Wire vào Api.Host. Build sln PASS. (commit acf0960) |
+| 2026-05-01 | claude | P2 ✅ — thêm 15 unit test (domain invariants + built-in validators/post-functions), all PASS. P2 hoàn tất ngoại trừ Oracle migration + integration test. |
