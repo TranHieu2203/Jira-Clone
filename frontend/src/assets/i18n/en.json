@@ -1,0 +1,55 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "trace_id": "Trace ID",
+    "copy": "Copy",
+    "copied": "Copied",
+    "error": "Error",
+    "details": "Details",
+    "yes": "Yes",
+    "no": "No",
+    "logout": "Logout"
+  },
+  "validation": {
+    "required": "{{field}} is required",
+    "failed": "Invalid data"
+  },
+  "auth": {
+    "title": "Sign in",
+    "username": "Username",
+    "password": "Password",
+    "login": "Sign in",
+    "unauthorized": "Authentication required",
+    "invalid_credentials": "Invalid username or password"
+  },
+  "system": {
+    "unexpected": "An unexpected error occurred"
+  },
+  "product": {
+    "title": "Products",
+    "name": "Name",
+    "sku": "SKU",
+    "price": "Price",
+    "description": "Description",
+    "is_active": "Active",
+    "created_at": "Created at",
+    "actions": "Actions",
+    "list": "Product list",
+    "create": "Create product",
+    "edit": "Edit product",
+    "delete_confirm": "Delete product \"{{name}}\"?",
+    "created": { "success": "Product {{name}} created successfully" },
+    "updated": { "success": "Product {{name}} updated successfully" },
+    "deleted": { "success": "Product deleted successfully" },
+    "not_found": "Product not found",
+    "sku_duplicated": "SKU already exists",
+    "price.invalid": "Price must be greater than or equal to 0"
+  }
+}

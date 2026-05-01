@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY global.json Directory.Build.props ./
+COPY src/BuildingBlocks ./src/BuildingBlocks
+COPY src/Modules ./src/Modules
+COPY src/Bootstrapper ./src/Bootstrapper
+
+RUN dotnet restore src/Bootstrapper/Api.Host/Api.Host.csproj
+
+RUN dotnet publish src/Bootstrapper/Api.Host/Api.Host.csproj \
+    -c Release \
+    -o /app/publish \
+    --no-restore
+
+# Copy localization resources next to the published output
+RUN mkdir -p /app/publish/Resources && \
+    cp src/BuildingBlocks/BB.Localization/Resources/*.json /app/publish/Resources/
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "Api.Host.dll"]

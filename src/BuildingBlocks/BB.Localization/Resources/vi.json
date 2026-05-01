@@ -1,0 +1,25 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "ok": "Đồng ý"
+  },
+  "validation": {
+    "required": "{{field}} là bắt buộc",
+    "failed": "Dữ liệu không hợp lệ"
+  },
+  "auth": {
+    "unauthorized": "Bạn cần đăng nhập",
+    "invalid_credentials": "Tài khoản hoặc mật khẩu không đúng"
+  },
+  "system": {
+    "unexpected": "Có lỗi xảy ra, vui lòng thử lại"
+  },
+  "product": {
+    "created": { "success": "Tạo sản phẩm {{name}} thành công" },
+    "updated": { "success": "Cập nhật sản phẩm {{name}} thành công" },
+    "deleted": { "success": "Xóa sản phẩm thành công" },
+    "not_found": "Không tìm thấy sản phẩm",
+    "sku_duplicated": "Mã SKU đã tồn tại"
+  }
+}

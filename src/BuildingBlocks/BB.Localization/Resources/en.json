@@ -1,0 +1,25 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "ok": "OK"
+  },
+  "validation": {
+    "required": "{{field}} is required",
+    "failed": "Invalid data"
+  },
+  "auth": {
+    "unauthorized": "Authentication required",
+    "invalid_credentials": "Invalid username or password"
+  },
+  "system": {
+    "unexpected": "An unexpected error occurred"
+  },
+  "product": {
+    "created": { "success": "Product {{name}} created successfully" },
+    "updated": { "success": "Product {{name}} updated successfully" },
+    "deleted": { "success": "Product deleted successfully" },
+    "not_found": "Product not found",
+    "sku_duplicated": "SKU already exists"
+  }
+}

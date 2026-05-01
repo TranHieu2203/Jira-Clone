@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>Api.Host</RootNamespace>
+    <AssemblyName>Api.Host</AssemblyName>
+    <UserSecretsId>jira-clone-host</UserSecretsId>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.2" />
+    <PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Localization\BB.Localization.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Logging\BB.Logging.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BB.EventBus\BB.EventBus.csproj" />
+    <ProjectReference Include="..\..\Modules\Sample\Sample.Api\Sample.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Identity.Api\Identity.Api.csproj" />
+  </ItemGroup>
+</Project>

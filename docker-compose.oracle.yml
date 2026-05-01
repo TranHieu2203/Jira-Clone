@@ -1,0 +1,22 @@
+services:
+  oracle:
+    image: container-registry.oracle.com/database/free:latest
+    container_name: jira-clone-oracle
+    environment:
+      ORACLE_PWD: oracle
+      ORACLE_PDB: FREEPDB1
+      APP_USER: jira_clone
+      APP_USER_PASSWORD: jira_clone
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'select 1 from dual;' | sqlplus -L jira_clone/jira_clone@//localhost:1521/FREEPDB1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+volumes:
+  oracle_data:

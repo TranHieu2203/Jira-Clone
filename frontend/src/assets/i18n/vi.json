@@ -1,0 +1,55 @@
+{
+  "common": {
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "ok": "Đồng ý",
+    "delete": "Xóa",
+    "edit": "Sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "loading": "Đang tải...",
+    "trace_id": "Mã truy vết",
+    "copy": "Sao chép",
+    "copied": "Đã sao chép",
+    "error": "Lỗi",
+    "details": "Chi tiết",
+    "yes": "Có",
+    "no": "Không",
+    "logout": "Đăng xuất"
+  },
+  "validation": {
+    "required": "{{field}} là bắt buộc",
+    "failed": "Dữ liệu không hợp lệ"
+  },
+  "auth": {
+    "title": "Đăng nhập",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "login": "Đăng nhập",
+    "unauthorized": "Bạn cần đăng nhập",
+    "invalid_credentials": "Tài khoản hoặc mật khẩu không đúng"
+  },
+  "system": {
+    "unexpected": "Có lỗi xảy ra, vui lòng thử lại"
+  },
+  "product": {
+    "title": "Sản phẩm",
+    "name": "Tên sản phẩm",
+    "sku": "Mã SKU",
+    "price": "Giá",
+    "description": "Mô tả",
+    "is_active": "Đang hoạt động",
+    "created_at": "Tạo lúc",
+    "actions": "Thao tác",
+    "list": "Danh sách sản phẩm",
+    "create": "Tạo sản phẩm",
+    "edit": "Sửa sản phẩm",
+    "delete_confirm": "Xóa sản phẩm \"{{name}}\"?",
+    "created": { "success": "Tạo sản phẩm {{name}} thành công" },
+    "updated": { "success": "Cập nhật sản phẩm {{name}} thành công" },
+    "deleted": { "success": "Xóa sản phẩm thành công" },
+    "not_found": "Không tìm thấy sản phẩm",
+    "sku_duplicated": "Mã SKU đã tồn tại",
+    "price.invalid": "Giá phải lớn hơn hoặc bằng 0"
+  }
+}

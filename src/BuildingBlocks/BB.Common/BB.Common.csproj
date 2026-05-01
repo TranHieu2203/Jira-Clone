@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BB.Common</RootNamespace>
+    <AssemblyName>BB.Common</AssemblyName>
+  </PropertyGroup>
+</Project>

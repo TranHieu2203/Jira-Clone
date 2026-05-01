@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jira-clone-postgres
+    environment:
+      POSTGRES_DB: jira_clone
+      POSTGRES_USER: jira_clone
+      POSTGRES_PASSWORD: jira_clone
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jira_clone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: jira-clone-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Database__Provider: Postgres
+      Database__ConnectionString: Host=postgres;Port=5432;Database=jira_clone;Username=jira_clone;Password=jira_clone
+      Database__AutoMigrate: "true"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-CHANGE_ME_DEV_ONLY_THIS_KEY_MUST_BE_AT_LEAST_32_CHARS_LONG}
+      Cors__Origins__0: http://localhost:4200
+      Cors__Origins__1: http://localhost
+    ports:
+      - "5000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    container_name: jira-clone-web
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
