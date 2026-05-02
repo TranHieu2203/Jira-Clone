@@ -10,13 +10,15 @@ import { Issue, IssueApiService } from '@core/api/issue.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { CommentsThreadComponent } from './comments-thread.component';
 
 @Component({
   selector: 'app-issue-detail-page',
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
-    ButtonModule, ButtonGroupModule, InputTextModule
+    ButtonModule, ButtonGroupModule, InputTextModule,
+    CommentsThreadComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -45,6 +47,8 @@ import { StatusCacheService } from '@core/api/status-cache.service';
               </div>
             </section>
           }
+
+          <app-comments-thread [issueId]="i.id" />
         </main>
 
         <aside class="side">
