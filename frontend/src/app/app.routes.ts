@@ -30,6 +30,10 @@ export const routes: Routes = [
         loadComponent: () => import('@features/project/project-detail.page').then((m) => m.ProjectDetailPageComponent)
       },
       {
+        path: 'projects/:projectKey/board',
+        loadComponent: () => import('@features/project/board.page').then((m) => m.BoardPageComponent)
+      },
+      {
         path: 'projects/:projectKey/issues',
         loadComponent: () => import('@features/issue/issues.page').then((m) => m.IssuesPageComponent)
       },
