@@ -1,0 +1,57 @@
+---
+description: Jira-Clone repo conventions — required reading before any code change
+alwaysApply: true
+globs:
+  - "**/*.cs"
+  - "**/*.ts"
+  - "**/*.html"
+  - "**/*.scss"
+  - "**/*.csproj"
+  - "**/Dockerfile*"
+  - "**/docker-compose*.yml"
+---
+
+# Jira-Clone — convention đã chốt
+
+Repo này có 3 file rule, đọc theo thứ tự **TRƯỚC** khi viết bất kỳ dòng code nào:
+
+1. **@PATTERNS.md** — convention + 12 bug đã đạp + checklist thêm module/feature/i18n. Đọc §7 (catalog bug) trước khi nghi ngờ mình mới tìm ra vấn đề.
+2. **@CLAUDE.md** — kiến trúc tổng, mục tiêu, response format chuẩn.
+3. **@README.md** — quickstart.
+
+## Quy tắc bắt buộc khi code
+
+- **Theo pattern module Sample** (reference impl) — `src/Modules/Sample/` cho BE, `frontend/src/app/features/sample/` cho FE.
+- **Service trả `Observable<RawData>`**, không phải `Observable<ApiResponse<RawData>>` — interceptor đã unwrap.
+- **Typed UoW per module** (`ISampleUnitOfWork`, `IIdentityUnitOfWork`) — KHÔNG inject `IUnitOfWork` raw.
+- **Mọi user-visible string** đi qua `| translate` pipe. Imperative i18n dùng `translate.get([keys], args).subscribe(t => ...)`. **CẤM** `translate.instant()` — tree-shaken ở prod.
+- **Response BE** chỉ trả `messageKey`, KHÔNG translate. FE translate.
+- **Mọi response có `traceId`** — Error đi qua `ErrorDialog` (modal + Copy button), Success qua Toast.
+- **Result<T>**: dùng named arg `messageKey:` khi chỉ trả message để tránh ambiguous overload.
+- **Component KHÔNG try/catch lỗi chung** — interceptor + ErrorDialog tự xử.
+- **i18n key**: thêm vào **4 file** cùng lúc (BE vi/en + FE vi/en).
+
+## Checklist trước khi nói "done"
+
+1. `dotnet build` — 0 warning, 0 error
+2. Frontend rebuild Docker — không ERROR
+3. Smoke test API qua nginx :4200 (curl) — happy path + 1 validation error
+4. Playwright headed run — screenshot login + main flow + error case
+
+## Khi gặp triệu chứng quen — tra @PATTERNS.md §7 trước khi đoán
+
+| Triệu chứng | Bug # |
+|---|---|
+| `relation "X" does not exist` lúc seed | #1 (EnsureCreated short-circuit) |
+| HTTP 200 nhưng data không persist | #2 (UoW DI collision) |
+| Login HTTP 200 nhưng không redirect | #3 (ApiResponse shape mismatch) |
+| `e.<prop> is not a function` ở interceptor | #4 (signal property mangled) |
+| Toast hiện raw key | #5 (translate.instant tree-shaken) |
+| `provideAppInitializer is not exported` | #9 (Angular 19+ API trên Angular 18) |
+| `provideTranslateService is not exported` | #10 (ngx-translate v16 API trên v15) |
+
+## Khi không biết viết thế nào
+
+1. Tìm pattern tương tự ở module **Sample**.
+2. Tra @PATTERNS.md.
+3. Nếu phát sinh bug mới chưa có trong catalog §7 → fix xong **bắt buộc** thêm vào catalog đó.

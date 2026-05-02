@@ -1,5 +1,17 @@
 # Jira-Clone — AI Build Rules
 
+> ⚠️ **REQUIRED READING TRƯỚC KHI CODE BẤT KỲ THỨ GÌ**
+>
+> 1. **[PATTERNS.md](PATTERNS.md)** — convention đã chốt + 12 bug đã đạp + checklist thêm module/feature/i18n. Đọc §7 (catalog bug) trước khi nghi ngờ mình tìm ra vấn đề mới — khả năng cao là đã có trong đó.
+> 2. **CLAUDE.md** (file này) — kiến trúc tổng, mục tiêu, ràng buộc.
+> 3. **[README.md](README.md)** — quickstart, lệnh chạy.
+>
+> **Nguyên tắc làm việc:**
+> - Trước khi viết code mới, mở [PATTERNS.md](PATTERNS.md), tìm pattern tương tự ở module **Sample** (reference impl).
+> - Trước khi nói "feature done", chạy đủ 4 bước ở PATTERNS.md §3.6.
+> - Khi gặp bug mới (không có trong PATTERNS.md §7), sau khi fix **bắt buộc** thêm vào catalog đó.
+> - Convention đã có > sáng tạo riêng. Nếu phải đi ngược pattern, phải nói rõ lý do với user trước.
+
 > **Stack**: .NET 8 + Angular 18 (Modular Monolith → Microservices-ready)
 > **DB**: PostgreSQL **hoặc** Oracle (chọn qua config), không CQRS — dùng Service Layer thuần.
 > Mọi request có `TraceId`. FE hiển thị success bằng Toast, error bằng Dialog (kèm TraceId + message). Multi-language vi/en.
