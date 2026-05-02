@@ -8,6 +8,9 @@
     "required": "{{field}} is required",
     "failed": "Invalid data"
   },
+  "user": {
+    "not_found": "User not found"
+  },
   "auth": {
     "unauthorized": "Authentication required",
     "invalid_credentials": "Invalid username or password"

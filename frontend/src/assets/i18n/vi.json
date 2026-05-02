@@ -41,9 +41,14 @@
     "members": "thành viên",
     "empty": "Chưa có workspace nào. Hãy tạo cái đầu tiên."
   },
+  "user": {
+    "search_placeholder": "Tìm user theo tên…",
+    "not_found": "Không tìm thấy user"
+  },
   "project": {
     "title": "Dự án",
     "create": "Tạo dự án",
+    "lead": "Lead dự án",
     "name": "Tên dự án",
     "key": "Mã dự án",
     "key_placeholder": "VD: PRJ",
@@ -71,7 +76,8 @@
     "transition": "Chuyển trạng thái",
     "created_at": "Tạo lúc",
     "search_placeholder": "Tìm theo summary hoặc key...",
-    "empty": "Không có issue nào khớp tiêu chí."
+    "empty": "Không có issue nào khớp tiêu chí.",
+    "assignee_save": "Lưu người xử lý"
   },
   "comment": {
     "title": "Bình luận",
@@ -105,7 +111,11 @@
     "issues_count": "issue",
     "column_empty": "Kéo thả issue vào đây",
     "no_workflow": "Project chưa có workflow. Tạo issue đầu tiên để khởi tạo workflow mặc định.",
-    "no_transition": "Không có transition hợp lệ giữa 2 trạng thái này"
+    "no_transition": "Không có transition hợp lệ giữa 2 trạng thái này",
+    "filter_assignee": "Người xử lý",
+    "filter_issue_type": "Loại issue",
+    "pick_transition": "Chọn transition",
+    "pick_transition_hint": "Có nhiều transition dẫn tới cột này. Chọn một:"
   },
   "validation": {
     "required": "{{field}} là bắt buộc",

@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
+import { SelectModule } from 'primeng/select';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
 import { ProjectApiService, ProjectDetail } from '@core/api/project.service';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
@@ -18,13 +21,24 @@ interface Column {
   issues: IssueSummary[];
 }
 
+interface PendingTransitionPick {
+  issue: IssueSummary;
+  prevIssues: IssueSummary[];
+  options: AvailableTransition[];
+}
+
+interface SelectOpt<T> {
+  label: string;
+  value: T;
+}
+
 @Component({
   selector: 'app-board-page',
   standalone: true,
   imports: [
-    CommonModule, RouterModule, TranslateModule,
+    CommonModule, FormsModule, RouterModule, TranslateModule,
     CdkDropListGroup, CdkDropList, CdkDrag,
-    ButtonModule, AppPageHeaderComponent
+    ButtonModule, DialogModule, SelectModule, AppPageHeaderComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -32,6 +46,31 @@ interface Column {
       <app-page-header [title]="p.name + ' — ' + ('nav.board' | translate)">
         <span class="meta">{{ totalIssues() }} {{ 'board.issues_count' | translate }}</span>
       </app-page-header>
+
+      @if (!loading() && columns().length > 0) {
+        <div class="toolbar">
+          <label class="filt">
+            <span>{{ 'board.filter_assignee' | translate }}</span>
+            <p-select [(ngModel)]="filterAssigneeId"
+                      [options]="assigneeFilterOptions()"
+                      optionLabel="label"
+                      optionValue="value"
+                      [showClear]="true"
+                      appendTo="body"
+                      styleClass="filt-select" />
+          </label>
+          <label class="filt">
+            <span>{{ 'board.filter_issue_type' | translate }}</span>
+            <p-select [(ngModel)]="filterIssueTypeId"
+                      [options]="issueTypeFilterOptions()"
+                      optionLabel="label"
+                      optionValue="value"
+                      [showClear]="true"
+                      appendTo="body"
+                      styleClass="filt-select" />
+          </label>
+        </div>
+      }
 
       @if (loading()) {
         <div class="empty">{{ 'common.loading' | translate }}</div>
@@ -71,9 +110,38 @@ interface Column {
           }
         </div>
       }
+
+      <p-dialog [(visible)]="pickVisible"
+                (onHide)="onTransitionPickHide()"
+                [modal]="true"
+                [style]="{ width: '420px' }"
+                [header]="'board.pick_transition' | translate">
+        @if (pendingPick(); as pick) {
+          <p class="pick-hint">{{ 'board.pick_transition_hint' | translate }}</p>
+          <div class="pick-actions">
+            @for (t of pick.options; track t.id) {
+              <button pButton type="button" class="pick-btn"
+                      (click)="confirmTransitionPick(t)"
+                      [label]="t.name + ' → ' + t.toStatusName"></button>
+            }
+          </div>
+        }
+      </p-dialog>
     }
   `,
   styles: [`
+    .toolbar {
+      display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+      margin-bottom: 16px; padding: 0 4px;
+    }
+    .filt { display: flex; flex-direction: column; gap: 6px; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--c-text-muted);
+      min-width: 200px;
+    }
+    ::ng-deep .filt-select { width: 100%; max-width: 280px; }
+    .pick-hint { font-size: 13px; color: var(--c-text-muted); margin: 0 0 12px; }
+    .pick-actions { display: flex; flex-direction: column; gap: 8px; }
+    .pick-btn { width: 100%; justify-content: center; }
     .meta { font-size: 13px; color: var(--c-text-muted); }
     .empty { padding: 40px; text-align: center; color: var(--c-text-muted); }
     .board {
@@ -151,7 +219,6 @@ interface Column {
       padding: 16px; text-align: center; color: var(--c-text-subtle);
       font-size: 12px; font-style: italic;
     }
-    /* CDK drag preview */
     .cdk-drag-preview {
       box-shadow: var(--shadow-md);
       border-radius: var(--radius);
@@ -167,45 +234,94 @@ interface Column {
     }
   `]
 })
-export class BoardPageComponent implements OnInit, OnDestroy {
+export class BoardPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly projApi = inject(ProjectApiService);
   private readonly issueApi = inject(IssueApiService);
   private readonly wfApi = inject(WorkflowApiService);
   private readonly auth = inject(AuthService);
   private readonly notif = inject(NotificationService);
-  private readonly translate = inject(TranslateService);
   private readonly statusCache = inject(StatusCacheService);
 
   readonly project = signal<ProjectDetail | null>(null);
   readonly workflow = signal<Workflow | null>(null);
-  readonly columns = signal<Column[]>([]);
+  readonly issuesAll = signal<IssueSummary[]>([]);
   readonly loading = signal(false);
+
+  readonly filterAssigneeId = model<string | null>(null);
+  readonly filterIssueTypeId = model<string | null>(null);
+
+  readonly pickVisible = model(false);
+  readonly pendingPick = signal<PendingTransitionPick | null>(null);
+  private pickCommitted = false;
+
+  readonly columns = computed(() => {
+    const fullWf = this.workflow();
+    if (!fullWf) return [];
+
+    let issues = this.issuesAll();
+    const fa = this.filterAssigneeId();
+    const ft = this.filterIssueTypeId();
+    if (fa) issues = issues.filter((i) => i.assigneeId === fa);
+    if (ft) issues = issues.filter((i) => i.issueTypeId === ft);
+
+    const grouped = new Map<string, IssueSummary[]>();
+    for (const issue of issues) {
+      const list = grouped.get(issue.currentStatusId) ?? [];
+      list.push(issue);
+      grouped.set(issue.currentStatusId, list);
+    }
+
+    return fullWf.statuses
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map((s) => ({ status: s, issues: grouped.get(s.id) ?? [] }));
+  });
 
   readonly totalIssues = computed(() =>
     this.columns().reduce((sum, c) => sum + c.issues.length, 0)
   );
 
+  readonly assigneeFilterOptions = computed((): SelectOpt<string | null>[] => {
+    const ids = new Set<string>();
+    for (const i of this.issuesAll()) {
+      if (i.assigneeId) ids.add(i.assigneeId);
+    }
+    const opts: SelectOpt<string | null>[] = [];
+    for (const id of [...ids].sort()) {
+      opts.push({
+        label: `${this.initialsOf(id)} · ${id.slice(0, 8)}…`,
+        value: id
+      });
+    }
+    return opts;
+  });
+
+  readonly issueTypeFilterOptions = computed((): SelectOpt<string | null>[] => {
+    const p = this.project();
+    if (!p) return [];
+    return p.issueTypes
+      .filter((t) => !t.isSubtask)
+      .sort((a, b) => a.order - b.order)
+      .map((t) => ({ label: t.name, value: t.id }));
+  });
+
   ngOnInit(): void {
     const key = this.route.snapshot.paramMap.get('projectKey');
     if (!key) return;
     this.loading.set(true);
-    this.bootstrap(key);
+    void this.bootstrap(key);
   }
-
-  ngOnDestroy(): void {}
 
   private async bootstrap(projectKey: string): Promise<void> {
     try {
-      // 1. Find project by key (via list mine — for MVP)
       const projects = await firstValueFrom(this.projApi.listMine());
-      const summary = projects.find(p => p.key === projectKey.toUpperCase());
+      const summary = projects.find((p) => p.key === projectKey.toUpperCase());
       if (!summary) {
         this.loading.set(false);
         return;
       }
 
-      // 2. Load project detail + workflows
       const result = await firstValueFrom(forkJoin({
         detail: this.projApi.getById(summary.id),
         workflows: this.wfApi.listByProject(summary.id)
@@ -215,18 +331,16 @@ export class BoardPageComponent implements OnInit, OnDestroy {
 
       const wf = result.workflows[0];
       if (!wf) {
-        // No workflow yet → show empty (lazy-provision occurs on first issue create)
-        this.columns.set([]);
+        this.issuesAll.set([]);
+        this.workflow.set(null);
         this.loading.set(false);
         return;
       }
 
-      // Load full workflow (listByProject returns summary; get details for transitions)
       const fullWf = await firstValueFrom(this.wfApi.getById(wf.id));
       this.workflow.set(fullWf);
       this.statusCache.putMany(fullWf.statuses);
 
-      // 3. Load issues for this project
       const page = await firstValueFrom(this.issueApi.search({
         projectId: summary.id,
         pageIndex: 1,
@@ -235,20 +349,9 @@ export class BoardPageComponent implements OnInit, OnDestroy {
         includeArchived: false
       }));
 
-      // 4. Group issues by currentStatusId, build column list in workflow order
-      const grouped = new Map<string, IssueSummary[]>();
-      for (const issue of page.items) {
-        const list = grouped.get(issue.currentStatusId) ?? [];
-        list.push(issue);
-        grouped.set(issue.currentStatusId, list);
-      }
-      const cols: Column[] = fullWf.statuses
-        .slice()
-        .sort((a, b) => a.order - b.order)
-        .map(s => ({ status: s, issues: grouped.get(s.id) ?? [] }));
-      this.columns.set(cols);
+      this.issuesAll.set(page.items);
       this.loading.set(false);
-    } catch (e) {
+    } catch {
       this.loading.set(false);
     }
   }
@@ -258,61 +361,89 @@ export class BoardPageComponent implements OnInit, OnDestroy {
     const sourceCol = event.previousContainer.data;
     const issue = event.item.data as IssueSummary;
     if (!issue) return;
-    if (sourceCol.status.id === targetCol.status.id) return; // same column → ignore
+    if (sourceCol.status.id === targetCol.status.id) return;
 
-    // Optimistic move
-    const prevCols = this.columns();
-    const updatedCols = prevCols.map(c => {
-      if (c.status.id === sourceCol.status.id) {
-        return { ...c, issues: c.issues.filter(i => i.id !== issue.id) };
-      }
-      if (c.status.id === targetCol.status.id) {
-        const newIssue = { ...issue, currentStatusId: targetCol.status.id };
-        return { ...c, issues: [...c.issues, newIssue] };
-      }
-      return c;
-    });
-    this.columns.set(updatedCols);
+    const prevIssues = this.issuesAll().map((i) => ({ ...i }));
+    this.issuesAll.update((list) =>
+      list.map((i) =>
+        i.id === issue.id ? { ...i, currentStatusId: targetCol.status.id } : i
+      )
+    );
 
-    // Resolve a transition from source.status → target.status via available transitions API.
     const userId = this.auth.user()?.id;
     if (!userId) {
-      this.rollback(prevCols);
+      this.issuesAll.set(prevIssues);
+      return;
+    }
+
+    const projectId = this.project()?.id;
+    if (!projectId) {
+      this.issuesAll.set(prevIssues);
       return;
     }
 
     try {
-      const projectId = this.project()?.id;
-      if (!projectId) { this.rollback(prevCols); return; }
-
       const available: AvailableTransition[] = await firstValueFrom(
         this.wfApi.getAvailableTransitions(projectId, issue.issueTypeId, sourceCol.status.id, userId)
       );
-      const matchingTransition = available.find(t => t.toStatusId === targetCol.status.id);
-      if (!matchingTransition) {
+      const matching = available.filter((t) => t.toStatusId === targetCol.status.id);
+      if (matching.length === 0) {
         this.notif.error({
           messageKey: 'board.no_transition',
           traceId: '-',
           errors: null
         });
-        this.rollback(prevCols);
+        this.issuesAll.set(prevIssues);
         return;
       }
 
-      await firstValueFrom(this.issueApi.transition(issue.id, {
-        transitionId: matchingTransition.id,
-        inputs: null,
-        comment: null
-      }));
-      // Optimistic state already shows new column. Toast success comes from
-      // BE's messageKey via apiResponseInterceptor.
+      if (matching.length === 1) {
+        await this.runTransition(issue, matching[0].id, prevIssues);
+        return;
+      }
+
+      this.pickCommitted = false;
+      this.pendingPick.set({ issue, prevIssues, options: matching });
+      this.pickVisible.set(true);
     } catch {
-      this.rollback(prevCols);
+      this.issuesAll.set(prevIssues);
     }
   }
 
-  private rollback(cols: Column[]): void {
-    this.columns.set(cols);
+  onTransitionPickHide(): void {
+    if (!this.pickCommitted) {
+      const pick = this.pendingPick();
+      if (pick) this.issuesAll.set(pick.prevIssues);
+    }
+    this.pickCommitted = false;
+    this.pendingPick.set(null);
+  }
+
+  confirmTransitionPick(t: AvailableTransition): void {
+    const pick = this.pendingPick();
+    if (!pick) return;
+    this.pickCommitted = true;
+    const issue = pick.issue;
+    const snapshot = pick.prevIssues;
+    this.pendingPick.set(null);
+    this.pickVisible.set(false);
+    void this.runTransition(issue, t.id, snapshot);
+  }
+
+  private async runTransition(
+    issue: IssueSummary,
+    transitionId: string,
+    rollbackSnapshot: IssueSummary[]
+  ): Promise<void> {
+    try {
+      await firstValueFrom(this.issueApi.transition(issue.id, {
+        transitionId,
+        inputs: null,
+        comment: null
+      }));
+    } catch {
+      this.issuesAll.set(rollbackSnapshot);
+    }
   }
 
   initialsOf(userId: string): string {

@@ -41,9 +41,14 @@
     "members": "members",
     "empty": "No workspaces yet. Create your first one."
   },
+  "user": {
+    "search_placeholder": "Search user by name…",
+    "not_found": "User not found"
+  },
   "project": {
     "title": "Projects",
     "create": "Create project",
+    "lead": "Project lead",
     "name": "Project name",
     "key": "Project key",
     "key_placeholder": "e.g. PRJ",
@@ -71,7 +76,8 @@
     "transition": "Transition",
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
-    "empty": "No issues match the criteria."
+    "empty": "No issues match the criteria.",
+    "assignee_save": "Save assignee"
   },
   "comment": {
     "title": "Comments",
@@ -105,7 +111,11 @@
     "issues_count": "issues",
     "column_empty": "Drop issues here",
     "no_workflow": "Project has no workflow yet. Create the first issue to initialize the default workflow.",
-    "no_transition": "No valid transition between these two statuses"
+    "no_transition": "No valid transition between these two statuses",
+    "filter_assignee": "Assignee",
+    "filter_issue_type": "Issue type",
+    "pick_transition": "Choose transition",
+    "pick_transition_hint": "Multiple transitions lead to this column. Pick one:"
   },
   "validation": {
     "required": "{{field}} is required",

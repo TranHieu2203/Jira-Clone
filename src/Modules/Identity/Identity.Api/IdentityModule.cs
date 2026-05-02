@@ -20,6 +20,7 @@ public static class IdentityModule
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserSearchService, UserSearchService>();
         services.AddValidatorsFromAssemblyContaining<LoginValidator>();
         return services;
     }

@@ -8,17 +8,18 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { ProjectApiService, ProjectDetail, ProjectType } from '@core/api/project.service';
 import { AuthService } from '@core/auth/auth.service';
+import { UserPickerComponent } from '@shared/ui/user-picker.component';
 
 @Component({
   selector: 'app-create-project-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, TranslateModule,
-    ButtonModule, DialogModule, InputTextModule, SelectModule
+    ButtonModule, DialogModule, InputTextModule, SelectModule, UserPickerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p-dialog [visible]="visible()" (visibleChange)="visible.set($event)"
+    <p-dialog [visible]="visible()" (visibleChange)="onVisibleChange($event)"
               [modal]="true" [style]="{ width: '480px' }"
               [header]="'project.create' | translate">
       <form (ngSubmit)="save()" class="form" #f="ngForm">
@@ -40,6 +41,10 @@ import { AuthService } from '@core/auth/auth.service';
                     [options]="typeOptions"
                     optionLabel="label" optionValue="value"
                     appendTo="body" />
+        </label>
+        <label class="field">
+          <span>{{ 'project.lead' | translate }}</span>
+          <app-user-picker [(userId)]="leadUserId" />
         </label>
         <label class="field">
           <span>{{ 'workspace.description' | translate }}</span>
@@ -70,6 +75,7 @@ export class CreateProjectDialogComponent {
 
   readonly workspaceId = input.required<string>();
   readonly visible = model<boolean>(false);
+  readonly leadUserId = model<string | null>(null);
   readonly created = output<ProjectDetail>();
 
   readonly saving = signal(false);
@@ -81,20 +87,26 @@ export class CreateProjectDialogComponent {
 
   model = { name: '', key: '', description: '', type: 1 as ProjectType };
 
+  onVisibleChange(open: boolean): void {
+    this.visible.set(open);
+    if (open) this.leadUserId.set(this.auth.user()?.id ?? null);
+  }
+
   onKeyInput(e: Event): void {
     const v = (e.target as HTMLInputElement).value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     this.model.key = v;
   }
 
   save(): void {
-    const userId = this.auth.user()?.id;
-    if (!userId) return;
+    const fallbackId = this.auth.user()?.id;
+    const leadId = this.leadUserId() ?? fallbackId;
+    if (!leadId) return;
     this.saving.set(true);
     this.api.create({
       workspaceId: this.workspaceId(),
       name: this.model.name,
       key: this.model.key.toUpperCase(),
-      leadId: userId,
+      leadId,
       type: this.model.type,
       description: this.model.description || null
     }).subscribe({
@@ -103,6 +115,7 @@ export class CreateProjectDialogComponent {
         this.visible.set(false);
         this.created.emit(p);
         this.model = { name: '', key: '', description: '', type: 1 };
+        this.leadUserId.set(this.auth.user()?.id ?? null);
       },
       error: () => this.saving.set(false)
     });

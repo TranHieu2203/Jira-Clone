@@ -61,7 +61,7 @@ cd frontend && npx ng build --configuration=development
 | Module | Status |
 |---|---|
 | BB.* (BuildingBlocks) | ✅ 9/12 items, defer 3 |
-| Identity (cũ, có sẵn) | ✅ |
+| Identity | ✅ + `GET /api/v1/users/search`, `GET /api/v1/users/{id}` (picker) |
 | Sample (demo, sẽ xóa sau) | ✅ |
 | **Project** (Workspace + Project + IssueType + IPermissionChecker) | ✅ 19 tests |
 | **Workflow** (Engine + 9 built-in steps + Provisioner) | ✅ 15 tests |
@@ -73,9 +73,10 @@ cd frontend && npx ng build --configuration=development
 ### Frontend
 - Layout hybrid: top bar 48px + sidebar contextual + breadcrumb
 - 8 feature pages: workspaces (list/detail), projects (list/detail), board, issues (search), issue detail, login
-- Create dialogs: project, issue (global qua topbar `+`)
+- Create dialogs: project (**lead** qua `UserPicker`), issue (**assignee** optional + topbar `+`)
+- Issue detail: assignee chỉnh qua `UserPicker` + nút lưu
 - Comment thread + **Activity** timeline inline trong issue detail
-- Board Kanban drag-drop với optimistic update + rollback
+- Board Kanban drag-drop + filter assignee/issue type + dialog chọn transition khi có nhiều transition cùng đích
 - StatusCacheService resolve status name + category color
 
 ### End-to-end đã chạy
@@ -85,18 +86,11 @@ cd frontend && npx ng build --configuration=development
 
 ## 2. Backlog priority — **Ưu tiên cao** (làm trước)
 
-### 🔴 P5.frontend — Form Create Workspace + tooltip user picker
-**Lý do**: hiện workspace chỉ tạo được qua `/workspaces` page với form đơn giản (đã có) — nhưng user picker (cho member) chưa có. Lead/assignee dialog hiện chỉ nhập userId thô.
-
-**Scope nhỏ**:
-- `UserApiService` + `UserPickerComponent` (search by username/displayName)
-- Wire vào CreateProjectDialog (lead picker), Issue detail (assignee picker)
-
-### 🟡 P6.polish — Board filter + multi-transition picker
-**Scope**:
-- Filter dropdown trên board: assignee, issueType
-- Khi drop card có nhiều transition phù hợp → mở dialog cho user chọn (hiện chỉ pick first)
+### 🟡 P6.polish — Board realtime (còn lại)
+**Đã có**: filter assignee / issue type trên board; dialog chọn transition khi có nhiều transition cùng target status.
+**Còn làm**:
 - Auto-refresh polling 30s (defer SignalR đến P11)
+- Swimlanes (optional)
 
 ### 🟡 BB#12 — Oracle migration + per-provider runner
 **Hiện trạng**: tất cả module có Postgres migration; Oracle chưa có.
@@ -215,10 +209,10 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 ## 7. Recommended next session start
 
 **Open prompt**:
-> Đọc `docs/BACKLOG.md` để hiểu trạng thái. Tiếp tục với **P5.frontend (User picker)** — gap lớn nhất hiện tại là không thể chọn assignee/lead bằng tên người, chỉ nhập UUID.
+> Tiếp tục **BB#12 (Oracle migrations)** hoặc **P7.attachment** (sau khi có BB.Storage). Hoặc **P6** polling 30s cho board.
 
-Hoặc board polish:
-> Tiếp tục **P6.polish** — filter assignee/issueType trên board + dialog chọn transition khi có nhiều transition phù hợp.
+Optional UX:
+> Workspace **Add member** dialog — hiện vẫn nhập raw `userId`; có thể tái sử dụng `UserPicker` + API search.
 
 ---
 

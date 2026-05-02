@@ -11,6 +11,19 @@ public sealed class UserRepository : Repository<User>, IUserRepository
 
     public UserRepository(IdentityDbContext ctx) : base(ctx) => _ctx = ctx;
 
+    public async Task<IReadOnlyList<User>> SearchActiveUsersAsync(string? searchTerm, int take, CancellationToken ct = default)
+    {
+        int limit = Math.Clamp(take, 1, 50);
+        IQueryable<User> q = _ctx.Users.AsNoTracking().Where(u => u.IsActive);
+        string? term = searchTerm?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(term))
+        {
+            q = q.Where(u => u.UserName.ToLower().Contains(term) || u.DisplayName.ToLower().Contains(term));
+        }
+
+        return await q.OrderBy(u => u.UserName).Take(limit).ToListAsync(ct);
+    }
+
     public Task<User?> FindByUserNameAsync(string userName, CancellationToken ct = default) =>
         _ctx.Users.AsNoTracking()
             .Include(u => u.Roles).ThenInclude(r => r.Role)

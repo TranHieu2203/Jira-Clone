@@ -9,13 +9,14 @@ import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
 import { Issue, IssueApiService, IssuePriority } from '@core/api/issue.service';
 import { IssueType, ProjectApiService, ProjectDetail, ProjectSummary } from '@core/api/project.service';
+import { UserPickerComponent } from '@shared/ui/user-picker.component';
 
 @Component({
   selector: 'app-create-issue-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, TranslateModule,
-    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule
+    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule, UserPickerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -56,6 +57,10 @@ import { IssueType, ProjectApiService, ProjectDetail, ProjectSummary } from '@co
                     [options]="priorityOptions" optionLabel="label" optionValue="value"
                     appendTo="body" />
         </label>
+        <label class="field">
+          <span>{{ 'issue.assignee' | translate }}</span>
+          <app-user-picker [(userId)]="assigneeUserId" />
+        </label>
         <div class="actions">
           <button pButton type="button" [text]="true"
                   (click)="visible.set(false)"
@@ -82,6 +87,7 @@ export class CreateIssueDialogComponent implements OnInit {
   /** Pre-fix project (vd. khi mở từ project detail). null = cho phép user chọn. */
   readonly fixedProjectId = input<string | null>(null);
   readonly visible = model<boolean>(false);
+  readonly assigneeUserId = model<string | null>(null);
   readonly created = output<Issue>();
 
   readonly projects = signal<ProjectSummary[]>([]);
@@ -142,7 +148,7 @@ export class CreateIssueDialogComponent implements OnInit {
       summary: this.model.summary,
       description: this.model.description || null,
       priority: this.model.priority,
-      assigneeId: null,
+      assigneeId: this.assigneeUserId(),
       parentIssueId: null,
       dueDate: null,
       storyPoints: null,
@@ -163,5 +169,6 @@ export class CreateIssueDialogComponent implements OnInit {
     if (!this.fixedProjectId()) this.selectedProjectId = null;
     this.selectedTypeId = null;
     this.model = { summary: '', description: '', priority: 3 };
+    this.assigneeUserId.set(null);
   }
 }

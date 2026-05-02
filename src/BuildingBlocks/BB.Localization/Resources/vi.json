@@ -8,6 +8,9 @@
     "required": "{{field}} là bắt buộc",
     "failed": "Dữ liệu không hợp lệ"
   },
+  "user": {
+    "not_found": "Không tìm thấy user"
+  },
   "auth": {
     "unauthorized": "Bạn cần đăng nhập",
     "invalid_credentials": "Tài khoản hoặc mật khẩu không đúng"
