@@ -24,7 +24,7 @@
 | P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract + IIssueNumberAllocator. 19 unit test PASS |
 | P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module. 15 unit test PASS. **Smoke test docker compose: login → workspace → project → issue → transition PASS.** |
 | P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
-| P6 | Board Kanban (drag-drop, signal-based) | `[ ]` |
+| P6 | Board Kanban (drag-drop, signal-based) | `[~]` BoardPageComponent với CDK drag-drop, optimistic update + rollback nếu transition fail. Route `/projects/:projectKey/board`. Còn: filter assignee/issueType, swimlanes, polling/realtime |
 | P7 | Comment + Attachment + Activity Log | `[ ]` |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
@@ -607,4 +607,5 @@ tests/
 | 2026-05-01 | claude | P5 ✅ — Module Issue: domain (15 fields, 8 events) + IIssueNumberAllocator (Project), IWorkflowResolver (Workflow), tích hợp engine + CustomField. 15 unit test PASS. **Tổng 69/69 test PASS.** Issue MVP tạo được PRJ-N, transition qua engine, set field values, watcher auto-add assignee. (commit c0adc76) |
 | 2026-05-02 | claude | FE foundation ✅ — Layout hybrid (top bar 48px + left sidebar contextual 240/56px) + 5 API services (Workspace, Project, Issue, Workflow, CustomField) + 6 feature pages (workspaces list/detail, projects list/detail, issues search, issue detail with transition). Angular build PASS, 7 lazy chunks. (commit 00d7778) |
 | 2026-05-02 | claude | End-to-end smoke ✅ — Stack docker postgres+api+web chạy, smoke test PASS: admin login → tạo workspace `acme` → tạo project `DEMO` → tạo `DEMO-1` (auto-provision workflow scheme từ template SOFTWARE_SIMPLE) → transition Force Close → status Done. FE↔BE qua nginx proxy. Phát hiện gap → fix bằng IWorkflowProvisioner (commit 64d8625). Branch merged vào main (commit 6cfd6e4). |
-| 2026-05-02 | claude | FE create flows ✅ — CreateProjectDialog (workspace detail), CreateIssueDialog (issues page + topbar global), StatusCacheService (resolve status name + category color). Topbar "+" mở dialog → sau khi tạo navigate đến `/issues/{key}`. Status pill dùng màu theo category (ToDo=xám / InProgress=xanh / Done=lục). |
+| 2026-05-02 | claude | FE create flows ✅ — CreateProjectDialog (workspace detail), CreateIssueDialog (issues page + topbar global), StatusCacheService (resolve status name + category color). Topbar "+" mở dialog → sau khi tạo navigate đến `/issues/{key}`. Status pill dùng màu theo category (ToDo=xám / InProgress=xanh / Done=lục). (commit c05e0a3) |
+| 2026-05-02 | claude | P6 partial — Board Kanban: `BoardPageComponent` dùng `@angular/cdk/drag-drop`. Cột theo workflow status, card = issue (key+pri+summary+assignee initials). Drop card sang cột khác → resolve transition phù hợp (qua /transitions/available) → call transition API. Optimistic UI: card di chuyển ngay, rollback nếu fail. Route `/projects/:projectKey/board`. |

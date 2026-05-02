@@ -73,6 +73,13 @@
     "search_placeholder": "Search by summary or key...",
     "empty": "No issues match the criteria."
   },
+  "board": {
+    "title": "Board",
+    "issues_count": "issues",
+    "column_empty": "Drop issues here",
+    "no_workflow": "Project has no workflow yet. Create the first issue to initialize the default workflow.",
+    "no_transition": "No valid transition between these two statuses"
+  },
   "validation": {
     "required": "{{field}} is required",
     "failed": "Invalid data"
