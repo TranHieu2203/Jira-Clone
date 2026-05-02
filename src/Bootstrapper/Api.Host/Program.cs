@@ -11,6 +11,7 @@ using BB.Web;
 using Identity.Api;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
+using Comment.Api;
 using CustomField.Api;
 using Issue.Api;
 using Project.Api;
@@ -49,6 +50,7 @@ builder.Services.AddProjectModule(builder.Configuration);
 builder.Services.AddWorkflowModule(builder.Configuration);
 builder.Services.AddCustomFieldModule(builder.Configuration);
 builder.Services.AddIssueModule(builder.Configuration);
+builder.Services.AddCommentModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -144,12 +146,14 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var projectDb = scope.ServiceProvider.GetRequiredService<Project.Infrastructure.ProjectDbContext>();
     var customFieldDb = scope.ServiceProvider.GetRequiredService<CustomField.Infrastructure.CustomFieldDbContext>();
     var issueDb = scope.ServiceProvider.GetRequiredService<Issue.Infrastructure.IssueDbContext>();
+    var commentDb = scope.ServiceProvider.GetRequiredService<Comment.Infrastructure.CommentDbContext>();
     await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
     await EnsureSchemaAsync(customFieldDb, bootstrapLogger);
     await EnsureSchemaAsync(issueDb, bootstrapLogger);
+    await EnsureSchemaAsync(commentDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

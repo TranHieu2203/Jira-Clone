@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Comment.Api</RootNamespace>
+    <AssemblyName>Comment.Api</AssemblyName>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Comment.Application\Comment.Application.csproj" />
+    <ProjectReference Include="..\Comment.Infrastructure\Comment.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
+  </ItemGroup>
+</Project>

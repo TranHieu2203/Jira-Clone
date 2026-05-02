@@ -73,6 +73,14 @@
     "search_placeholder": "Search by summary or key...",
     "empty": "No issues match the criteria."
   },
+  "comment": {
+    "title": "Comments",
+    "add": "Comment",
+    "you": "You",
+    "edited": "edited",
+    "empty": "No comments yet. Be the first.",
+    "placeholder": "Write a comment. Use @username to mention..."
+  },
   "board": {
     "title": "Board",
     "issues_count": "issues",
