@@ -18,7 +18,6 @@ using Comment.Api;
 using CustomField.Api;
 using Issue.Api;
 using Project.Api;
-using Sample.Api;
 using Serilog;
 using Workflow.Api;
 
@@ -47,7 +46,6 @@ builder.Services.AddRequestLocalization(opts =>
     opts.RequestCultureProviders.Insert(0, new AcceptLanguageHeaderRequestCultureProvider());
 });
 
-builder.Services.AddSampleModule(builder.Configuration);
 builder.Services.AddIdentityModule(builder.Configuration);
 builder.Services.AddProjectModule(builder.Configuration);
 builder.Services.AddWorkflowModule(builder.Configuration);
@@ -146,7 +144,6 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
 {
     using var scope = app.Services.CreateScope();
     var bootstrapLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Bootstrap");
-    var sampleDb = scope.ServiceProvider.GetRequiredService<Sample.Infrastructure.SampleDbContext>();
     var identityDb = scope.ServiceProvider.GetRequiredService<Identity.Infrastructure.IdentityDbContext>();
     var workflowDb = scope.ServiceProvider.GetRequiredService<Workflow.Infrastructure.WorkflowDbContext>();
     var projectDb = scope.ServiceProvider.GetRequiredService<Project.Infrastructure.ProjectDbContext>();
@@ -155,7 +152,6 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var commentDb = scope.ServiceProvider.GetRequiredService<Comment.Infrastructure.CommentDbContext>();
     var activityLogDb = scope.ServiceProvider.GetRequiredService<ActivityLog.Infrastructure.ActivityLogDbContext>();
     var attachmentDb = scope.ServiceProvider.GetRequiredService<Attachment.Infrastructure.AttachmentDbContext>();
-    await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -168,6 +164,8 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
 
 await app.Services.SeedIdentityAsync();
 await Workflow.Infrastructure.Seed.WorkflowSeeder.SeedDefaultsAsync(app.Services);
+await CustomField.Infrastructure.Seed.CustomFieldSeeder.SeedDefaultsAsync(app.Services);
+await Api.Host.Bootstrap.CustomFieldDemoProjectBinderBackfill.RunAsync(app.Services);
 
 app.Run();
 

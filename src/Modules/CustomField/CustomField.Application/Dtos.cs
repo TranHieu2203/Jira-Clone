@@ -13,7 +13,7 @@ public sealed record CustomFieldOptionDto(Guid Id, Guid? ParentOptionId, string 
 
 public sealed record CustomFieldContextDto(
     Guid Id, string Name, bool IsGlobal, bool IsRequired, string? DefaultValueJson,
-    IReadOnlyList<Guid> ProjectIds, IReadOnlyList<Guid> IssueTypeIds);
+    IReadOnlyList<Guid> ProjectIds, IReadOnlyList<Guid> IssueTypeIds, int DisplayOrder);
 
 public sealed record CreateCustomFieldRequest(string Key, string Name, int Type, string? Description, bool IsSearchable, string? ConfigJson);
 public sealed record UpdateCustomFieldRequest(string Name, string? Description, bool IsSearchable, string? ConfigJson);
@@ -21,7 +21,7 @@ public sealed record UpdateCustomFieldRequest(string Name, string? Description, 
 public sealed record AddOptionRequest(string Value, string Label, Guid? ParentOptionId, int? Order);
 public sealed record UpdateOptionRequest(string Value, string Label, int Order);
 
-public sealed record AddContextRequest(string Name, bool IsGlobal, bool IsRequired, string? DefaultValueJson, List<Guid>? ProjectIds, List<Guid>? IssueTypeIds);
+public sealed record AddContextRequest(string Name, bool IsGlobal, bool IsRequired, string? DefaultValueJson, List<Guid>? ProjectIds, List<Guid>? IssueTypeIds, int? DisplayOrder);
 
 public sealed record IssueFieldValueDto(Guid CustomFieldId, string FieldKey, int Type, JsonElement Value);
 

@@ -29,6 +29,22 @@ public sealed class ProjectService : IProjectService
             : Result.Success(Mappers.ToDetailDto(p));
     }
 
+    public async Task<Result<ProjectDetailDto>> GetDetailForMemberByKeyAsync(string key, CancellationToken ct = default)
+    {
+        if (_currentUser.UserId is null)
+            return Result.Failure<ProjectDetailDto>(ErrorType.Unauthorized, "auth.required");
+
+        var matches = await _repo.ListWithDetailsByKeyForMemberAsync(_currentUser.UserId.Value, key, ct);
+        if (matches.Count == 0)
+            return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+        if (matches.Count > 1)
+            return Result.Failure<ProjectDetailDto>(
+                ErrorType.Conflict, "project.key_ambiguous",
+                new[] { new ResultError("PROJECT_KEY_AMBIGUOUS", "project.key_ambiguous", Field: "key") });
+
+        return Result.Success(Mappers.ToDetailDto(matches[0]));
+    }
+
     public async Task<Result<ProjectDetailDto>> GetByKeyAsync(Guid workspaceId, string key, CancellationToken ct = default)
     {
         var p = await _repo.GetByKeyAsync(workspaceId, key.ToUpperInvariant(), ct);

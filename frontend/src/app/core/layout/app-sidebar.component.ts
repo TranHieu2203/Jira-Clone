@@ -116,8 +116,9 @@ export class AppSidebarComponent {
     if (!p) return [];
     const base = `/projects/${p.key}`;
     return [
-      { label: 'Board', i18nKey: 'nav.board', icon: '◫', link: `${base}/board` },
+      { label: 'Overview', i18nKey: 'nav.overview', icon: '⌂', link: base, exact: true },
       { label: 'Backlog', i18nKey: 'nav.backlog', icon: '☰', link: `${base}/backlog` },
+      { label: 'Board', i18nKey: 'nav.board', icon: '◫', link: `${base}/board` },
       { label: 'Issues', i18nKey: 'nav.issues', icon: '✦', link: `${base}/issues` },
       { label: 'Reports', i18nKey: 'nav.reports', icon: '⊟', link: `${base}/reports` },
       { label: 'Settings', i18nKey: 'nav.settings', icon: '⚙', link: `${base}/settings` }

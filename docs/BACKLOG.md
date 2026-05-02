@@ -7,7 +7,7 @@
 > - `docs/BACKLOG.md` = **just the unfinished**, prioritized, actionable.
 > - `CLAUDE.md` = quy tắc kiến trúc, không đổi.
 >
-> **Cập nhật lần cuối**: 2026-05-02
+> **Cập nhật lần cuối**: 2026-05-02 (router đầy đủ + IssueSummary có `projectId` + preload status đa project)
 
 ---
 
@@ -47,7 +47,7 @@ curl -s http://localhost:5000/api/v1/workspaces/mine \
 ```bash
 # Backend
 dotnet build Jira-Clone.sln                                # full sln
-dotnet test                                                # all unit tests (54 PASS hiện tại)
+dotnet test                                                # all unit tests (69 PASS hiện tại)
 
 # Frontend
 cd frontend && npx ng build --configuration=development
@@ -62,7 +62,7 @@ cd frontend && npx ng build --configuration=development
 |---|---|
 | BB.* (BuildingBlocks) | ✅ + **BB.Storage** (`IFileStorage` Local/S3); migration runner Oracle |
 | Identity | ✅ + `GET /api/v1/users/search`, `GET /api/v1/users/{id}` (picker) |
-| Sample (demo, sẽ xóa sau) | ✅ |
+| ~~Sample (Product demo)~~ | Đã gỡ khỏi solution + FE |
 | **Project** (Workspace + Project + IssueType + IPermissionChecker) | ✅ 19 tests |
 | **Workflow** (Engine + 9 built-in steps + Provisioner) | ✅ 15 tests |
 | **CustomField** (EAV + 13 type handlers) | ✅ 20 tests |
@@ -73,12 +73,18 @@ cd frontend && npx ng build --configuration=development
 
 ### Frontend
 - Layout hybrid: top bar 48px + sidebar contextual + breadcrumb
-- 8 feature pages: workspaces (list/detail), projects (list/detail), board, issues (search), issue detail, login
+- **Router (đã khớp sidebar / menu)** — trong shell có auth:
+  - `/workspaces`, `/workspaces/:slug`
+  - `/projects`, `/projects/:projectKey` (overview), `/board`, `/backlog`, `/issues`, `/reports`, `/settings`
+  - `/issues`, `/issues/:issueKey`
+  - `/profile` (menu user), `/settings` (cài đặt app: ngôn ngữ + theme)
+  - `login` ngoài shell
 - Create dialogs: project (**lead** qua `UserPicker`), issue (**assignee** optional + topbar `+`)
 - Issue detail: assignee chỉnh qua `UserPicker` + nút lưu
 - Comment thread + **Activity** timeline inline trong issue detail
 - Board Kanban drag-drop + filter assignee/issue type + **swimlane theo assignee** + dialog chọn transition khi có nhiều transition cùng đích
 - Issue detail: **Attachments** (upload / download / xóa file của chính user)
+- **Custom field**: context **theo từng project** (không seed global); layout **display_order** trên `CustomFieldContext`; resolve sort theo order + name; domain handler `ProjectCreated` + startup **backfill** cho project cũ; FE create/detail hỗ trợ **Text, Number, Date, Select, Multi-select** (demo seed 5 field)
 - Workspace detail: **Add member** qua `UserPicker` + chọn role
 - StatusCacheService resolve status name + category color
 
@@ -97,6 +103,16 @@ cd frontend && npx ng build --configuration=development
 
 ### ✅ P7.attachment (MVP)
 **Đã có**: `BB.Storage` (Local + S3/MinIO), module Attachment, API multipart, FE panel trên issue detail.
+
+### ✅ CustomField — context theo project + “screen” layout + FE kiểu field (slice Jira-like)
+**Đã có**:
+- `CustomFieldContext.DisplayOrder` + migration Postgres/Oracle; global context cũ (nếu còn) được set `display_order = 1000` để không chen layout project.
+- Seed: 5 field định nghĩa **không** gắn context global — `acceptance_criteria`, `risk_level`, `cf_story_points`, `cf_target_date`, `cf_components`.
+- `IDemoCustomFieldProjectBinder` + `ProjectCustomFieldProvisioningHandler` (`ProjectCreated`) + `CustomFieldDemoProjectBinderBackfill` (Api.Host) cho mọi project hiện có.
+- `ResolveForAsync` sort theo min `DisplayOrder` context khớp + `Name`.
+- FE: `issue-custom-fields-form` — Number (`p-inputNumber`), Date (`input type=date`), Multi-select (`p-multiSelect`), giữ Text/Select.
+
+**Chưa làm (vẫn defer đúng P10 đầy đủ)**: Screen / ScreenScheme / IssueTypeScreenScheme trong DB; drag-drop editor layout; CRUD field trong UI admin.
 
 ---
 
@@ -133,10 +149,13 @@ cd frontend && npx ng build --configuration=development
 
 ## 4. Backlog priority — **Thấp** (polish / nice-to-have)
 
-### 🟢 P10 — Workflow Editor UI + Field Editor UI
+### 🟢 P10 — Workflow Editor UI + Field Editor UI (partial)
+**Đã có (slice)**: layout thứ tự field qua `display_order` + bind context theo project + FE nhập nhiều kiểu (xem mục CustomField ✅ ở trên).
+
+**Còn lại**:
 - Drag-drop graph editor cho workflow (xem template SOFTWARE_SIMPLE)
-- CRUD field type với form config theo từng type
-- Screen / ScreenScheme / IssueTypeScreenScheme (đã defer ở P3)
+- CRUD field / context / order trong UI admin (không chỉ seed + API `AddContext`)
+- Screen / ScreenScheme / IssueTypeScreenScheme đầy đủ như Jira (đã defer ở P3)
 
 ### 🟢 P11 — Identity hoàn thiện
 - Permission scheme configurable (hiện đang fixed 4 role qua D6)
@@ -153,11 +172,11 @@ cd frontend && npx ng build --configuration=development
 - Backup / restore guide
 
 ### 🟢 Cleanup
-- Xóa Sample module (Product) — chỉ là demo từ ngày đầu
-- Xóa các route `/products` khỏi FE
-- Refactor: hiện `ProjectDetailPage` dùng `listMine()` + filter — nên thêm endpoint `GET /projects/by-key/{key}` (không cần workspaceId) để load trực tiếp
-- `IIssueTypeReader.GetAsync` đang return null — implement đầy đủ
-- Status name trong IssueList chỉ resolve khi `fixedProjectId` — cross-project search vẫn show UUID
+- ~~Xóa Sample module (Product) + route `/products`~~ ✅ (2026-05-02)
+- ~~Refactor: `ProjectDetailPage` + `GET /projects/by-key/{key}` (member-scoped, 409 nếu key trùng nhiều workspace)~~ ✅
+- ~~`IIssueTypeReader.GetAsync` return null~~ ✅ (`GetIssueTypeByIdAsync` + map DTO)
+- ~~Status name Issue list khi search cross-project~~ ✅ (`IssueSummaryDto.ProjectId` + FE `StatusCacheService.ensureProjectLoaded` theo từng project trong trang)
+- ~~Router thiếu (`/profile`, `/settings`, backlog/reports project)~~ ✅
 - ~~Refactor `confirm()` native trong CommentsThread → dùng PrimeNG ConfirmDialog~~ ✅
 
 ---
@@ -170,13 +189,13 @@ cd frontend && npx ng build --configuration=development
 | L2 | WorkflowProvisioner lazy (chỉ chạy khi tạo issue đầu tiên) | Cleaner: subscribe `ProjectCreated` event và provision eager. Cần shared events project hoặc cross-module reference |
 | L3 | Permission check chưa enforce trên mọi endpoint | JWT auth có (chỉ check authenticated). Per-action permission check qua `IPermissionChecker` chưa wire vào controller. Dùng `[Authorize(Policy=...)]` hoặc service-level guard |
 | L4 | Domain event handler khác transaction với producer | ActivityLog có thể loss nếu handler fail. Outbox cần thiết để fix |
-| L5 | Issue search không filter được custom field | Cần `Specification<T>` (BB#8) + index columns đã có |
-| L6 | Status name không resolve cho cross-project search | StatusCache hiện chỉ load 1 project. Cần multi-project preload hoặc BE include status name trong DTO |
+| L5 | Issue search không filter được custom field | Index columns đã có; vẫn cần BB#8 + wire query |
+| L6 | ~~Status name không resolve cho cross-project search~~ | ✅ Đã preload workflow theo `projectId` trên mỗi dòng list + giữ cờ fixed project |
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |
 | L9 | ~~Attachment chưa có~~ | ✅ Đã có BB.Storage + module Attachment (MinIO optional) |
 | L10 | Email notification chưa có | Cần SMTP config + template engine. Phase P11+ |
-| L11 | Sample module (Product) còn trong repo | Xóa khi cleanup |
+| L11 | ~~Sample module (Product)~~ | ✅ Đã gỡ |
 | L12 | ~~Dark mode toggle không có UI~~ | ✅ Topbar nút ☾/☀ + `ThemeService` + localStorage |
 | L13 | i18n message keys vi/en có thể chưa cover hết error từ BE | Audit cần thiết — BE trả `messageKey` mà FE chưa có sẽ fallback show key thô |
 | L14 | Test coverage: chỉ 69 unit tests, 0 integration test với DB thật | Defer cùng BB#12 (cần Testcontainers) |

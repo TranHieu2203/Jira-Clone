@@ -14,6 +14,7 @@ import { ActivityTimelineComponent } from './activity-timeline.component';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
 import { CommentsThreadComponent } from './comments-thread.component';
 import { AttachmentPanelComponent } from './attachment-panel.component';
+import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.component';
 
 @Component({
   selector: 'app-issue-detail-page',
@@ -24,7 +25,8 @@ import { AttachmentPanelComponent } from './attachment-panel.component';
     CommentsThreadComponent,
     AttachmentPanelComponent,
     ActivityTimelineComponent,
-    UserPickerComponent
+    UserPickerComponent,
+    IssueCustomFieldsFormComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -40,6 +42,13 @@ import { AttachmentPanelComponent } from './attachment-panel.component';
             <h3>{{ 'issue.description' | translate }}</h3>
             <div class="desc">{{ i.description || '—' }}</div>
           </section>
+
+          <app-issue-custom-fields-form
+            [projectId]="i.projectId"
+            [issueTypeId]="i.issueTypeId"
+            [issueId]="i.id"
+            [showSaveButton]="true"
+          />
 
           @if (transitions().length > 0) {
             <section>

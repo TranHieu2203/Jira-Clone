@@ -3,7 +3,7 @@
  *
  * Tiêu chí: login + ErrorDialog (401), workspace/project/issue, board + swimlane,
  * comment + attachment + activity (hiển thị), UserPicker (workspace member dialog),
- * module Sample /products (validation ErrorDialog), i18n VI/EN, logout.
+ * project settings (/projects/:key/settings), workspace validation ErrorDialog, i18n VI/EN, logout.
  *
  * Yêu cầu: stack Docker dev chạy (nginx http://localhost:4200) hoặc FE+BE tương đương.
  *
@@ -133,6 +133,9 @@ async function pickPrimeSelectOption(page, selectName, optionTextRegex) {
   await page.locator('a.proj').filter({ hasText: projKey }).click();
   await page.waitForURL(`**/projects/${projKey}`, { timeout: 15000 });
   await sleep(600);
+  // Trang dự án: workflow (hoặc hint) + custom fields theo issue type (seed global).
+  await page.getByText(/Acceptance criteria/i).first().waitFor({ state: 'visible', timeout: 25000 });
+  await shot(page, '06b-project-jira-overview');
   await page.getByRole('link', { name: /Bảng/i }).click();
   await page.waitForURL(`**/projects/${projKey}/board`, { timeout: 15000 });
   await page.waitForLoadState('networkidle');
@@ -160,10 +163,23 @@ async function pickPrimeSelectOption(page, selectName, optionTextRegex) {
     null,
     { timeout: 25000 }
   );
+  await page.locator('[data-testid="cf-acceptance_criteria"]').waitFor({ state: 'visible', timeout: 20000 });
+  await page.locator('[data-testid="cf-acceptance_criteria"]').fill(`E2E AC ${ts}`);
+  await pickPrimeSelectOption(page, 'cf-risk_level', /Medium/i);
   await page.locator('p-dialog input[name="summary"]').fill(`Playwright issue ${ts}`);
   await page.locator('p-dialog button[type="submit"]').click({ timeout: 15000 });
   await page.waitForURL(/\/issues\/.+/, { timeout: 20000 });
-  await sleep(1000);
+  await page.locator('[data-testid="cf-acceptance_criteria"]').waitFor({ state: 'visible', timeout: 20000 });
+  const acNeedle = `E2E AC ${ts}`;
+  await page.waitForFunction(
+    (needle) => {
+      const el = document.querySelector('[data-testid="cf-acceptance_criteria"]');
+      return el && 'value' in el && String(el.value).includes(needle);
+    },
+    acNeedle,
+    { timeout: 25000 }
+  );
+  await sleep(400);
   await shot(page, '09-issue-detail');
 
   // --- Bình luận ---
@@ -219,20 +235,26 @@ async function pickPrimeSelectOption(page, selectName, optionTextRegex) {
   await page.getByRole('button', { name: /^Hủy$/i }).click();
   await sleep(400);
 
-  // --- Sample products: validation → ErrorDialog ---
-  console.log('\nStep 11: Sample /products — validation');
-  await page.goto(`${BASE}/products`, { waitUntil: 'networkidle' });
-  await sleep(600);
-  await shot(page, '13-products');
-  await page.getByRole('button', { name: /Tạo sản phẩm/i }).click();
+  // --- Project settings (workflow + custom fields read-only hub) ---
+  console.log('\nStep 11a: Project settings');
+  await page.goto(`${BASE}/projects/${projKey}/settings`, { waitUntil: 'networkidle' });
+  await sleep(700);
+  await page.getByText(/Cấu hình dự án|Project settings/i).waitFor({ state: 'visible', timeout: 20000 });
+  await shot(page, '13-project-settings');
+
+  // --- Workspace create empty submit → validation ErrorDialog ---
+  console.log('\nStep 11b: Workspace — validation ErrorDialog');
+  await page.goto(`${BASE}/workspaces`, { waitUntil: 'networkidle' });
+  await sleep(500);
+  await page.getByRole('button', { name: /Tạo workspace/i }).click();
   await sleep(400);
-  await page.locator('p-dialog button[type="submit"]').click();
-  await sleep(1200);
+  await page.locator('p-dialog').getByRole('button', { name: /^Lưu$/i }).click();
+  await sleep(900);
   await page.getByRole('dialog').filter({ hasText: /Mã truy vết|Trace|Lỗi|Error/i }).waitFor({
     state: 'visible',
     timeout: 20000
   });
-  await shot(page, '14-products-validation-error');
+  await shot(page, '14-workspace-validation-error');
   await dismissErrorDialog(page);
   await page.getByRole('button', { name: /^Hủy$/i }).click();
   await sleep(300);

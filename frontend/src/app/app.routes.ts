@@ -26,16 +26,32 @@ export const routes: Routes = [
         loadComponent: () => import('@features/project/projects.page').then((m) => m.ProjectsPageComponent)
       },
       {
-        path: 'projects/:projectKey',
-        loadComponent: () => import('@features/project/project-detail.page').then((m) => m.ProjectDetailPageComponent)
-      },
-      {
         path: 'projects/:projectKey/board',
         loadComponent: () => import('@features/project/board.page').then((m) => m.BoardPageComponent)
       },
       {
+        path: 'projects/:projectKey/backlog',
+        loadComponent: () => import('@features/issue/issues.page').then((m) => m.IssuesPageComponent),
+        data: { issueListVariant: 'backlog' }
+      },
+      {
         path: 'projects/:projectKey/issues',
-        loadComponent: () => import('@features/issue/issues.page').then((m) => m.IssuesPageComponent)
+        loadComponent: () => import('@features/issue/issues.page').then((m) => m.IssuesPageComponent),
+        data: { issueListVariant: 'issues' }
+      },
+      {
+        path: 'projects/:projectKey/reports',
+        loadComponent: () =>
+          import('@features/project/project-reports.page').then((m) => m.ProjectReportsPageComponent)
+      },
+      {
+        path: 'projects/:projectKey/settings',
+        loadComponent: () =>
+          import('@features/project/project-settings.page').then((m) => m.ProjectSettingsPageComponent)
+      },
+      {
+        path: 'projects/:projectKey',
+        loadComponent: () => import('@features/project/project-detail.page').then((m) => m.ProjectDetailPageComponent)
       },
       {
         path: 'issues',
@@ -46,8 +62,13 @@ export const routes: Routes = [
         loadComponent: () => import('@features/issue/issue-detail.page').then((m) => m.IssueDetailPageComponent)
       },
       {
-        path: 'products',
-        loadComponent: () => import('@features/sample/products.page').then((m) => m.ProductsPageComponent)
+        path: 'profile',
+        loadComponent: () => import('@features/identity/profile.page').then((m) => m.ProfilePageComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('@features/settings/app-settings.page').then((m) => m.AppSettingsPageComponent)
       }
     ]
   },

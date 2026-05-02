@@ -29,6 +29,8 @@ export interface CustomFieldContext {
   defaultValueJson?: string | null;
   projectIds: string[];
   issueTypeIds: string[];
+  /** Thứ tự hiển thị trên form (screen layout); BE đã sort resolve theo field. */
+  displayOrder: number;
 }
 
 export interface CustomField {

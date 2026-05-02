@@ -9,6 +9,7 @@ export type IssuePriority = 1 | 2 | 3 | 4 | 5;
 
 export interface IssueSummary {
   id: string;
+  projectId: string;
   key: string;
   issueTypeId: string;
   currentStatusId: string;

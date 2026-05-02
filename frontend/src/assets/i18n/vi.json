@@ -29,10 +29,28 @@
     "projects": "Dự án",
     "my_issues": "Issue của tôi",
     "board": "Bảng",
-    "backlog": "Backlog",
     "issues": "Issues",
+    "backlog": "Backlog",
     "reports": "Báo cáo",
+    "overview": "Tổng quan",
     "settings": "Cấu hình"
+  },
+  "profile": {
+    "title": "Hồ sơ",
+    "display_name": "Tên hiển thị",
+    "user_name": "Tên đăng nhập",
+    "email": "Email",
+    "roles": "Vai trò",
+    "hint": "Thông tin lấy từ phiên đăng nhập hiện tại. Các tùy chọn tài khoản mở rộng có thể bổ sung sau."
+  },
+  "app_settings": {
+    "title": "Cài đặt ứng dụng",
+    "intro": "Các tùy chọn được lưu trên trình duyệt này.",
+    "language": "Ngôn ngữ",
+    "theme": "Giao diện",
+    "theme_light": "Chuyển giao diện sáng",
+    "theme_dark": "Chuyển giao diện tối",
+    "project_hint": "Workflow và trường tùy chỉnh theo từng dự án nằm trong dự án đó (Tổng quan → Cấu hình)."
   },
   "workspace": {
     "title": "Workspaces",
@@ -60,12 +78,23 @@
     "lead": "Lead dự án",
     "name": "Tên dự án",
     "key": "Mã dự án",
+    "key_ambiguous": "Mã dự án này trùng ở nhiều workspace mà bạn tham gia. Hãy mở dự án từ ngữ cảnh workspace.",
     "key_placeholder": "VD: PRJ",
     "key_hint": "2-10 ký tự, chỉ chữ in HOA và số. VD: PRJ, ACME1.",
     "type": "Loại dự án",
     "members": "thành viên",
     "issue_types": "Loại issue",
-    "empty": "Chưa có dự án nào trong workspace."
+    "empty": "Chưa có dự án nào trong workspace.",
+    "workflow_title": "Luồng & trạng thái",
+    "workflow_active": "Đang dùng",
+    "workflow_empty_hint": "Dự án chưa có bản sao workflow. Hệ thống tạo khi tạo issue đầu tiên.",
+    "custom_fields_by_type": "Trường tùy chỉnh theo loại issue",
+    "no_custom_fields_rows": "Không có loại issue để hiển thị.",
+    "settings_title": "Cấu hình dự án",
+    "settings_readonly_hint":
+      "Luồng workflow, loại issue và trường tùy chỉnh hiển thị ở đây để tham khảo. Chỉnh sửa workflow/định nghĩa field trên UI đang nằm trong backlog (P10); giá trị field nhập trên từng issue. Hiện dùng seed và API.",
+    "reports_coming_soon":
+      "Báo cáo và dashboard chưa triển khai. Tạm dùng Bảng và Issues; burndown và gadget nằm trong backlog (P8/P12)."
   },
   "issue": {
     "title": "Issues",
@@ -86,7 +115,11 @@
     "created_at": "Tạo lúc",
     "search_placeholder": "Tìm theo summary hoặc key...",
     "empty": "Không có issue nào khớp tiêu chí.",
-    "assignee_save": "Lưu người xử lý"
+    "assignee_save": "Lưu người xử lý",
+    "custom_fields": "Trường tùy chỉnh",
+    "custom_fields_save": "Lưu trường tùy chỉnh",
+    "no_custom_fields": "Không có trường tùy chỉnh cho ngữ cảnh này.",
+    "custom_field_unsupported": "Kiểu field chưa hỗ trợ trên giao diện."
   },
   "comment": {
     "title": "Bình luận",

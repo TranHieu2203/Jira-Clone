@@ -3,6 +3,7 @@ using System;
 using CustomField.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CustomField.Infrastructure.Migrations
 {
     [DbContext(typeof(CustomFieldDbContext))]
-    partial class CustomFieldDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260502043938_CfContextDisplayOrder_Postgres")]
+    partial class CfContextDisplayOrder_Postgres
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

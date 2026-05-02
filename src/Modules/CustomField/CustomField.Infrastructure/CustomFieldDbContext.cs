@@ -83,6 +83,7 @@ public sealed class CustomFieldDbContext : BaseDbContext
             e.ToTable("custom_field_contexts");
             e.HasKey(x => x.Id);
             e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.DisplayOrder).HasColumnName("display_order").HasDefaultValue(0);
             e.Property(x => x.DefaultValueJson).HasColumnType(isPostgres ? "jsonb" : "CLOB");
 
             var projectIdsProp = e.Property(x => x.ProjectIds).HasConversion(guidListConverter);

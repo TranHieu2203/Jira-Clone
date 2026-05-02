@@ -5,6 +5,8 @@ namespace Project.Application;
 public interface IProjectService
 {
     Task<Result<ProjectDetailDto>> GetByIdAsync(Guid id, CancellationToken ct = default);
+    /// <summary>Chi tiết project theo key trong phạm vi project user là member. Trùng key ở nhiều workspace → Conflict.</summary>
+    Task<Result<ProjectDetailDto>> GetDetailForMemberByKeyAsync(string key, CancellationToken ct = default);
     Task<Result<ProjectDetailDto>> GetByKeyAsync(Guid workspaceId, string key, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ProjectDto>>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default);
     Task<Result<IReadOnlyList<ProjectDto>>> ListMineAsync(CancellationToken ct = default);

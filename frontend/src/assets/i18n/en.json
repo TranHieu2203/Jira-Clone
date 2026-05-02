@@ -29,10 +29,28 @@
     "projects": "Projects",
     "my_issues": "My issues",
     "board": "Board",
-    "backlog": "Backlog",
     "issues": "Issues",
+    "backlog": "Backlog",
     "reports": "Reports",
+    "overview": "Overview",
     "settings": "Settings"
+  },
+  "profile": {
+    "title": "Profile",
+    "display_name": "Display name",
+    "user_name": "Username",
+    "email": "Email",
+    "roles": "Roles",
+    "hint": "Information shown here comes from your current session. More account options may be added later."
+  },
+  "app_settings": {
+    "title": "Application settings",
+    "intro": "These preferences are stored in this browser.",
+    "language": "Language",
+    "theme": "Theme",
+    "theme_light": "Switch to light theme",
+    "theme_dark": "Switch to dark theme",
+    "project_hint": "Workflow and custom field definitions for a project are under that project (Overview → Settings)."
   },
   "workspace": {
     "title": "Workspaces",
@@ -60,12 +78,23 @@
     "lead": "Project lead",
     "name": "Project name",
     "key": "Project key",
+    "key_ambiguous": "This project key exists in more than one workspace you belong to. Open the project from the workspace context instead.",
     "key_placeholder": "e.g. PRJ",
     "key_hint": "2-10 chars, uppercase letters and digits only. e.g. PRJ, ACME1.",
     "type": "Project type",
     "members": "members",
     "issue_types": "Issue types",
-    "empty": "No projects in this workspace yet."
+    "empty": "No projects in this workspace yet.",
+    "workflow_title": "Workflow & statuses",
+    "workflow_active": "Active",
+    "workflow_empty_hint": "No workflow copy for this project yet. It is created automatically when the first issue is created.",
+    "custom_fields_by_type": "Custom fields by issue type",
+    "no_custom_fields_rows": "No issue types to show.",
+    "settings_title": "Project settings",
+    "settings_readonly_hint":
+      "Workflow, issue types, and custom fields are shown here for reference. Editing workflows or field definitions in the UI is planned (see backlog P10); values are edited on each issue. Seed and APIs apply today.",
+    "reports_coming_soon":
+      "Reports and dashboards are not implemented yet. Use Board and Issues for now; burndown and gadgets are tracked as future work (see backlog P8/P12)."
   },
   "issue": {
     "title": "Issues",
@@ -86,7 +115,11 @@
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
     "empty": "No issues match the criteria.",
-    "assignee_save": "Save assignee"
+    "assignee_save": "Save assignee",
+    "custom_fields": "Custom fields",
+    "custom_fields_save": "Save custom fields",
+    "no_custom_fields": "No custom fields for this context.",
+    "custom_field_unsupported": "Field type not supported in UI yet."
   },
   "comment": {
     "title": "Comments",

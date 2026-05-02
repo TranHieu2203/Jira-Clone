@@ -36,7 +36,14 @@ public sealed class CustomFieldRepository : Repository<Domain.CustomField>, ICus
             .Include(f => f.Contexts)
             .ToListAsync(ct);
 
-        return fields.Where(f => f.Contexts.Any(c => c.AppliesTo(projectId, issueTypeId))).ToList();
+        static int OrderFor(Domain.CustomField f, Guid pid, Guid tid) =>
+            f.Contexts.Where(c => c.AppliesTo(pid, tid)).Select(c => c.DisplayOrder).DefaultIfEmpty(int.MaxValue).Min();
+
+        return fields
+            .Where(f => f.Contexts.Any(c => c.AppliesTo(projectId, issueTypeId)))
+            .OrderBy(f => OrderFor(f, projectId, issueTypeId))
+            .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }
 

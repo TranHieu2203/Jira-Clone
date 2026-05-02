@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject, input, model, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ViewChild,
+  effect,
+  inject,
+  input,
+  model,
+  output,
+  signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -10,18 +21,20 @@ import { SelectModule } from 'primeng/select';
 import { Issue, IssueApiService, IssuePriority } from '@core/api/issue.service';
 import { IssueType, ProjectApiService, ProjectDetail, ProjectSummary } from '@core/api/project.service';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
+import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.component';
 
 @Component({
   selector: 'app-create-issue-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, TranslateModule,
-    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule, UserPickerComponent
+    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule,
+    UserPickerComponent, IssueCustomFieldsFormComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-dialog [visible]="visible()" (visibleChange)="visible.set($event)"
-              [modal]="true" [style]="{ width: '560px' }"
+              [modal]="true" [style]="{ width: '620px' }"
               [header]="'issue.create' | translate">
       <form (ngSubmit)="save()" class="form" #f="ngForm">
         @if (!fixedProjectId()) {
@@ -61,6 +74,12 @@ import { UserPickerComponent } from '@shared/ui/user-picker.component';
           <span>{{ 'issue.assignee' | translate }}</span>
           <app-user-picker [(userId)]="assigneeUserId" />
         </label>
+        <app-issue-custom-fields-form
+          [projectId]="selectedProjectId"
+          [issueTypeId]="selectedTypeId"
+          [issueId]="null"
+          [showSaveButton]="false"
+        />
         <div class="actions">
           <button pButton type="button" [text]="true"
                   (click)="visible.set(false)"
@@ -84,6 +103,8 @@ export class CreateIssueDialogComponent {
   private readonly issueApi = inject(IssueApiService);
   private readonly projectApi = inject(ProjectApiService);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  @ViewChild(IssueCustomFieldsFormComponent) private cfForm?: IssueCustomFieldsFormComponent;
 
   /** Pre-fix project (vd. khi mở từ project detail). null = cho phép user chọn. */
   readonly fixedProjectId = input<string | null>(null);
@@ -154,6 +175,7 @@ export class CreateIssueDialogComponent {
   save(): void {
     if (!this.canSubmitForm()) return;
     this.saving.set(true);
+    const cfPayload = this.cfForm?.getPayloadForCreate() ?? null;
     this.issueApi.create({
       projectId: this.selectedProjectId!,
       issueTypeId: this.selectedTypeId!,
@@ -165,7 +187,7 @@ export class CreateIssueDialogComponent {
       dueDate: null,
       storyPoints: null,
       labels: null,
-      customFieldValues: null
+      customFieldValues: cfPayload
     }).subscribe({
       next: (issue) => {
         this.saving.set(false);

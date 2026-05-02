@@ -78,9 +78,10 @@ public sealed class CustomField : AggregateRoot, ISoftDeletable
     }
 
     public CustomFieldContext AddContext(string name, bool isGlobal, bool isRequired,
-        string? defaultValueJson, IReadOnlyCollection<Guid>? projectIds = null, IReadOnlyCollection<Guid>? issueTypeIds = null)
+        string? defaultValueJson, IReadOnlyCollection<Guid>? projectIds = null, IReadOnlyCollection<Guid>? issueTypeIds = null,
+        int displayOrder = 0)
     {
-        var ctx = new CustomFieldContext(Id, name, isGlobal, isRequired, defaultValueJson, projectIds, issueTypeIds);
+        var ctx = new CustomFieldContext(Id, name, isGlobal, isRequired, defaultValueJson, projectIds, issueTypeIds, displayOrder);
         _contexts.Add(ctx);
         return ctx;
     }

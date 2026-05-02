@@ -60,6 +60,24 @@ export interface UpdateProjectRequest {
   avatarUrl?: string | null;
 }
 
+/** Map detail → summary for workspace context / lists (counts from nested arrays). */
+export function projectDetailToSummary(d: ProjectDetail): ProjectSummary {
+  return {
+    id: d.id,
+    workspaceId: d.workspaceId,
+    name: d.name,
+    key: d.key,
+    description: d.description ?? null,
+    avatarUrl: d.avatarUrl ?? null,
+    leadId: d.leadId,
+    type: d.type,
+    isArchived: d.isArchived,
+    memberCount: d.members.length,
+    issueTypeCount: d.issueTypes.length,
+    createdAt: d.createdAt
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProjectApiService {
   private readonly http = inject(HttpClient);
@@ -78,8 +96,16 @@ export class ProjectApiService {
     return this.http.get<ProjectDetail>(`${this.base}/${id}`);
   }
 
+  /** Member-scoped: resolves project key across workspaces the user belongs to (409 if ambiguous). */
+  getDetailForMemberByKey(key: string): Observable<ProjectDetail> {
+    const k = encodeURIComponent(key.trim());
+    return this.http.get<ProjectDetail>(`${this.base}/by-key/${k}`);
+  }
+
   getByKey(workspaceId: string, key: string): Observable<ProjectDetail> {
-    return this.http.get<ProjectDetail>(`${this.base}/by-key/${workspaceId}/${key}`);
+    return this.http.get<ProjectDetail>(
+      `${this.base}/by-key/${workspaceId}/${encodeURIComponent(key.trim())}`
+    );
   }
 
   create(req: CreateProjectRequest): Observable<ProjectDetail> {

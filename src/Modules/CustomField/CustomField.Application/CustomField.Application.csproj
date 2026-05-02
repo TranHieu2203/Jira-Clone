@@ -10,6 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CustomField.Domain\CustomField.Domain.csproj" />
+    <ProjectReference Include="..\..\Project\Project.Domain\Project.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />

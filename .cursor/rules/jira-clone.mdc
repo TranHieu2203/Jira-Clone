@@ -21,9 +21,9 @@ Repo này có 3 file rule, đọc theo thứ tự **TRƯỚC** khi viết bất 
 
 ## Quy tắc bắt buộc khi code
 
-- **Theo pattern module Sample** (reference impl) — `src/Modules/Sample/` cho BE, `frontend/src/app/features/sample/` cho FE.
+- **Theo pattern module domain trong repo** (reference: **Project**) — `src/Modules/Project/` BE, feature tương ứng dưới `frontend/src/app/features/` (Sample/Product đã gỡ).
 - **Service trả `Observable<RawData>`**, không phải `Observable<ApiResponse<RawData>>` — interceptor đã unwrap.
-- **Typed UoW per module** (`ISampleUnitOfWork`, `IIdentityUnitOfWork`) — KHÔNG inject `IUnitOfWork` raw.
+- **Typed UoW per module** (`IProjectUnitOfWork`, `IIdentityUnitOfWork`, …) — KHÔNG inject `IUnitOfWork` raw.
 - **Mọi user-visible string** đi qua `| translate` pipe. Imperative i18n dùng `translate.get([keys], args).subscribe(t => ...)`. **CẤM** `translate.instant()` — tree-shaken ở prod.
 - **Response BE** chỉ trả `messageKey`, KHÔNG translate. FE translate.
 - **Mọi response có `traceId`** — Error đi qua `ErrorDialog` (modal + Copy button), Success qua Toast.
@@ -52,6 +52,6 @@ Repo này có 3 file rule, đọc theo thứ tự **TRƯỚC** khi viết bất 
 
 ## Khi không biết viết thế nào
 
-1. Tìm pattern tương tự ở module **Sample**.
+1. Tìm pattern tương tự ở module **Project** (hoặc module gần nhất trong codebase).
 2. Tra @PATTERNS.md.
 3. Nếu phát sinh bug mới chưa có trong catalog §7 → fix xong **bắt buộc** thêm vào catalog đó.

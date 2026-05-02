@@ -1,12 +1,14 @@
-// Verify the success toast renders translated text after the fix.
+// Verify success toast after creating a workspace (Sample /products removed).
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:4200';
 const SHOTS = path.join(__dirname, 'screenshots');
 fs.mkdirSync(SHOTS, { recursive: true });
 
 (async () => {
+  const ts = Date.now();
   const browser = await chromium.launch({
     headless: false,
     slowMo: 250,
@@ -16,30 +18,27 @@ fs.mkdirSync(SHOTS, { recursive: true });
   const page = await ctx.newPage();
   page.on('console', (m) => console.log(`[browser ${m.type()}] ${m.text()}`));
 
-  await page.goto('http://localhost:4200/login', { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+  await page.locator('input[name="userName"]').fill('admin');
+  await page.locator('input[name="password"]').fill('Admin@123');
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/products');
+  await page.waitForURL('**/workspaces', { timeout: 30000 });
   await page.waitForLoadState('networkidle');
 
-  // Open create dialog
-  await page.getByRole('button', { name: /Tạo mới|Tạo sản phẩm|Create/i }).first().click();
+  await page.getByRole('button', { name: /Tạo workspace/i }).click();
   await page.waitForTimeout(400);
+  await page.locator('input[name="name"]').fill(`Toast WS ${ts}`);
+  await page.locator('input[name="slug"]').fill(`toast-${ts}`);
+  await page.locator('p-dialog').getByRole('button', { name: /^Lưu$/i }).click();
 
-  // Fill form
-  await page.locator('input[name="name"]').fill('Sản phẩm demo');
-  await page.locator('input[name="sku"]').fill('SKU-TOAST-1');
-  await page.locator('p-inputnumber[name="price"] input').first().fill('150');
-  await page.locator('input[name="description"]').fill('Kiểm tra toast');
-
-  // Submit
-  await page.locator('p-dialog button[type="submit"]').click();
-
-  // Capture toast as soon as it appears
-  await page.waitForSelector('.p-toast .p-toast-message', { timeout: 5000 });
-  await page.waitForTimeout(300); // animation settle
+  await page.waitForSelector('.p-toast .p-toast-message', { timeout: 8000 });
+  await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(SHOTS, '11-toast-translated.png') });
   console.log('📸 11-toast-translated.png');
 
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(800);
   await browser.close();
-})().catch((e) => { console.error('FAIL:', e); process.exit(1); });
+})().catch((e) => {
+  console.error('FAIL:', e);
+  process.exit(1);
+});

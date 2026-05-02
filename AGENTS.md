@@ -9,7 +9,7 @@ Repo này có rule cố định cho mọi AI agent (Claude Code, Cursor, Aider, 
 ## Tôn chỉ
 
 - **Convention đã có > sáng tạo riêng**. Đi ngược pattern phải nói rõ lý do với user trước.
-- **Module `Sample` là reference implementation** — khi không biết viết thế nào, copy pattern từ đó.
+- **Module `Project` (và các module domain khác trong repo) là reference implementation** — Sample/Product demo đã gỡ; xem `PATTERNS.md` + code module Project/Identity.
 - **"Done" = 4 bước** ở [PATTERNS.md §3.6](PATTERNS.md): build BE clean + build FE clean + curl smoke + Playwright + screenshot.
 - **Bug mới phát hiện** → fix xong **bắt buộc** thêm vào [PATTERNS.md §7](PATTERNS.md). Catalog không được stale.
 

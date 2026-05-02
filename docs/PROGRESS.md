@@ -30,7 +30,7 @@
 | P7 | Comment + Attachment + Activity Log | `[x]` Comment ✅; ActivityLog ✅; **Attachment** ✅ (`BB.Storage` Local/S3, module Attachment, FE upload/list/download/delete). |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
-| P10 | Workflow Editor UI + Field Editor UI | `[ ]` |
+| P10 | Workflow Editor UI + Field Editor UI | `[~]` **partial**: layout `display_order` + context/project + FE nhập nhiều kiểu field — chưa có admin Screen designer |
 | P11 | Identity hoàn thiện (RBAC + Permission scheme) | `[ ]` |
 | P12 | Docker Compose + CI + Docs | `[~]` Docker compose dev OK. Còn CI + production docker + README hướng dẫn |
 
@@ -52,7 +52,7 @@
   - [x] Activity log / history (ActivityLog module + issue detail timeline)
   - [ ] Watcher
 - [ ] **Workflow & Status**: To Do → In Progress → Done, custom workflow per project, transition rule (chi tiết §3)
-- [ ] **Custom Field per project** (chi tiết §4)
+- [x] **Custom Field per project** (slice — chi tiết §4 + BACKLOG): context bind theo `projectId`, layout order, FE Number/Date/Multi-select; chưa ScreenScheme đầy đủ / editor admin
 - [ ] **Board**:
   - [ ] Kanban: cột theo status, drag-drop
   - [ ] Scrum: backlog + sprint, burndown
@@ -470,7 +470,7 @@ public interface ICustomFieldTypeHandler
 
 ### 4.6. Checklist P3 — CustomField + Screen
 
-- [x] Tạo `Modules/CustomField/CustomField.Domain`: CustomField (aggregate root), CustomFieldOption, CustomFieldContext, IssueFieldValue
+- [x] Tạo `Modules/CustomField/CustomField.Domain`: CustomField (aggregate root), CustomFieldOption, CustomFieldContext (+ **DisplayOrder** layout screen), IssueFieldValue
 - [x] Tạo `Modules/CustomField/CustomField.Application`:
   - [x] `ICustomFieldService`, `IIssueFieldValueService`
   - [~] Screen / ScreenScheme / IssueTypeScreenScheme — **defer P10** (UI designer phase, không cần cho Issue MVP)
@@ -618,3 +618,4 @@ tests/
 | 2026-05-02 | cursor | P6 board — polling 30s trên `BoardPageComponent`: `interval` + `switchMap` → `issueApi.search` (pageSize 200), dừng tick khi dialog chọn transition mở (`pickVisible`), huỷ khi destroy; không toast khi lỗi mạng. |
 | 2026-05-02 | cursor | BB#12 Oracle + BB.Storage + Attachment + swimlanes + workspace Add member: `ProviderAwareMigrationsAssembly`, migration `*_Oracle` (7 module), `BB.Storage` (`LocalFileStorage`, `S3FileStorage`), `Attachment` module + `AttachmentsController`, MinIO service trong `docker-compose.dev.yml`, FE `AttachmentPanelComponent`, board swimlane assignee, workspace dialog + `UserPicker`, `Microsoft.EntityFrameworkCore.Design` trên Api.Host, script `tools/scripts/regenerate-oracle-migrations.ps1`. |
 | 2026-05-02 | cursor | E2E Jira headed (`e2e/run.js`): login ErrorDialog, workspaces→board→issue→comment→attachment→UserPicker→products validation→i18n→logout. FE: redirect login→`/workspaces`, `AppShell` context project cho Create Issue, board `setProject`, 401 login không `logout()`, create-issue dialog sync + `canSubmitForm`, `allowSignalWrites` effects. Polish: **`ThemeService`** + topbar toggle dark/light; **CommentsThread** xóa comment qua **PrimeNG ConfirmDialog** + i18n `theme.*`, `comment.delete_confirm_*`. `.gitignore` `e2e/screenshots/*.png`. |
+| 2026-05-02 | cursor | CustomField Jira-like slice — `CustomFieldContext.DisplayOrder` + migrations Postgres/Oracle (global context cũ order 1000); seed 5 field không global; `IDemoCustomFieldProjectBinder` + `ProjectCreated` handler + `CustomFieldDemoProjectBinderBackfill` (mọi project); resolve sort; FE form: Text, Number, Date, Select, Multi-select. `docs/BACKLOG.md` + `PROGRESS.md` cập nhật; P10 đánh dấu partial. |

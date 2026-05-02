@@ -118,7 +118,7 @@ public sealed class CustomFieldService : ICustomFieldService
         var f = await _repo.GetWithDetailsAsync(id, ct);
         if (f is null) return Result.Failure<CustomFieldDto>(ErrorType.NotFound, "field.not_found");
         f.AddContext(request.Name, request.IsGlobal, request.IsRequired, request.DefaultValueJson,
-            request.ProjectIds, request.IssueTypeIds);
+            request.ProjectIds, request.IssueTypeIds, request.DisplayOrder ?? 0);
         _repo.Update(f); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(f), "field.context.added");
     }

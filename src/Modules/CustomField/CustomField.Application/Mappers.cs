@@ -15,5 +15,5 @@ internal static class Mappers
 
     public static CustomFieldContextDto ToDto(CustomFieldContext c) =>
         new(c.Id, c.Name, c.IsGlobal, c.IsRequired, c.DefaultValueJson,
-            c.ProjectIds.ToList(), c.IssueTypeIds.ToList());
+            c.ProjectIds.ToList(), c.IssueTypeIds.ToList(), c.DisplayOrder);
 }

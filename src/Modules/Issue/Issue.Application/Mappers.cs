@@ -15,6 +15,14 @@ internal static class Mappers
         i.CreatedAt, i.UpdatedAt);
 
     public static IssueSummaryDto ToSummary(Domain.Issue i) =>
-        new(i.Id, i.Key, i.IssueTypeId, i.CurrentStatusId, i.Summary,
-            (int)i.Priority, i.AssigneeId, i.CreatedAt);
+        new(
+            i.Id,
+            i.ProjectId,
+            i.Key,
+            i.IssueTypeId,
+            i.CurrentStatusId,
+            i.Summary,
+            (int)i.Priority,
+            i.AssigneeId,
+            i.CreatedAt);
 }

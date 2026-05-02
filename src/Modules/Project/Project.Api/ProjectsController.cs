@@ -21,6 +21,11 @@ public sealed class ProjectsController : BaseController
     public async Task<IActionResult> ListByWorkspace(Guid workspaceId, CancellationToken ct) =>
         ToResponse(await _service.ListByWorkspaceAsync(workspaceId, ct));
 
+    /// <summary>Chi tiết project theo key — chỉ project mà user hiện tại là member. Trùng key giữa các workspace → 409.</summary>
+    [HttpGet("by-key/{key}")]
+    public async Task<IActionResult> GetDetailForMemberByKey(string key, CancellationToken ct) =>
+        ToResponse(await _service.GetDetailForMemberByKeyAsync(key, ct));
+
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct) =>
         ToResponse(await _service.GetByIdAsync(id, ct));

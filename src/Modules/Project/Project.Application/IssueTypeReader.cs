@@ -1,4 +1,5 @@
 using Project.Application.Repositories;
+using Project.Domain;
 
 namespace Project.Application;
 
@@ -10,9 +11,8 @@ public sealed class IssueTypeReader : IIssueTypeReader
 
     public async Task<IssueTypeDto?> GetAsync(Guid issueTypeId, CancellationToken ct = default)
     {
-        // Hơi tốn vì phải scan; với MVP chấp nhận. Sau này nếu nóng — thêm read-model riêng.
-        // Tạm: để Issue module truyền projectId kèm theo, nên không gọi method này nhiều.
-        return await Task.FromResult<IssueTypeDto?>(null);
+        IssueType? t = await _repo.GetIssueTypeByIdAsync(issueTypeId, ct);
+        return t is null ? null : Mappers.ToDto(t);
     }
 
     public async Task<IReadOnlyList<IssueTypeDto>> ListByProjectAsync(Guid projectId, CancellationToken ct = default)

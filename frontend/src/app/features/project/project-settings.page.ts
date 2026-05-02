@@ -23,7 +23,7 @@ import { ProjectMetaPanelsComponent } from './project-meta-panels.component';
 import { ProjectFieldsByIssueTypeRow, loadProjectWorkflowAndCustomFields } from './project-meta.load';
 
 @Component({
-  selector: 'app-project-detail-page',
+  selector: 'app-project-settings-page',
   standalone: true,
   imports: [
     CommonModule,
@@ -35,29 +35,18 @@ import { ProjectFieldsByIssueTypeRow, loadProjectWorkflowAndCustomFields } from 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (project(); as p) {
-      <app-page-header [title]="p.name">
+      <app-page-header [title]="'project.settings_title' | translate">
         <span class="key">{{ p.key }}</span>
       </app-page-header>
 
+      <p class="intro">{{ 'project.settings_readonly_hint' | translate }}</p>
+
       <div class="links-bar">
+        <a [routerLink]="['/projects', p.key]" class="nav-link">{{ 'nav.overview' | translate }}</a>
         <a [routerLink]="['/projects', p.key, 'backlog']" class="nav-link">{{ 'nav.backlog' | translate }}</a>
         <a [routerLink]="['/projects', p.key, 'board']" class="nav-link">{{ 'nav.board' | translate }}</a>
         <a [routerLink]="['/projects', p.key, 'issues']" class="nav-link">{{ 'nav.issues' | translate }}</a>
         <a [routerLink]="['/projects', p.key, 'reports']" class="nav-link">{{ 'nav.reports' | translate }}</a>
-        <a [routerLink]="['/projects', p.key, 'settings']" class="nav-link">{{ 'nav.settings' | translate }}</a>
-      </div>
-
-      <div class="info">
-        @if (p.description) {
-          <p>{{ p.description }}</p>
-        }
-        <div class="meta">
-          <span>{{ p.type === 1 ? 'Scrum' : 'Kanban' }}</span>
-          <span class="dot">•</span>
-          <span>{{ p.members.length }} {{ 'project.members' | translate }}</span>
-          <span class="dot">•</span>
-          <span>{{ p.issueTypes.length }} {{ 'project.issue_types' | translate }}</span>
-        </div>
       </div>
 
       <app-project-meta-panels
@@ -71,18 +60,18 @@ import { ProjectFieldsByIssueTypeRow, loadProjectWorkflowAndCustomFields } from 
   `,
   styles: [`
     .key { font-family: monospace; font-size: 12px; color: var(--c-text-muted); }
-    .links-bar { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; }
+    .intro {
+      font-size: 13px; color: var(--c-text-muted); margin: 0 0 16px; max-width: 720px; line-height: 1.45;
+    }
+    .links-bar { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }
     .nav-link {
       font-size: 13px; font-weight: 500; color: var(--c-primary); text-decoration: none;
     }
     .nav-link:hover { text-decoration: underline; }
-    .info { color: var(--c-text-muted); margin-bottom: 16px; }
-    .meta { display: flex; gap: 6px; font-size: 12px; margin-top: 8px; flex-wrap: wrap; }
-    .dot { color: var(--c-border-strong); }
     .empty { padding: 40px; text-align: center; color: var(--c-text-muted); }
   `]
 })
-export class ProjectDetailPageComponent implements OnInit, OnDestroy {
+export class ProjectSettingsPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(ProjectApiService);
   private readonly wfApi = inject(WorkflowApiService);

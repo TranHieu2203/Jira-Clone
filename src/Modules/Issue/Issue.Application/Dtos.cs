@@ -28,8 +28,15 @@ public sealed record IssueDto(
     DateTimeOffset? UpdatedAt);
 
 public sealed record IssueSummaryDto(
-    Guid Id, string Key, Guid IssueTypeId, Guid CurrentStatusId, string Summary,
-    int Priority, Guid? AssigneeId, DateTimeOffset CreatedAt);
+    Guid Id,
+    Guid ProjectId,
+    string Key,
+    Guid IssueTypeId,
+    Guid CurrentStatusId,
+    string Summary,
+    int Priority,
+    Guid? AssigneeId,
+    DateTimeOffset CreatedAt);
 
 public sealed record CreateIssueRequest(
     Guid ProjectId,

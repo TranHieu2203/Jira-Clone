@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <RootNamespace>Sample.Domain</RootNamespace>
-    <AssemblyName>Sample.Domain</AssemblyName>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
-  </ItemGroup>
-</Project>

@@ -14,6 +14,9 @@ public sealed class CustomFieldContext : BaseEntity
     public bool IsRequired { get; private set; }
     public string? DefaultValueJson { get; private set; }
 
+    /// <summary>Thứ tự hiển thị trên “screen” (layout) khi resolve — số nhỏ trước.</summary>
+    public int DisplayOrder { get; private set; }
+
     /// <summary>List project áp dụng (chỉ dùng khi !IsGlobal). Lưu dạng JSON array of guid.</summary>
     public List<Guid> ProjectIds { get; private set; } = new();
 
@@ -24,13 +27,15 @@ public sealed class CustomFieldContext : BaseEntity
 
     internal CustomFieldContext(Guid customFieldId, string name, bool isGlobal, bool isRequired, string? defaultValueJson,
         IReadOnlyCollection<Guid>? projectIds = null,
-        IReadOnlyCollection<Guid>? issueTypeIds = null)
+        IReadOnlyCollection<Guid>? issueTypeIds = null,
+        int displayOrder = 0)
     {
         CustomFieldId = customFieldId;
         Name = string.IsNullOrWhiteSpace(name) ? "Default" : name.Trim();
         IsGlobal = isGlobal;
         IsRequired = isRequired;
         DefaultValueJson = defaultValueJson;
+        DisplayOrder = displayOrder;
         if (projectIds is not null) ProjectIds.AddRange(projectIds);
         if (issueTypeIds is not null) IssueTypeIds.AddRange(issueTypeIds);
     }

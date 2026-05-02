@@ -9,14 +9,18 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { SelectModule } from 'primeng/select';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
-import { ProjectApiService, ProjectDetail } from '@core/api/project.service';
+import {
+  ProjectApiService,
+  ProjectDetail,
+  projectDetailToSummary
+} from '@core/api/project.service';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
 import { AvailableTransition, Workflow, WorkflowApiService, WorkflowStatus } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { NotificationService } from '@core/notification/notification.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
-import { filter, firstValueFrom, forkJoin, interval, switchMap } from 'rxjs';
+import { filter, firstValueFrom, interval, switchMap } from 'rxjs';
 
 interface Column {
   status: WorkflowStatus;
@@ -428,23 +432,13 @@ export class BoardPageComponent implements OnInit {
 
   private async bootstrap(projectKey: string): Promise<void> {
     try {
-      const projects = await firstValueFrom(this.projApi.listMine());
-      const summary = projects.find((p) => p.key === projectKey.toUpperCase());
-      if (!summary) {
-        this.loading.set(false);
-        return;
-      }
+      const detail = await firstValueFrom(this.projApi.getDetailForMemberByKey(projectKey));
+      this.workspaceCtx.setProject(projectDetailToSummary(detail));
+      this.project.set(detail);
 
-      this.workspaceCtx.setProject(summary);
+      const workflows = await firstValueFrom(this.wfApi.listByProject(detail.id));
 
-      const result = await firstValueFrom(forkJoin({
-        detail: this.projApi.getById(summary.id),
-        workflows: this.wfApi.listByProject(summary.id)
-      }));
-
-      this.project.set(result.detail);
-
-      const wf = result.workflows[0];
+      const wf = workflows[0];
       if (!wf) {
         this.issuesAll.set([]);
         this.workflow.set(null);
@@ -457,7 +451,7 @@ export class BoardPageComponent implements OnInit {
       this.statusCache.putMany(fullWf.statuses);
 
       const page = await firstValueFrom(this.issueApi.search({
-        projectId: summary.id,
+        projectId: detail.id,
         pageIndex: 1,
         pageSize: 200,
         sort: 'key',

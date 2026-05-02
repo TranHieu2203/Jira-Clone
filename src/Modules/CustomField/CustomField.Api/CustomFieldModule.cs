@@ -1,3 +1,4 @@
+using BB.Common;
 using BB.Persistence;
 using CustomField.Application;
 using CustomField.Application.Handlers;
@@ -6,6 +7,7 @@ using CustomField.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Project.Domain.Events;
 
 namespace CustomField.Api;
 
@@ -22,6 +24,8 @@ public static class CustomFieldModule
 
         services.AddScoped<ICustomFieldService, CustomFieldService>();
         services.AddScoped<IIssueFieldValueService, IssueFieldValueService>();
+        services.AddScoped<IDemoCustomFieldProjectBinder, DemoCustomFieldProjectBinder>();
+        services.AddScoped<IDomainEventHandler<ProjectCreated>, ProjectCustomFieldProvisioningHandler>();
 
         // Type handlers
         services.AddScoped<ICustomFieldTypeHandlerRegistry, CustomFieldTypeHandlerRegistry>();

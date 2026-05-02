@@ -42,6 +42,17 @@ public sealed class ProjectRepository : Repository<Domain.Project>, IProjectRepo
             .Include(p => p.IssueTypes)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
+    public async Task<IReadOnlyList<Domain.Project>> ListWithDetailsByKeyForMemberAsync(Guid userId, string key, CancellationToken ct = default)
+    {
+        string k = key.ToUpperInvariant();
+        return await _ctx.Projects
+            .Include(p => p.Members)
+            .Include(p => p.IssueTypes)
+            .Where(p => p.Key == k && p.Members.Any(m => m.UserId == userId))
+            .OrderBy(p => p.WorkspaceId)
+            .ToListAsync(ct);
+    }
+
     public Task<Domain.Project?> GetByKeyAsync(Guid workspaceId, string key, CancellationToken ct = default) =>
         _ctx.Projects
             .Include(p => p.Members)
@@ -71,6 +82,9 @@ public sealed class ProjectRepository : Repository<Domain.Project>, IProjectRepo
             .Where(p => p.Members.Any(m => m.UserId == userId))
             .OrderBy(p => p.Name)
             .ToListAsync(ct);
+
+    public Task<IssueType?> GetIssueTypeByIdAsync(Guid issueTypeId, CancellationToken ct = default) =>
+        _ctx.IssueTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == issueTypeId, ct);
 }
 
 public sealed class ProjectUnitOfWork : UnitOfWork<ProjectDbContext>, IProjectUnitOfWork

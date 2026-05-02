@@ -8,6 +8,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Project\Project.Domain\Project.Domain.csproj" />
     <ProjectReference Include="..\CustomField.Application\CustomField.Application.csproj" />
     <ProjectReference Include="..\CustomField.Infrastructure\CustomField.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
