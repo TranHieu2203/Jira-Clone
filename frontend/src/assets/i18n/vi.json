@@ -9,6 +9,7 @@
     "search": "Tìm kiếm",
     "search_placeholder": "Tìm kiếm...",
     "loading": "Đang tải...",
+    "select": "Chọn...",
     "trace_id": "Mã truy vết",
     "copy": "Sao chép",
     "copied": "Đã sao chép",
@@ -45,6 +46,9 @@
     "create": "Tạo dự án",
     "name": "Tên dự án",
     "key": "Mã dự án",
+    "key_placeholder": "VD: PRJ",
+    "key_hint": "2-10 ký tự, chỉ chữ in HOA và số. VD: PRJ, ACME1.",
+    "type": "Loại dự án",
     "members": "thành viên",
     "issue_types": "Loại issue",
     "empty": "Chưa có dự án nào trong workspace."
@@ -52,6 +56,7 @@
   "issue": {
     "title": "Issues",
     "create": "Tạo issue",
+    "type": "Loại",
     "key": "Mã",
     "summary": "Tóm tắt",
     "description": "Mô tả",

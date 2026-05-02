@@ -1,17 +1,23 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { AppTopbarComponent } from './app-topbar.component';
 import { AppSidebarComponent } from './app-sidebar.component';
+import { CreateIssueDialogComponent } from '@features/issue/create-issue.dialog';
+import { Issue } from '@core/api/issue.service';
+import { WorkspaceContextService } from './workspace-context.service';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterModule, AppTopbarComponent, AppSidebarComponent],
+  imports: [
+    CommonModule, RouterModule,
+    AppTopbarComponent, AppSidebarComponent, CreateIssueDialogComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell">
-      <app-topbar (toggleSidebar)="onToggle()" (create)="onCreate()" />
+      <app-topbar (toggleSidebar)="onToggle()" (create)="openCreate()" />
       <div class="body">
         <app-sidebar [collapsed]="sidebarCollapsed()" />
         <main class="main">
@@ -19,6 +25,11 @@ import { AppSidebarComponent } from './app-sidebar.component';
         </main>
       </div>
     </div>
+
+    <app-create-issue-dialog
+      [fixedProjectId]="contextProjectId()"
+      [(visible)]="createIssueVisible"
+      (created)="onIssueCreated($event)" />
   `,
   styles: [`
     .shell { display: flex; flex-direction: column; min-height: 100vh; }
@@ -34,13 +45,23 @@ import { AppSidebarComponent } from './app-sidebar.component';
 })
 export class AppShellComponent {
   private readonly router = inject(Router);
+  private readonly ctx = inject(WorkspaceContextService);
+
   readonly sidebarCollapsed = signal(false);
+  readonly createIssueVisible = signal(false);
+
+  /** Khi đang trong project, dialog tự pre-fill project. */
+  readonly contextProjectId = computed(() => null as string | null);
 
   onToggle(): void {
     this.sidebarCollapsed.update(v => !v);
   }
 
-  onCreate(): void {
-    this.router.navigate(['/issues/new']);
+  openCreate(): void {
+    this.createIssueVisible.set(true);
+  }
+
+  onIssueCreated(issue: Issue): void {
+    this.router.navigate(['/issues', issue.key]);
   }
 }

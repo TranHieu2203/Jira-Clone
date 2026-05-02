@@ -9,6 +9,7 @@ import { ButtonGroupModule } from 'primeng/buttongroup';
 import { Issue, IssueApiService } from '@core/api/issue.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
+import { StatusCacheService } from '@core/api/status-cache.service';
 
 @Component({
   selector: 'app-issue-detail-page',
@@ -47,7 +48,7 @@ import { AuthService } from '@core/auth/auth.service';
         </main>
 
         <aside class="side">
-          <div class="kv"><span>{{ 'issue.status' | translate }}</span><code>{{ i.currentStatusId.slice(0, 8) }}…</code></div>
+          <div class="kv"><span>{{ 'issue.status' | translate }}</span><strong>{{ statusName(i.currentStatusId) }}</strong></div>
           <div class="kv"><span>{{ 'issue.priority' | translate }}</span>P{{ i.priority }}</div>
           <div class="kv"><span>{{ 'issue.assignee' | translate }}</span>{{ i.assigneeId || '—' }}</div>
           <div class="kv"><span>{{ 'issue.reporter' | translate }}</span>{{ i.reporterId.slice(0, 8) }}…</div>
@@ -110,6 +111,7 @@ export class IssueDetailPageComponent implements OnInit {
   private readonly api = inject(IssueApiService);
   private readonly wfApi = inject(WorkflowApiService);
   private readonly auth = inject(AuthService);
+  private readonly statusCache = inject(StatusCacheService);
 
   readonly issue = signal<Issue | null>(null);
   readonly transitions = signal<AvailableTransition[]>([]);
@@ -121,9 +123,14 @@ export class IssueDetailPageComponent implements OnInit {
     this.load(key);
   }
 
+  statusName(statusId: string): string {
+    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
+  }
+
   private load(issueKey: string): void {
     this.api.getByKey(issueKey).subscribe((i) => {
       this.issue.set(i);
+      this.statusCache.ensureProjectLoaded(i.projectId);
       this.loadTransitions(i);
     });
   }

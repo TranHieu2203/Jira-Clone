@@ -9,6 +9,7 @@
     "search": "Search",
     "search_placeholder": "Search...",
     "loading": "Loading...",
+    "select": "Select...",
     "trace_id": "Trace ID",
     "copy": "Copy",
     "copied": "Copied",
@@ -45,6 +46,9 @@
     "create": "Create project",
     "name": "Project name",
     "key": "Project key",
+    "key_placeholder": "e.g. PRJ",
+    "key_hint": "2-10 chars, uppercase letters and digits only. e.g. PRJ, ACME1.",
+    "type": "Project type",
     "members": "members",
     "issue_types": "Issue types",
     "empty": "No projects in this workspace yet."
@@ -52,6 +56,7 @@
   "issue": {
     "title": "Issues",
     "create": "Create issue",
+    "type": "Type",
     "key": "Key",
     "summary": "Summary",
     "description": "Description",
