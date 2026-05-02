@@ -1,22 +1,26 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
 import { WorkspaceApiService, WorkspaceDetail } from '@core/api/workspace.service';
 import { ProjectApiService, ProjectSummary } from '@core/api/project.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
+import { CreateProjectDialogComponent } from '@features/project/create-project.dialog';
 
 @Component({
   selector: 'app-workspace-detail-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslateModule, ButtonModule, AppPageHeaderComponent],
+  imports: [
+    CommonModule, RouterModule, TranslateModule, ButtonModule,
+    AppPageHeaderComponent, CreateProjectDialogComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (workspace(); as ws) {
       <app-page-header [title]="ws.name">
-        <button pButton [text]="true" (click)="newProject()" [label]="'project.create' | translate"></button>
+        <button pButton (click)="dialogVisible.set(true)" [label]="'project.create' | translate"></button>
       </app-page-header>
 
       <section class="meta">
@@ -50,6 +54,11 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
           </div>
         }
       </div>
+
+      <app-create-project-dialog
+        [workspaceId]="ws.id"
+        [(visible)]="dialogVisible"
+        (created)="onProjectCreated()" />
     } @else {
       <div class="empty">{{ 'common.loading' | translate }}</div>
     }
@@ -81,7 +90,6 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
 })
 export class WorkspaceDetailPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly wsApi = inject(WorkspaceApiService);
   private readonly projApi = inject(ProjectApiService);
   private readonly ctx = inject(WorkspaceContextService);
@@ -89,6 +97,7 @@ export class WorkspaceDetailPageComponent implements OnInit {
   readonly workspace = signal<WorkspaceDetail | null>(null);
   readonly projects = signal<ProjectSummary[]>([]);
   readonly loadingProjects = signal(false);
+  readonly dialogVisible = signal(false);
 
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
@@ -108,10 +117,9 @@ export class WorkspaceDetailPageComponent implements OnInit {
     });
   }
 
-  newProject(): void {
+  onProjectCreated(): void {
     const ws = this.workspace();
-    if (!ws) return;
-    this.router.navigate(['/workspaces', ws.slug, 'new-project']);
+    if (ws) this.loadProjects(ws.id);
   }
 
   roleName(role: number): string {
