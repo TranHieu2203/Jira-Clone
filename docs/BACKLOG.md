@@ -127,8 +127,8 @@ cd frontend && npx ng build --configuration=development
 
 ### 🟡 P9 — Search & Filter & Notification
 **Scope search**:
-- BB#8: `Specification<T>` pattern
-- IssueRepository.SearchAsync mở rộng filter qua spec composition
+- ~~BB#8: `Specification<T>` pattern~~ ✅ (`BB.Persistence.Specification`, `IssueSpecifications.From` + `IssueRepository.SearchAsync`)
+- IssueRepository.SearchAsync mở rộng filter qua spec composition (custom field / JQL-lite — tiếp)
 - JQL-lite parser (đơn giản): `assignee = currentUser() AND status = "In Progress"`
 - IssueFieldValue lookup bằng IndexedString/Number/Date columns đã có
 
@@ -137,13 +137,11 @@ cd frontend && npx ng build --configuration=development
 - Subscribe events: IssueAssigneeChanged (notify new assignee), CommentAdded (notify watchers + mentions), IssueStatusChanged (notify watchers)
 - FE: notification bell trên topbar (đã có icon, chưa có dropdown), badge count, mark-as-read
 
-### 🟡 BB#4 — Outbox processor
-**Hiện trạng**: `OutboxMessage` entity đã có, processor chưa.
+### 🟢 BB#4 — Outbox processor ✅
+**Đã có**: `OutboxDbContext` (schema `outbox` / bảng `outbox_messages`), `EfOutboxStore`, `OutboxingEventBus` (`IEventBus` → enqueue), `OutboxProcessorHostedService` (~5s, batch, retry + dead-letter), đăng ký + `EnsureSchema` trong `Api.Host`.
 
-**Scope**: BackgroundService scan outbox table mỗi 5s, publish event qua `IEventBus`, mark processed. Cần khi có integration event cross-module thật (P9 Notification).
-
-### 🟡 BB#8 — Specification<T> pattern
-**Scope**: chuẩn cho composable filter trên repos. Cần khi P9 search.
+### 🟢 BB#8 — `Specification<T>` pattern ✅
+**Đã có**: `ISpecification<T>`, `Specification<T>`, `And()` (parameter replace, không `Invoke`). `IssueRepository.SearchAsync` dùng `IssueSpecifications.From(criteria)`.
 
 ---
 
@@ -188,8 +186,8 @@ cd frontend && npx ng build --configuration=development
 | L1 | `Project.NextIssueNumber` race condition khi 2 user tạo issue đồng thời | Optimistic concurrency chưa add. Low traffic OK. Sửa: thêm `[ConcurrencyCheck]` hoặc dùng PostgreSQL sequence |
 | L2 | WorkflowProvisioner lazy (chỉ chạy khi tạo issue đầu tiên) | Cleaner: subscribe `ProjectCreated` event và provision eager. Cần shared events project hoặc cross-module reference |
 | L3 | Permission check chưa enforce trên mọi endpoint | JWT auth có (chỉ check authenticated). Per-action permission check qua `IPermissionChecker` chưa wire vào controller. Dùng `[Authorize(Policy=...)]` hoặc service-level guard |
-| L4 | Domain event handler khác transaction với producer | ActivityLog có thể loss nếu handler fail. Outbox cần thiết để fix |
-| L5 | Issue search không filter được custom field | Index columns đã có; vẫn cần BB#8 + wire query |
+| L4 | Domain event handler khác transaction với producer | ActivityLog có thể loss nếu handler fail. BB#4 ✅ cho **integration** events (`IEventBus`); domain dispatch (`IDomainEventDispatcher`) chưa ghi outbox |
+| L5 | Issue search không filter được custom field | Index columns đã có; BB#8 ✅ — vẫn cần compose spec với CFV |
 | L6 | ~~Status name không resolve cho cross-project search~~ | ✅ Đã preload workflow theo `projectId` trên mỗi dòng list + giữ cờ fixed project |
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |

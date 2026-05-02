@@ -1,7 +1,6 @@
 using System.Threading.RateLimiting;
 using Asp.Versioning;
 using BB.Localization;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using BB.Logging;
@@ -20,6 +19,9 @@ using Issue.Api;
 using Project.Api;
 using Serilog;
 using Workflow.Api;
+using Api.Host.Infrastructure.Outbox;
+using BB.EventBus;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -152,6 +154,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var commentDb = scope.ServiceProvider.GetRequiredService<Comment.Infrastructure.CommentDbContext>();
     var activityLogDb = scope.ServiceProvider.GetRequiredService<ActivityLog.Infrastructure.ActivityLogDbContext>();
     var attachmentDb = scope.ServiceProvider.GetRequiredService<Attachment.Infrastructure.AttachmentDbContext>();
+    var outboxDb = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -160,6 +163,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(commentDb, bootstrapLogger);
     await EnsureSchemaAsync(activityLogDb, bootstrapLogger);
     await EnsureSchemaAsync(attachmentDb, bootstrapLogger);
+    await EnsureSchemaAsync(outboxDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

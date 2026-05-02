@@ -10,7 +10,7 @@
 **Stack**: .NET 8 (Layered, no CQRS) + Angular 18+ PrimeNG v18 + PostgreSQL **hoặc** Oracle (config-switch)
 **Theme**: Monochrome trắng/đen
 **i18n**: vi (default) / en
-**Cập nhật lần cuối**: 2026-05-02
+**Cập nhật lần cuối**: 2026-05-02 (BB#4 Outbox + BB#8 Specification)
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase | Mục tiêu | Trạng thái |
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
-| P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12 + **BB.Storage**; còn #4 (Outbox), #8 (Specification); **#12 Oracle runner** ✅ |
+| P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong + **BB.Storage** + **#4 Outbox** + **#8 Specification**; **#12 Oracle runner** ✅ |
 | P1.6 | FE foundation (layout hybrid + 5 API services + 6 feature pages) | `[x]` Build PASS, end-to-end với BE qua nginx proxy |
 | P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + IWorkflowProvisioner (auto-clone template cho project mới) + 15 unit test PASS |
 | P3 | Module CustomField + Screen | `[~]` CustomField (definition + options + contexts + EAV value + 13 type handlers) ✅ — Screen / ScreenScheme defer P10. 20 unit test PASS |
@@ -92,7 +92,7 @@
 - [x] `BB.Common`: `BaseEntity`, `AuditableEntity`, `IAuditable`, `ISoftDeletable`, `IEntityWithTrace`, `Result<T>`, `PagedList<T>`, `PagedRequest`, `DomainException`
 - [x] `BB.Persistence`: `BaseDbContext` (auditing + DateTimeOffset/bool conversion), `IRepository<T>`, `Repository<T>`, `IUnitOfWork`, `UnitOfWork<T>`, `DatabaseOptions`, `DbContextOptionsExtensions`
 - [x] `BB.Web`: `ApiResponse<T>`, `BaseController`, `CorrelationContext`, `TraceIdMiddleware`, `GlobalExceptionHandler`
-- [x] `BB.EventBus`: `IIntegrationEvent`, `IEventBus`, `InMemoryEventBus`, `IOutboxStore` (interface only)
+- [x] `BB.EventBus`: `IIntegrationEvent`, `IEventBus`, `InMemoryEventBus`, `IOutboxStore` — impl store + processor trong `Api.Host/Infrastructure/Outbox/`
 - [x] `BB.Localization`: `IAppLocalizer` + JSON loader
 - [x] `BB.Security`: `JwtOptions`, `JwtTokenService`, `ICurrentUser`
 - [x] `BB.Logging`: Serilog ext
@@ -106,11 +106,11 @@
 | 1 | `IJsonColumn` abstraction + 2 impl (Postgres `jsonb`, Oracle `CLOB IS JSON`) | 🔴 | `BB.Persistence/Json/IJsonColumn.cs` | Domain CustomFieldValue lưu JSON, CLAUDE.md §2.4 cấm domain biết `jsonb` | `[x]` |
 | 2 | Soft-delete query filter tự động cho `ISoftDeletable` | 🔴 | `BB.Persistence/BaseDbContext.cs` (`OnModelCreating` + `ApplySoftDelete`) | Workflow/Status/Field bị xoá là soft-delete (issue cũ vẫn ref) | `[x]` |
 | 3 | `IDomainEvent` + dispatcher trong `SaveChangesAsync` | 🔴 | `BB.Common/DomainEvents.cs` + `BB.EventBus/DomainEventDispatcher.cs` | Khác `IIntegrationEvent` (cross-module). Dùng cho `IssueTransitioned` | `[x]` |
-| 4 | `OutboxMessage` entity + `OutboxProcessor` (BackgroundService) | 🟡 | `BB.EventBus/Outbox/` | Entity đã có. Processor (BackgroundService) defer đến khi cần publish integration event (P9) | `[~]` entity-only |
+| 4 | `OutboxMessage` entity + `OutboxProcessor` (BackgroundService) | 🟡 | `BB.EventBus/Outbox/` + `Api.Host/Infrastructure/Outbox/` | `OutboxDbContext`, `EfOutboxStore`, `OutboxingEventBus`, hosted processor | `[x]` |
 | 5 | `ICacheService` (wrap `IDistributedCache`) | 🟡 | `BB.Common/Caching/` | Workflow/Field def đọc cực nhiều — phải cache theo `projectId`. Có sẵn `CacheKeys` helper | `[x]` |
 | 6 | `IClock` (ISystemClock) | 🔴 | `BB.Common/Clock.cs` | Test workflow transition time, SLA cần mock | `[x]` |
 | 7 | `IGuidGenerator` (UUID v7) | 🟡 | `BB.Common/Ids.cs` | RFC 9562 v7, time-ordered | `[x]` |
-| 8 | `Specification<T>` pattern | 🟢 | `BB.Persistence/Specifications/` | Issue search filter động + custom field rất phức tạp | `[ ]` defer P9 |
+| 8 | `Specification<T>` pattern | 🟢 | `BB.Persistence/Specification/` | `And()` + `IssueSpecifications` cho `IssueRepository.SearchAsync` | `[x]` |
 | 9 | `IPermissionChecker` | 🔴 | `BB.Security/IPermissionChecker.cs` | Có sẵn `PermissionKeys` + `Roles` constants | `[x]` |
 | 10 | `AggregateRoot` + collection domain events | 🔴 | `BB.Common/AggregateRoot.cs` | Có `RaiseDomainEvent`, `DomainEvents`, `ClearDomainEvents` | `[x]` |
 | 11 | `ValueObject` base | 🟡 | `BB.Common/ValueObject.cs` | Equality theo components | `[x]` |
@@ -124,8 +124,8 @@
 4. `[ ]` 🔴 #2 Soft-delete filter
 5. `[ ]` 🔴 #9 `IPermissionChecker`
 6. `[ ]` 🟡 #5 `ICacheService` + #11 `ValueObject`
-7. `[ ]` 🟡 #4 Outbox impl + #12 Migration runner
-8. `[ ]` 🟢 #8 `Specification<T>`
+7. `[x]` 🟡 #4 Outbox impl + #12 Migration runner
+8. `[x]` 🟢 #8 `Specification<T>`
 
 ---
 

@@ -1,5 +1,6 @@
 using BB.Common;
 using BB.Persistence;
+using BB.Persistence.Specification;
 using Issue.Application.Repositories;
 using Issue.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -22,21 +23,8 @@ public sealed class IssueRepository : Repository<Domain.Issue>, IIssueRepository
 
     public async Task<PagedList<Domain.Issue>> SearchAsync(IssueSearchCriteria criteria, CancellationToken ct = default)
     {
-        IQueryable<Domain.Issue> q = _ctx.Issues.AsNoTracking();
-
-        if (criteria.ProjectId.HasValue) q = q.Where(i => i.ProjectId == criteria.ProjectId.Value);
-        if (criteria.IssueTypeId.HasValue) q = q.Where(i => i.IssueTypeId == criteria.IssueTypeId.Value);
-        if (criteria.AssigneeId.HasValue) q = q.Where(i => i.AssigneeId == criteria.AssigneeId.Value);
-        if (criteria.ReporterId.HasValue) q = q.Where(i => i.ReporterId == criteria.ReporterId.Value);
-        if (criteria.CurrentStatusId.HasValue) q = q.Where(i => i.CurrentStatusId == criteria.CurrentStatusId.Value);
-        if (criteria.Priority.HasValue) q = q.Where(i => (int)i.Priority == criteria.Priority.Value);
-        if (criteria.IncludeArchived != true) q = q.Where(i => !i.IsArchived);
-
-        if (!string.IsNullOrWhiteSpace(criteria.TextSearch))
-        {
-            var s = criteria.TextSearch.Trim().ToLower();
-            q = q.Where(i => i.Summary.ToLower().Contains(s) || i.Key.ToLower().Contains(s));
-        }
+        ISpecification<Domain.Issue> spec = IssueSpecifications.From(criteria);
+        IQueryable<Domain.Issue> q = _ctx.Issues.AsNoTracking().Where(spec.Criteria);
 
         var total = await q.LongCountAsync(ct);
         var page = Math.Max(criteria.PageIndex, 1);
