@@ -57,10 +57,10 @@ cd frontend && npx ng build --configuration=development
 
 ## 1. Trạng thái hiện tại (snapshot)
 
-### Modules BE (9 modules đã có)
+### Modules BE (10+ modules đã có)
 | Module | Status |
 |---|---|
-| BB.* (BuildingBlocks) | ✅ 9/12 items, defer 3 |
+| BB.* (BuildingBlocks) | ✅ + **BB.Storage** (`IFileStorage` Local/S3); migration runner Oracle |
 | Identity | ✅ + `GET /api/v1/users/search`, `GET /api/v1/users/{id}` (picker) |
 | Sample (demo, sẽ xóa sau) | ✅ |
 | **Project** (Workspace + Project + IssueType + IPermissionChecker) | ✅ 19 tests |
@@ -69,6 +69,7 @@ cd frontend && npx ng build --configuration=development
 | **Issue** (tích hợp 4 module) | ✅ 15 tests |
 | **Comment** (mention + edit/delete) | ✅ chưa có test |
 | **ActivityLog** (domain handlers → `activity_entries`, GET by issue) | ✅ chưa có test |
+| **Attachment** (`issue_attachments`, multipart upload, download, delete) | ✅ chưa có test |
 
 ### Frontend
 - Layout hybrid: top bar 48px + sidebar contextual + breadcrumb
@@ -76,7 +77,9 @@ cd frontend && npx ng build --configuration=development
 - Create dialogs: project (**lead** qua `UserPicker`), issue (**assignee** optional + topbar `+`)
 - Issue detail: assignee chỉnh qua `UserPicker` + nút lưu
 - Comment thread + **Activity** timeline inline trong issue detail
-- Board Kanban drag-drop + filter assignee/issue type + dialog chọn transition khi có nhiều transition cùng đích
+- Board Kanban drag-drop + filter assignee/issue type + **swimlane theo assignee** + dialog chọn transition khi có nhiều transition cùng đích
+- Issue detail: **Attachments** (upload / download / xóa file của chính user)
+- Workspace detail: **Add member** qua `UserPicker` + chọn role
 - StatusCacheService resolve status name + category color
 
 ### End-to-end đã chạy
@@ -86,31 +89,18 @@ cd frontend && npx ng build --configuration=development
 
 ## 2. Backlog priority — **Ưu tiên cao** (làm trước)
 
-### 🟡 P6.polish — Board realtime (còn lại)
-**Đã có**: filter assignee / issue type trên board; dialog chọn transition khi có nhiều transition cùng target status; **polling 30s** làm mới `issueApi.search` (tạm thời; defer SignalR đến P11).
-**Còn làm**:
-- Swimlanes (optional)
+### ✅ P6.polish — Board (MVP)
+**Đã có**: filter; transition dialog; polling 30s; swimlane theo assignee. **Defer**: SignalR (P11).
 
-### 🟡 BB#12 — Oracle migration + per-provider runner
-**Hiện trạng**: tất cả module có Postgres migration; Oracle chưa có.
+### ✅ BB#12 — Oracle migrations + runner theo provider
+**Đã có**: `ProviderAwareMigrationsAssembly` + suffix `_Postgres` / `_Oracle`; migration Oracle trong `Migrations/Oracle/` cho Workflow, Project, CustomField, Issue, Comment, ActivityLog, Attachment; `docker-compose.dev.yml` service **minio** (optional). Script: `tools/scripts/regenerate-oracle-migrations.ps1`.
 
-**Scope**:
-- Sửa `IDesignTimeDbContextFactory` để filter migration theo provider via `[DbContext(typeof(...))]` + custom `IMigrationsAssembly`
-- Hoặc đơn giản hơn: tách 2 folder `Migrations/Postgres/` và `Migrations/Oracle/`, chỉ pickup theo provider runtime
-- Generate Oracle migration cho mỗi module
+### ✅ P7.attachment (MVP)
+**Đã có**: `BB.Storage` (Local + S3/MinIO), module Attachment, API multipart, FE panel trên issue detail.
 
 ---
 
 ## 3. Backlog priority — **Trung bình**
-
-### 🟡 P7.attachment — Attachment module (cần file storage)
-**Pre-requisite**: BB#5 (đã chốt D5 — `AWSSDK.S3` + `IFileStorage` abstraction)
-
-**Scope**:
-1. `BB.Storage` (mới): `IFileStorage` interface + `LocalFileStorage` (dev) + `S3FileStorage` (prod, MinIO compatible)
-2. Add MinIO container vào `docker-compose.dev.yml`
-3. `Modules/Attachment/`: domain (Attachment entity với issueId, fileName, contentType, sizeBytes, storageKey), service upload/download/delete
-4. FE: drag-drop upload zone trong issue detail + thumbnail preview
 
 ### 🟡 P8 — Sprint + Backlog
 **Scope**:
@@ -208,10 +198,10 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 ## 7. Recommended next session start
 
 **Open prompt**:
-> Tiếp tục **BB#12 (Oracle migrations)** hoặc **P7.attachment** (sau khi có BB.Storage). Hoặc P6 swimlanes (optional).
+> **P8 Sprint/Backlog**, **BB#4 Outbox processor**, hoặc **P9 search/notifications**.
 
-Optional UX:
-> Workspace **Add member** dialog — hiện vẫn nhập raw `userId`; có thể tái sử dụng `UserPicker` + API search.
+Optional polish:
+> Attachment: preview ảnh/PDF; virus scan; giới hạn loại file. MinIO: tạo bucket `jira-clone` tự động (init container).
 
 ---
 

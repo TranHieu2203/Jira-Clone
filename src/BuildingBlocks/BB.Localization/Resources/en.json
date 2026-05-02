@@ -12,6 +12,7 @@
     "not_found": "User not found"
   },
   "auth": {
+    "required": "Authentication required",
     "unauthorized": "Authentication required",
     "invalid_credentials": "Invalid username or password"
   },
@@ -36,6 +37,15 @@
       "edited": "Comment edited",
       "deleted": "Comment deleted"
     }
+  },
+  "attachment": {
+    "uploaded": "File attached",
+    "deleted": "Attachment removed",
+    "not_found": "Attachment not found",
+    "issue_missing": "Issue not found",
+    "too_large": "File exceeds maximum upload size",
+    "forbidden_delete": "You can only delete your own attachments",
+    "invalid_filename": "Invalid file name"
   },
   "product": {
     "created": { "success": "Product {{name}} created successfully" },

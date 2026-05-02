@@ -13,6 +13,7 @@ import { StatusCacheService } from '@core/api/status-cache.service';
 import { ActivityTimelineComponent } from './activity-timeline.component';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
 import { CommentsThreadComponent } from './comments-thread.component';
+import { AttachmentPanelComponent } from './attachment-panel.component';
 
 @Component({
   selector: 'app-issue-detail-page',
@@ -21,6 +22,7 @@ import { CommentsThreadComponent } from './comments-thread.component';
     CommonModule, FormsModule, RouterModule, TranslateModule,
     ButtonModule, ButtonGroupModule, InputTextModule,
     CommentsThreadComponent,
+    AttachmentPanelComponent,
     ActivityTimelineComponent,
     UserPickerComponent
   ],
@@ -53,6 +55,7 @@ import { CommentsThreadComponent } from './comments-thread.component';
           }
 
           <app-comments-thread [issueId]="i.id" />
+          <app-attachment-panel [issueId]="i.id" />
           <app-activity-timeline [issueId]="i.id" />
         </main>
 

@@ -7,11 +7,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 using BB.Logging;
 using BB.Persistence;
 using BB.Security;
+using BB.Storage;
 using BB.Web;
 using Identity.Api;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
 using ActivityLog.Api;
+using Attachment.Api;
 using Comment.Api;
 using CustomField.Api;
 using Issue.Api;
@@ -53,6 +55,8 @@ builder.Services.AddCustomFieldModule(builder.Configuration);
 builder.Services.AddIssueModule(builder.Configuration);
 builder.Services.AddCommentModule(builder.Configuration);
 builder.Services.AddActivityLogModule(builder.Configuration);
+builder.Services.AddBbStorage(builder.Configuration);
+builder.Services.AddAttachmentModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -150,6 +154,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var issueDb = scope.ServiceProvider.GetRequiredService<Issue.Infrastructure.IssueDbContext>();
     var commentDb = scope.ServiceProvider.GetRequiredService<Comment.Infrastructure.CommentDbContext>();
     var activityLogDb = scope.ServiceProvider.GetRequiredService<ActivityLog.Infrastructure.ActivityLogDbContext>();
+    var attachmentDb = scope.ServiceProvider.GetRequiredService<Attachment.Infrastructure.AttachmentDbContext>();
     await EnsureSchemaAsync(sampleDb, bootstrapLogger);
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
@@ -158,6 +163,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(issueDb, bootstrapLogger);
     await EnsureSchemaAsync(commentDb, bootstrapLogger);
     await EnsureSchemaAsync(activityLogDb, bootstrapLogger);
+    await EnsureSchemaAsync(attachmentDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

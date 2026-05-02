@@ -46,5 +46,20 @@ services:
     depends_on:
       - api
 
+  # Optional: S3-compatible storage (create bucket `jira-clone` in console http://localhost:9001).
+  minio:
+    image: minio/minio:latest
+    container_name: jira-clone-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
 volumes:
   postgres_data:
+  minio_data:

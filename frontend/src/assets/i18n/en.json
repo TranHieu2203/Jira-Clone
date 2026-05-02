@@ -39,7 +39,13 @@
     "slug_hint": "Lowercase letters, digits, hyphens. Example: my-team",
     "description": "Description",
     "members": "members",
-    "empty": "No workspaces yet. Create your first one."
+    "empty": "No workspaces yet. Create your first one.",
+    "add_member": "Add member",
+    "member_role": "Role",
+    "member_pick_user": "User",
+    "member_added": "Member added",
+    "role_admin": "Admin",
+    "role_member": "Member"
   },
   "user": {
     "search_placeholder": "Search user by name…",
@@ -114,8 +120,17 @@
     "no_transition": "No valid transition between these two statuses",
     "filter_assignee": "Assignee",
     "filter_issue_type": "Issue type",
+    "layout": "Layout",
+    "layout_flat": "Flat",
+    "layout_assignee": "Swimlanes by assignee",
     "pick_transition": "Choose transition",
     "pick_transition_hint": "Multiple transitions lead to this column. Pick one:"
+  },
+  "attachment": {
+    "title": "Attachments",
+    "upload": "Upload file",
+    "empty": "No attachments yet.",
+    "download": "Download"
   },
   "validation": {
     "required": "{{field}} is required",
@@ -126,6 +141,7 @@
     "username": "Username",
     "password": "Password",
     "login": "Sign in",
+    "required": "Authentication required",
     "unauthorized": "Authentication required",
     "invalid_credentials": "Invalid username or password"
   },

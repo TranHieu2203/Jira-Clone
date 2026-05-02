@@ -119,15 +119,18 @@ public async Task<IActionResult> Create([FromBody] CreateProductRequest req, Can
 
 ### 1.8. Migration
 
-- Đặt trong `{Module}.Infrastructure/Migrations/{Postgres|Oracle}/`.
-- Generate riêng theo provider:
+- Đặt trong `{Module}.Infrastructure/Migrations/` (Postgres ở root) và `Migrations/Oracle/` cho chuỗi Oracle.
+- **Runtime**: `UseConfiguredDatabase` gắn `DatabaseProviderOptionsExtension` + `ReplaceService<IMigrationsAssembly, ProviderAwareMigrationsAssembly>` — chỉ apply migration có **suffix tên class** `_Postgres` hoặc `_Oracle` (hai history song song).
+- Generate riêng theo provider (args cuối `Postgres` / `Oracle` cho factory):
   ```bash
-  dotnet ef migrations add Init \
+  dotnet ef migrations add InitSomething_Postgres \
     --project src/Modules/Sample/Sample.Infrastructure \
     --context SampleDbContext \
-    --output-dir Migrations/Postgres -- Postgres
+    --startup-project src/Bootstrapper/Api.Host -- Postgres
   ```
-- `IDesignTimeDbContextFactory` (e.g. [SampleDbContextFactory.cs](src/Modules/Sample/Sample.Infrastructure/SampleDbContextFactory.cs)) đọc args để chọn provider.
+- Oracle initial: tạm xóa/sao lưu file migration Postgres + snapshot → `dotnet ef migrations add InitSomething_Oracle ... -- Oracle` → chuyển file `*_Oracle*.cs` vào `Migrations/Oracle/` → xóa snapshot sinh ra → khôi phục snapshot Postgres. Script mẫu: `tools/scripts/regenerate-oracle-migrations.ps1`.
+- `IDesignTimeDbContextFactory` đọc args / env `DB_PROVIDER` để chọn provider.
+- EF Core 8: `IDiagnosticsLogger<DbLoggerCategory.Migrations>` — **`DbLoggerCategory` nằm namespace `Microsoft.EntityFrameworkCore`**, không phải `Diagnostics` (xem implementation `ProviderAwareMigrationsAssembly`).
 
 ### 1.9. ApiResponse contract — không đổi
 

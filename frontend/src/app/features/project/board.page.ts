@@ -33,6 +33,12 @@ interface SelectOpt<T> {
   value: T;
 }
 
+interface SwimlaneRow {
+  key: string;
+  assigneeId: string | null;
+  label: string;
+}
+
 @Component({
   selector: 'app-board-page',
   standalone: true,
@@ -57,6 +63,7 @@ interface SelectOpt<T> {
                       optionLabel="label"
                       optionValue="value"
                       [showClear]="true"
+                      [disabled]="swimlaneLayout() === 'assignee'"
                       appendTo="body"
                       styleClass="filt-select" />
           </label>
@@ -70,6 +77,13 @@ interface SelectOpt<T> {
                       appendTo="body"
                       styleClass="filt-select" />
           </label>
+          <label class="filt layout-select">
+            <span>{{ 'board.layout' | translate }}</span>
+            <select [(ngModel)]="swimlaneLayout" class="layout-native">
+              <option value="flat">{{ 'board.layout_flat' | translate }}</option>
+              <option value="assignee">{{ 'board.layout_assignee' | translate }}</option>
+            </select>
+          </label>
         </div>
       }
 
@@ -77,6 +91,46 @@ interface SelectOpt<T> {
         <div class="empty">{{ 'common.loading' | translate }}</div>
       } @else if (columns().length === 0) {
         <div class="empty">{{ 'board.no_workflow' | translate }}</div>
+      } @else if (swimlaneLayout() === 'assignee' && swimlaneRows().length === 0) {
+        <div class="empty">{{ 'board.column_empty' | translate }}</div>
+      } @else if (swimlaneLayout() === 'assignee') {
+        @for (lane of swimlaneRows(); track lane.key) {
+          <div class="swim-section">
+            <div class="swim-head">{{ lane.label }}</div>
+            <div class="board" cdkDropListGroup>
+              @for (col of columnsForLane(lane.assigneeId); track col.status.id) {
+                <div class="col">
+                  <header class="col-head" [attr.data-cat]="col.status.category">
+                    <span class="col-name">{{ col.status.name }}</span>
+                    <span class="col-count">{{ col.issues.length }}</span>
+                  </header>
+                  <div class="col-body"
+                       cdkDropList
+                       [cdkDropListData]="col"
+                       (cdkDropListDropped)="onDrop($event)">
+                    @for (issue of col.issues; track issue.id) {
+                      <div class="card" cdkDrag [cdkDragData]="issue">
+                        <div class="card-key">
+                          <a [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
+                          <span class="pri pri-{{ issue.priority }}">P{{ issue.priority }}</span>
+                        </div>
+                        <div class="card-summary">{{ issue.summary }}</div>
+                        @if (issue.assigneeId) {
+                          <div class="card-assignee" [title]="issue.assigneeId">
+                            {{ initialsOf(issue.assigneeId) }}
+                          </div>
+                        }
+                      </div>
+                    }
+                    @if (col.issues.length === 0) {
+                      <div class="col-empty">{{ 'board.column_empty' | translate }}</div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
       } @else {
         <div class="board" cdkDropListGroup>
           @for (col of columns(); track col.status.id) {
@@ -140,6 +194,16 @@ interface SelectOpt<T> {
       min-width: 200px;
     }
     ::ng-deep .filt-select { width: 100%; max-width: 280px; }
+    .layout-native {
+      width: 100%; max-width: 280px; padding: 8px 10px; border-radius: var(--radius);
+      border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text);
+      font-size: 14px;
+    }
+    .swim-section { margin-bottom: 20px; }
+    .swim-head {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--c-text-muted); margin: 0 0 8px 4px;
+    }
     .pick-hint { font-size: 13px; color: var(--c-text-muted); margin: 0 0 12px; }
     .pick-actions { display: flex; flex-direction: column; gap: 8px; }
     .pick-btn { width: 100%; justify-content: center; }
@@ -255,21 +319,59 @@ export class BoardPageComponent implements OnInit {
 
   readonly filterAssigneeId = model<string | null>(null);
   readonly filterIssueTypeId = model<string | null>(null);
+  /** flat = một hàng cột; assignee = một swimlane mỗi người được giao (+ hàng chưa giao). */
+  readonly swimlaneLayout = model<'flat' | 'assignee'>('flat');
 
   readonly pickVisible = model(false);
   readonly pendingPick = signal<PendingTransitionPick | null>(null);
   private pickCommitted = false;
   private issuePollingStarted = false;
 
-  readonly columns = computed(() => {
+  readonly columns = computed(() => this.buildColumns(this.baseIssuesForBoard()));
+
+  readonly swimlaneRows = computed((): SwimlaneRow[] => {
+    if (this.swimlaneLayout() !== 'assignee') return [];
+
+    const issues = this.baseIssuesForBoard();
+    const ids = new Set<string>();
+    let unassigned = false;
+    for (const i of issues) {
+      if (!i.assigneeId) unassigned = true;
+      else ids.add(i.assigneeId);
+    }
+
+    const rows: SwimlaneRow[] = [];
+    if (unassigned)
+      rows.push({ key: '__unassigned', assigneeId: null, label: '—' });
+
+    for (const id of [...ids].sort()) {
+      rows.push({
+        key: id,
+        assigneeId: id,
+        label: `${this.initialsOf(id)} · ${id.slice(0, 8)}…`
+      });
+    }
+
+    return rows;
+  });
+
+  readonly totalIssues = computed(() => this.baseIssuesForBoard().length);
+
+  private baseIssuesForBoard(): IssueSummary[] {
+    let issues = this.issuesAll();
+    const ft = this.filterIssueTypeId();
+    if (ft) issues = issues.filter((i) => i.issueTypeId === ft);
+
+    const fa = this.filterAssigneeId();
+    if (this.swimlaneLayout() === 'flat' && fa)
+      issues = issues.filter((i) => i.assigneeId === fa);
+
+    return issues;
+  }
+
+  private buildColumns(issues: IssueSummary[]): Column[] {
     const fullWf = this.workflow();
     if (!fullWf) return [];
-
-    let issues = this.issuesAll();
-    const fa = this.filterAssigneeId();
-    const ft = this.filterIssueTypeId();
-    if (fa) issues = issues.filter((i) => i.assigneeId === fa);
-    if (ft) issues = issues.filter((i) => i.issueTypeId === ft);
 
     const grouped = new Map<string, IssueSummary[]>();
     for (const issue of issues) {
@@ -282,11 +384,14 @@ export class BoardPageComponent implements OnInit {
       .slice()
       .sort((a, b) => a.order - b.order)
       .map((s) => ({ status: s, issues: grouped.get(s.id) ?? [] }));
-  });
+  }
 
-  readonly totalIssues = computed(() =>
-    this.columns().reduce((sum, c) => sum + c.issues.length, 0)
-  );
+  columnsForLane(assigneeId: string | null): Column[] {
+    let issues = this.baseIssuesForBoard();
+    issues = issues.filter((i) =>
+      assigneeId === null ? !i.assigneeId : i.assigneeId === assigneeId);
+    return this.buildColumns(issues);
+  }
 
   readonly assigneeFilterOptions = computed((): SelectOpt<string | null>[] => {
     const ids = new Set<string>();

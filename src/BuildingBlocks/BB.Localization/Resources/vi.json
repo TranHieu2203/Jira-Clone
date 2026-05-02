@@ -12,6 +12,7 @@
     "not_found": "Không tìm thấy user"
   },
   "auth": {
+    "required": "Bạn cần đăng nhập",
     "unauthorized": "Bạn cần đăng nhập",
     "invalid_credentials": "Tài khoản hoặc mật khẩu không đúng"
   },
@@ -36,6 +37,15 @@
       "edited": "Đã sửa bình luận",
       "deleted": "Đã xóa bình luận"
     }
+  },
+  "attachment": {
+    "uploaded": "Đã đính kèm file",
+    "deleted": "Đã xóa đính kèm",
+    "not_found": "Không tìm thấy đính kèm",
+    "issue_missing": "Không tìm thấy issue",
+    "too_large": "File vượt quá dung lượng cho phép",
+    "forbidden_delete": "Chỉ được xóa file do chính bạn tải lên",
+    "invalid_filename": "Tên file không hợp lệ"
   },
   "product": {
     "created": { "success": "Tạo sản phẩm {{name}} thành công" },

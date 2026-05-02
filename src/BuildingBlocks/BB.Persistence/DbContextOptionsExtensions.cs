@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 
 namespace BB.Persistence;
@@ -25,10 +26,12 @@ public static class DbContextOptionsExtensions
             throw new InvalidOperationException("Database:ConnectionString is empty");
         }
 
-        if (!Enum.TryParse<DbProvider>(opts.Provider, ignoreCase: true, out var provider))
+        if (!Enum.TryParse<DbProvider>(opts.Provider, ignoreCase: true, out DbProvider provider))
         {
             throw new InvalidOperationException($"Unsupported Database:Provider '{opts.Provider}'. Use Postgres or Oracle.");
         }
+
+        builder.AddBbDatabaseProvider(provider);
 
         builder.UseSnakeCaseNamingConvention();
 
@@ -51,9 +54,12 @@ public static class DbContextOptionsExtensions
                 {
                     ora.CommandTimeout(opts.CommandTimeout);
                     if (migrationsAssembly is not null) ora.MigrationsAssembly(migrationsAssembly);
+                    ora.MigrationsHistoryTable("__ef_migrations_history");
                 });
                 break;
         }
+
+        builder.ReplaceService<IMigrationsAssembly, ProviderAwareMigrationsAssembly>();
 
         return builder;
     }

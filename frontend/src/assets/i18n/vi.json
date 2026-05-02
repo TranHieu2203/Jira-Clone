@@ -39,7 +39,13 @@
     "slug_hint": "Chữ thường, số, dấu gạch ngang. Ví dụ: my-team",
     "description": "Mô tả",
     "members": "thành viên",
-    "empty": "Chưa có workspace nào. Hãy tạo cái đầu tiên."
+    "empty": "Chưa có workspace nào. Hãy tạo cái đầu tiên.",
+    "add_member": "Thêm thành viên",
+    "member_role": "Vai trò",
+    "member_pick_user": "Người dùng",
+    "member_added": "Đã thêm thành viên",
+    "role_admin": "Quản trị",
+    "role_member": "Thành viên"
   },
   "user": {
     "search_placeholder": "Tìm user theo tên…",
@@ -114,8 +120,17 @@
     "no_transition": "Không có transition hợp lệ giữa 2 trạng thái này",
     "filter_assignee": "Người xử lý",
     "filter_issue_type": "Loại issue",
+    "layout": "Bố cục",
+    "layout_flat": "Phẳng",
+    "layout_assignee": "Swimlane theo assignee",
     "pick_transition": "Chọn transition",
     "pick_transition_hint": "Có nhiều transition dẫn tới cột này. Chọn một:"
+  },
+  "attachment": {
+    "title": "Đính kèm",
+    "upload": "Tải file lên",
+    "empty": "Chưa có file đính kèm.",
+    "download": "Tải xuống"
   },
   "validation": {
     "required": "{{field}} là bắt buộc",
@@ -126,6 +141,7 @@
     "username": "Tên đăng nhập",
     "password": "Mật khẩu",
     "login": "Đăng nhập",
+    "required": "Bạn cần đăng nhập",
     "unauthorized": "Bạn cần đăng nhập",
     "invalid_credentials": "Tài khoản hoặc mật khẩu không đúng"
   },

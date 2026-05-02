@@ -19,15 +19,15 @@
 | Phase | Mục tiêu | Trạng thái |
 |---|---|---|
 | P0 | Bootstrap solution + BuildingBlocks (đã commit ban đầu) | `[x]` |
-| P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12, còn #4 (Outbox processor), #8 (Specification), #12 (Migration runner) |
+| P1 | Bổ sung BuildingBlocks còn thiếu | `[~]` đã xong 9/12 + **BB.Storage**; còn #4 (Outbox), #8 (Specification); **#12 Oracle runner** ✅ |
 | P1.6 | FE foundation (layout hybrid + 5 API services + 6 feature pages) | `[x]` Build PASS, end-to-end với BE qua nginx proxy |
 | P2 | Module Workflow Engine | `[x]` Domain + App + Infra + Api + Seeder + IWorkflowProvisioner (auto-clone template cho project mới) + 15 unit test PASS |
 | P3 | Module CustomField + Screen | `[~]` CustomField (definition + options + contexts + EAV value + 13 type handlers) ✅ — Screen / ScreenScheme defer P10. 20 unit test PASS |
 | P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract + IIssueNumberAllocator. 19 unit test PASS |
 | P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module. 15 unit test PASS. **Smoke test docker compose: login → workspace → project → issue → transition PASS.** |
 | P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
-| P6 | Board Kanban (drag-drop, signal-based) | `[~]` CDK drag-drop + optimistic rollback + filter assignee/issue type (`p-select`) + dialog chọn transition khi >1 transition cùng target status + **polling 30s** (làm mới issue list). Còn: SignalR (P11), swimlanes (optional) |
-| P7 | Comment + Attachment + Activity Log | `[~]` Comment ✅; ActivityLog ✅ (handlers, schema `activity_log`, `GET /api/v1/activity/by-issue/{id}`, FE timeline trên issue detail). Attachment defer (cần file storage). |
+| P6 | Board Kanban (drag-drop, signal-based) | `[x]` CDK + filters + transition dialog + polling 30s + **swimlanes theo assignee**. SignalR → P11 |
+| P7 | Comment + Attachment + Activity Log | `[x]` Comment ✅; ActivityLog ✅; **Attachment** ✅ (`BB.Storage` Local/S3, module Attachment, FE upload/list/download/delete). |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
 | P10 | Workflow Editor UI + Field Editor UI | `[ ]` |
@@ -616,3 +616,4 @@ tests/
 | 2026-05-02 | cursor | P7 Activity Log ✅ — Module `ActivityLog` (Domain `ActivityEntry`, 11× `IDomainEventHandler` Issue+Comment, Infra Postgres migration `InitActivityLog_Postgres`, Api `ActivityLogController`). FE: `ActivityApiService`, `ActivityTimelineComponent` trên issue detail. i18n `activity.*` (BE vi/en + FE vi/en). |
 | 2026-05-02 | cursor | P5 FE user picker + P6 board polish: Identity `IUserSearchService`, `UsersController` (`/users/search`, `/users/{id}`), FE `UserApiService`, `UserPickerComponent` (PrimeNG AutoComplete). Gắn CreateProjectDialog (lead), CreateIssueDialog + IssueDetailPage (assignee). Board: filters + multi-transition dialog. i18n `user.*`, `project.lead`, `issue.assignee_save`, `board.filter_*`, `board.pick_transition*`. |
 | 2026-05-02 | cursor | P6 board — polling 30s trên `BoardPageComponent`: `interval` + `switchMap` → `issueApi.search` (pageSize 200), dừng tick khi dialog chọn transition mở (`pickVisible`), huỷ khi destroy; không toast khi lỗi mạng. |
+| 2026-05-02 | cursor | BB#12 Oracle + BB.Storage + Attachment + swimlanes + workspace Add member: `ProviderAwareMigrationsAssembly`, migration `*_Oracle` (7 module), `BB.Storage` (`LocalFileStorage`, `S3FileStorage`), `Attachment` module + `AttachmentsController`, MinIO service trong `docker-compose.dev.yml`, FE `AttachmentPanelComponent`, board swimlane assignee, workspace dialog + `UserPicker`, `Microsoft.EntityFrameworkCore.Design` trên Api.Host, script `tools/scripts/regenerate-oracle-migrations.ps1`. |

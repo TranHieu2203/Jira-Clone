@@ -1,20 +1,23 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
-import { WorkspaceApiService, WorkspaceDetail } from '@core/api/workspace.service';
+import { WorkspaceApiService, WorkspaceDetail, WorkspaceRole } from '@core/api/workspace.service';
 import { ProjectApiService, ProjectSummary } from '@core/api/project.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { CreateProjectDialogComponent } from '@features/project/create-project.dialog';
+import { UserPickerComponent } from '@shared/ui/user-picker.component';
 
 @Component({
   selector: 'app-workspace-detail-page',
   standalone: true,
   imports: [
-    CommonModule, RouterModule, TranslateModule, ButtonModule,
-    AppPageHeaderComponent, CreateProjectDialogComponent
+    CommonModule, FormsModule, RouterModule, TranslateModule, ButtonModule, DialogModule,
+    AppPageHeaderComponent, CreateProjectDialogComponent, UserPickerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -45,7 +48,12 @@ import { CreateProjectDialogComponent } from '@features/project/create-project.d
         </div>
       }
 
-      <h3 class="section-title">{{ 'workspace.members' | translate }}</h3>
+      <div class="members-head">
+        <h3 class="section-title inline">{{ 'workspace.members' | translate }}</h3>
+        <button pButton type="button" size="small"
+                (click)="addMemberOpen.set(true)"
+                [label]="'workspace.add_member' | translate"></button>
+      </div>
       <div class="members">
         @for (m of ws.members; track m.userId) {
           <div class="member">
@@ -54,6 +62,35 @@ import { CreateProjectDialogComponent } from '@features/project/create-project.d
           </div>
         }
       </div>
+
+      <p-dialog [visible]="addMemberOpen()"
+                (visibleChange)="addMemberOpen.set($event)"
+                [modal]="true"
+                [style]="{ width: '420px' }"
+                [header]="'workspace.add_member' | translate"
+                (onHide)="resetAddMember()">
+        <div class="dlg-field">
+          <label>{{ 'workspace.member_pick_user' | translate }}</label>
+          <app-user-picker [(userId)]="newMemberUserId" />
+        </div>
+        <div class="dlg-field">
+          <label>{{ 'workspace.member_role' | translate }}</label>
+          <select [(ngModel)]="newMemberRole" class="role-native">
+            <option [ngValue]="3">{{ 'workspace.role_member' | translate }}</option>
+            <option [ngValue]="2">{{ 'workspace.role_admin' | translate }}</option>
+          </select>
+        </div>
+        <div class="dlg-actions">
+          <button pButton type="button" class="p-button-text"
+                  (click)="addMemberOpen.set(false)"
+                  [label]="'common.cancel' | translate"></button>
+          <button pButton type="button"
+                  [loading]="addingMember()"
+                  [disabled]="!newMemberUserId()"
+                  (click)="submitAddMember()"
+                  [label]="'workspace.add_member' | translate"></button>
+        </div>
+      </p-dialog>
 
       <app-create-project-dialog
         [workspaceId]="ws.id"
@@ -67,6 +104,15 @@ import { CreateProjectDialogComponent } from '@features/project/create-project.d
     .meta { color: var(--c-text-muted); margin-bottom: 16px; }
     .meta .desc { margin-top: 4px; }
     .section-title { font-size: 14px; font-weight: 600; margin: 24px 0 12px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-title.inline { margin: 0; }
+    .members-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 24px 0 12px; flex-wrap: wrap; }
+    .dlg-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .dlg-field label { font-size: 11px; text-transform: uppercase; color: var(--c-text-muted); letter-spacing: 0.5px; }
+    .role-native {
+      padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--c-border);
+      background: var(--c-surface); color: var(--c-text); font-size: 14px;
+    }
+    .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
     .proj {
       display: flex; flex-direction: column; gap: 4px; padding: 12px;
@@ -99,6 +145,11 @@ export class WorkspaceDetailPageComponent implements OnInit {
   readonly loadingProjects = signal(false);
   readonly dialogVisible = signal(false);
 
+  readonly addMemberOpen = signal(false);
+  readonly newMemberUserId = model<string | null>(null);
+  readonly newMemberRole = model<WorkspaceRole>(3);
+  readonly addingMember = signal(false);
+
   ngOnInit(): void {
     const slug = this.route.snapshot.paramMap.get('slug');
     if (!slug) return;
@@ -124,5 +175,27 @@ export class WorkspaceDetailPageComponent implements OnInit {
 
   roleName(role: number): string {
     return role === 1 ? 'Owner' : role === 2 ? 'Admin' : 'Member';
+  }
+
+  resetAddMember(): void {
+    this.newMemberUserId.set(null);
+    this.newMemberRole.set(3);
+  }
+
+  submitAddMember(): void {
+    const ws = this.workspace();
+    const uid = this.newMemberUserId();
+    if (!ws || !uid) return;
+    this.addingMember.set(true);
+    this.wsApi.addMember(ws.id, uid, this.newMemberRole()).subscribe({
+      next: (d) => {
+        this.workspace.set(d);
+        this.ctx.setWorkspace(d);
+        this.addingMember.set(false);
+        this.addMemberOpen.set(false);
+        this.resetAddMember();
+      },
+      error: () => this.addingMember.set(false)
+    });
   }
 }
