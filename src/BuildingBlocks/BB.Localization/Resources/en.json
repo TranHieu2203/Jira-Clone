@@ -38,6 +38,25 @@
       "deleted": "Comment deleted"
     }
   },
+  "issue": {
+    "search": {
+      "jql": {
+        "invalid": "Invalid JQL expression",
+        "duplicate_assignee": "Assignee appears more than once in JQL",
+        "duplicate_status": "Status appears more than once in JQL",
+        "duplicate_text": "Text filter appears more than once in JQL",
+        "current_user_required": "currentUser() requires an authenticated user",
+        "status_requires_guid": "status must be a GUID in quotes for now",
+        "unrecognized_clause": "Unrecognized JQL clause"
+      },
+      "conflicting_assignee_filters": "Cannot combine assignee filter with unassigned-only filter"
+    }
+  },
+  "notification": {
+    "not_found": "Notification not found",
+    "marked_read": "Marked as read",
+    "all_marked_read": "All notifications marked as read"
+  },
   "attachment": {
     "uploaded": "File attached",
     "deleted": "Attachment removed",

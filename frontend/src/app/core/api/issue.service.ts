@@ -73,6 +73,13 @@ export interface UpdateIssueRequest {
   timeSpentMinutes?: number | null;
 }
 
+export interface IssueFieldFilterRequest {
+  customFieldId: string;
+  indexedStringEquals?: string | null;
+  indexedNumberEquals?: number | null;
+  indexedDateEquals?: string | null;
+}
+
 export interface SearchIssuesRequest {
   projectId?: string | null;
   issueTypeId?: string | null;
@@ -85,6 +92,8 @@ export interface SearchIssuesRequest {
   pageIndex?: number;
   pageSize?: number;
   sort?: string | null;
+  jql?: string | null;
+  fieldFilters?: IssueFieldFilterRequest[] | null;
 }
 
 export interface TransitionIssueRequest {

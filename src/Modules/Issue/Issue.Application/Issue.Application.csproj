@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Issue.Domain\Issue.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.EventBus\BB.EventBus.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
     <ProjectReference Include="..\..\..\Modules\Project\Project.Application\Project.Application.csproj" />

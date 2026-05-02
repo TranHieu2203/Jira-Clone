@@ -38,6 +38,25 @@
       "deleted": "Đã xóa bình luận"
     }
   },
+  "issue": {
+    "search": {
+      "jql": {
+        "invalid": "Biểu thức JQL không hợp lệ",
+        "duplicate_assignee": "Assignee xuất hiện nhiều lần trong JQL",
+        "duplicate_status": "Status xuất hiện nhiều lần trong JQL",
+        "duplicate_text": "Lọc text xuất hiện nhiều lần trong JQL",
+        "current_user_required": "currentUser() cần người dùng đã đăng nhập",
+        "status_requires_guid": "status hiện phải là GUID trong dấu ngoặc kép",
+        "unrecognized_clause": "Mệnh đề JQL không được hỗ trợ"
+      },
+      "conflicting_assignee_filters": "Không kết hợp được lọc assignee với chỉ issue chưa giao"
+    }
+  },
+  "notification": {
+    "not_found": "Không tìm thấy thông báo",
+    "marked_read": "Đã đánh dấu đã đọc",
+    "all_marked_read": "Đã đánh dấu đọc hết thông báo"
+  },
   "attachment": {
     "uploaded": "Đã đính kèm file",
     "deleted": "Đã xóa đính kèm",

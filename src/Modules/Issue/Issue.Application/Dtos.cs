@@ -70,7 +70,15 @@ public sealed record TransitionIssueRequest(
     Dictionary<string, JsonElement>? Inputs,
     string? Comment);
 
+public sealed record IssueFieldFilterRequest(
+    Guid CustomFieldId,
+    string? IndexedStringEquals,
+    decimal? IndexedNumberEquals,
+    DateTimeOffset? IndexedDateEquals);
+
 public sealed record SearchIssuesRequest(
     Guid? ProjectId, Guid? IssueTypeId, Guid? AssigneeId, Guid? ReporterId,
     Guid? CurrentStatusId, int? Priority, string? TextSearch, bool? IncludeArchived,
-    int PageIndex = 1, int PageSize = 50, string? Sort = null);
+    int PageIndex = 1, int PageSize = 50, string? Sort = null,
+    string? Jql = null,
+    List<IssueFieldFilterRequest>? FieldFilters = null);

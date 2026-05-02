@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
 using ActivityLog.Api;
 using Attachment.Api;
+using Notification.Api;
+using Notification.Infrastructure;
 using Comment.Api;
 using CustomField.Api;
 using Issue.Api;
@@ -57,11 +59,19 @@ builder.Services.AddCommentModule(builder.Configuration);
 builder.Services.AddActivityLogModule(builder.Configuration);
 builder.Services.AddBbStorage(builder.Configuration);
 builder.Services.AddAttachmentModule(builder.Configuration);
+builder.Services.AddNotificationModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
 builder.Services.AddSingleton<BB.Common.IGuidGenerator, BB.Common.UuidV7Generator>();
 builder.Services.AddScoped<BB.Common.IDomainEventDispatcher, BB.EventBus.DomainEventDispatcher>();
+
+builder.Services.AddDbContext<OutboxDbContext>(opt =>
+    opt.UseConfiguredDatabase(builder.Configuration, migrationsAssembly: null));
+builder.Services.AddScoped<IOutboxStore, EfOutboxStore>();
+builder.Services.AddScoped<InMemoryEventBus>();
+builder.Services.AddScoped<IEventBus, OutboxingEventBus>();
+builder.Services.AddHostedService<OutboxProcessorHostedService>();
 
 builder.Services.AddControllers();
 
@@ -155,6 +165,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var activityLogDb = scope.ServiceProvider.GetRequiredService<ActivityLog.Infrastructure.ActivityLogDbContext>();
     var attachmentDb = scope.ServiceProvider.GetRequiredService<Attachment.Infrastructure.AttachmentDbContext>();
     var outboxDb = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
+    var notificationDb = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -164,6 +175,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(activityLogDb, bootstrapLogger);
     await EnsureSchemaAsync(attachmentDb, bootstrapLogger);
     await EnsureSchemaAsync(outboxDb, bootstrapLogger);
+    await EnsureSchemaAsync(notificationDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

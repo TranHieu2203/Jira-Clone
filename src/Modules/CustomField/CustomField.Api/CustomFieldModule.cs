@@ -24,6 +24,7 @@ public static class CustomFieldModule
 
         services.AddScoped<ICustomFieldService, CustomFieldService>();
         services.AddScoped<IIssueFieldValueService, IssueFieldValueService>();
+        services.AddScoped<IIssueFieldValueIssueFilter, IssueFieldValueIssueFilter>();
         services.AddScoped<IDemoCustomFieldProjectBinder, DemoCustomFieldProjectBinder>();
         services.AddScoped<IDomainEventHandler<ProjectCreated>, ProjectCustomFieldProvisioningHandler>();
 

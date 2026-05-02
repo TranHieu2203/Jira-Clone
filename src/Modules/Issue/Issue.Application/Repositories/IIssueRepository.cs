@@ -24,6 +24,8 @@ public sealed record IssueSearchCriteria(
     bool? IncludeArchived,
     int PageIndex = 1,
     int PageSize = 50,
-    string? Sort = null);
+    string? Sort = null,
+    bool AssigneeUnassignedOnly = false,
+    IReadOnlySet<Guid>? RestrictToIssueIds = null);
 
 public interface IIssueUnitOfWork : IUnitOfWork { }

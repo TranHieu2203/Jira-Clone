@@ -29,10 +29,10 @@
 | P6 | Board Kanban (drag-drop, signal-based) | `[x]` CDK + filters + transition dialog + polling 30s + **swimlanes theo assignee**. SignalR → P11 |
 | P7 | Comment + Attachment + Activity Log | `[x]` Comment ✅; ActivityLog ✅; **Attachment** ✅ (`BB.Storage` Local/S3, module Attachment, FE upload/list/download/delete). |
 | P8 | Sprint + Backlog | `[ ]` |
-| P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
+| P9 | Search + Filter (incl. custom field) + Notification | `[~]` slice: JQL-lite + CFV indexed filter + Notification module + FE bell |
 | P10 | Workflow Editor UI + Field Editor UI | `[~]` **partial**: layout `display_order` + context/project + FE nhập nhiều kiểu field — chưa có admin Screen designer |
 | P11 | Identity hoàn thiện (RBAC + Permission scheme) | `[ ]` |
-| P12 | Docker Compose + CI + Docs | `[~]` Docker compose dev OK. Còn CI + production docker + README hướng dẫn |
+| P12 | Docker Compose + CI + Docs | `[~]` Docker compose dev OK + **GitHub Actions dotnet build/test** ✅. Còn prod docker + README deploy đầy đủ |
 
 ---
 

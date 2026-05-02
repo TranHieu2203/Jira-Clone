@@ -51,6 +51,12 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
         [(ngModel)]="textFilter"
         (keyup.enter)="reload()"
         [placeholder]="'issue.search_placeholder' | translate" />
+      <input
+        pInputText
+        class="jql-input"
+        [(ngModel)]="jqlFilter"
+        (keyup.enter)="reload()"
+        [placeholder]="'issue.jql_placeholder' | translate" />
       <button pButton (click)="reload()" [label]="'common.search' | translate"></button>
     </div>
 
@@ -92,8 +98,9 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
       (created)="onIssueCreated()" />
   `,
   styles: [`
-    .filters { display: flex; gap: 8px; margin-bottom: 16px; }
-    .filters input { flex: 0 1 360px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
+    .filters input { flex: 1 1 220px; max-width: 420px; }
+    .jql-input { flex: 2 1 280px; max-width: 560px; font-family: ui-monospace, monospace; font-size: 12px; }
     .w-key { width: 100px; }
     .w-status { width: 130px; }
     .w-pri { width: 70px; }
@@ -131,6 +138,7 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   readonly listTitleKey = signal('issue.title');
 
   textFilter = '';
+  jqlFilter = '';
   private scopedToProject = false;
 
   ngOnInit(): void {
@@ -167,6 +175,7 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
       .search({
         projectId: this.fixedProjectId(),
         textSearch: this.textFilter || null,
+        jql: this.jqlFilter.trim() || null,
         pageIndex: 1,
         pageSize: 50,
         sort: 'key'

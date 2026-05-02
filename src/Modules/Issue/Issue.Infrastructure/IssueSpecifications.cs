@@ -28,6 +28,15 @@ internal static class IssueSpecifications
         if (criteria.IncludeArchived != true)
             Add(new Specification<Domain.Issue>(i => !i.IsArchived));
 
+        if (criteria.AssigneeUnassignedOnly)
+            Add(new Specification<Domain.Issue>(i => i.AssigneeId == null));
+
+        if (criteria.RestrictToIssueIds is not null)
+        {
+            IReadOnlySet<Guid> ids = criteria.RestrictToIssueIds;
+            Add(new Specification<Domain.Issue>(i => ids.Contains(i.Id)));
+        }
+
         if (!string.IsNullOrWhiteSpace(criteria.TextSearch))
         {
             string s = criteria.TextSearch.Trim().ToLower();

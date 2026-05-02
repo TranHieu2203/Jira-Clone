@@ -21,6 +21,7 @@ public static class IdentityModule
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserSearchService, UserSearchService>();
+        services.AddScoped<IUserNameLookup, UserNameLookup>();
         services.AddValidatorsFromAssemblyContaining<LoginValidator>();
         return services;
     }

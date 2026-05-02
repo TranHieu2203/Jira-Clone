@@ -118,24 +118,22 @@ cd frontend && npx ng build --configuration=development
 
 ## 3. Backlog priority — **Trung bình**
 
-### 🟡 P8 — Sprint + Backlog
-**Scope**:
-- Module `Sprint`: domain (Sprint entity với name, goal, startDate, endDate, status: Future/Active/Completed; SprintIssue join)
-- Service: createSprint, startSprint, completeSprint, addIssue, removeIssue
-- FE: backlog page với drag issues vào sprint, sprint board view (giống Kanban nhưng filter theo activeSprint)
-- Burndown chart (số story points / số issue done theo ngày)
-
-### 🟡 P9 — Search & Filter & Notification
+### 🟡 P9 — Search & Filter & Notification (slice ✅)
 **Scope search**:
-- ~~BB#8: `Specification<T>` pattern~~ ✅ (`BB.Persistence.Specification`, `IssueSpecifications.From` + `IssueRepository.SearchAsync`)
-- IssueRepository.SearchAsync mở rộng filter qua spec composition (custom field / JQL-lite — tiếp)
-- JQL-lite parser (đơn giản): `assignee = currentUser() AND status = "In Progress"`
-- IssueFieldValue lookup bằng IndexedString/Number/Date columns đã có
+- ~~BB#8 + spec composition~~ ✅
+- ~~JQL-lite~~ ✅ `JqlLiteParser`: `assignee = currentUser()`, `assignee = empty`, `status = "<guid>"`, `text ~ "..."`, nối `AND`
+- ~~CFV qua indexed columns~~ ✅ `IIssueFieldValueIssueFilter` + `FieldFilters` trên `POST /issues/search`
+- **Chưa làm**: JQL `status = "In Progress"` theo tên (cần resolve workflow); JQL `cf[key] = …`
 
 **Scope notification**:
-- Module `Notification`: domain (Notification entity, recipientId, type, payload, isRead)
-- Subscribe events: IssueAssigneeChanged (notify new assignee), CommentAdded (notify watchers + mentions), IssueStatusChanged (notify watchers)
-- FE: notification bell trên topbar (đã có icon, chưa có dropdown), badge count, mark-as-read
+- ~~Module Notification~~ ✅ `in_app_notifications`, API list/unread/mark read + handlers integration events
+- ~~IssueAssigneeChanged / IssueStatusChanged / CommentAdded~~ ✅ publish qua `IEventBus` (outbox)
+- ~~FE bell~~ ✅ dropdown + badge + mark all read (polling 45s)
+
+### 🟡 P8 — Sprint + Backlog ⏳
+**Scope** (chưa làm trong session này — làm tiếp):
+- Module `Sprint` + `SprintIssue`; API create/start/complete/add/remove issue
+- FE backlog drag vào sprint; board theo active sprint; burndown
 
 ### 🟢 BB#4 — Outbox processor ✅
 **Đã có**: `OutboxDbContext` (schema `outbox` / bảng `outbox_messages`), `EfOutboxStore`, `OutboxingEventBus` (`IEventBus` → enqueue), `OutboxProcessorHostedService` (~5s, batch, retry + dead-letter), đăng ký + `EnsureSchema` trong `Api.Host`.
@@ -161,8 +159,9 @@ cd frontend && npx ng build --configuration=development
 - 2FA, password reset flow
 
 ### 🟢 P12 — Production-ready
+- ~~CI entry~~ ✅ `.github/workflows/dotnet.yml` (build + test Release trên push/PR `main`/`develop`)
 - Production Dockerfile multi-stage build (đã có dev OK)
-- CI: GitHub Actions matrix (Postgres + Oracle integration test)
+- CI: matrix Postgres + Oracle **integration test** (Testcontainers — chưa)
 - README hướng dẫn deploy
 - Secrets management (đang dev mode hardcode JWT signing key)
 - Rate limiting tuning
@@ -187,7 +186,7 @@ cd frontend && npx ng build --configuration=development
 | L2 | WorkflowProvisioner lazy (chỉ chạy khi tạo issue đầu tiên) | Cleaner: subscribe `ProjectCreated` event và provision eager. Cần shared events project hoặc cross-module reference |
 | L3 | Permission check chưa enforce trên mọi endpoint | JWT auth có (chỉ check authenticated). Per-action permission check qua `IPermissionChecker` chưa wire vào controller. Dùng `[Authorize(Policy=...)]` hoặc service-level guard |
 | L4 | Domain event handler khác transaction với producer | ActivityLog có thể loss nếu handler fail. BB#4 ✅ cho **integration** events (`IEventBus`); domain dispatch (`IDomainEventDispatcher`) chưa ghi outbox |
-| L5 | Issue search không filter được custom field | Index columns đã có; BB#8 ✅ — vẫn cần compose spec với CFV |
+| L5 | Issue search không filter được custom field | ✅ slice: `FieldFilters` + `IIssueFieldValueIssueFilter`; JQL `cf[key]` chưa |
 | L6 | ~~Status name không resolve cho cross-project search~~ | ✅ Đã preload workflow theo `projectId` trên mỗi dòng list + giữ cờ fixed project |
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |

@@ -17,6 +17,7 @@ public static class IssueModule
 
         services.AddScoped<IIssueUnitOfWork, IssueUnitOfWork>();
         services.AddScoped<IIssueRepository, IssueRepository>();
+        services.AddScoped<IIssueNotificationSnapshotReader, IssueNotificationSnapshotReader>();
         services.AddScoped<IIssueService, IssueService>();
 
         return services;

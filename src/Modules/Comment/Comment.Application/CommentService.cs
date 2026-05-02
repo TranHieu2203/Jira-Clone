@@ -1,7 +1,12 @@
+using System.Diagnostics;
 using BB.Common;
+using BB.EventBus;
+using BB.EventBus.IntegrationEvents;
 using BB.Security;
 using Comment.Application.Repositories;
 using Comment.Domain;
+using Identity.Application;
+using Issue.Application.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace Comment.Application;
@@ -11,13 +16,26 @@ public sealed class CommentService : ICommentService
     private readonly ICommentRepository _repo;
     private readonly ICommentUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
+    private readonly IIssueNotificationSnapshotReader _issueSnapshot;
+    private readonly IUserNameLookup _userNames;
+    private readonly IEventBus _eventBus;
     private readonly ILogger<CommentService> _logger;
 
-    public CommentService(ICommentRepository repo, ICommentUnitOfWork uow, ICurrentUser currentUser, ILogger<CommentService> logger)
+    public CommentService(
+        ICommentRepository repo,
+        ICommentUnitOfWork uow,
+        ICurrentUser currentUser,
+        IIssueNotificationSnapshotReader issueSnapshot,
+        IUserNameLookup userNames,
+        IEventBus eventBus,
+        ILogger<CommentService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
+        _issueSnapshot = issueSnapshot;
+        _userNames = userNames;
+        _eventBus = eventBus;
         _logger = logger;
     }
 
@@ -33,9 +51,11 @@ public sealed class CommentService : ICommentService
         if (_currentUser.UserId is null)
             return Result.Failure<CommentDto>(ErrorType.Unauthorized, "auth.required");
 
-        var c = new Domain.Comment(request.IssueId, _currentUser.UserId.Value, request.Body);
+        var c = new Comment.Domain.Comment(request.IssueId, _currentUser.UserId.Value, request.Body);
         await _repo.AddAsync(c, ct);
         await _uow.SaveChangesAsync(ct);
+
+        await PublishCommentAddedAsync(c, ct);
 
         _logger.LogInformation("Comment added Id={Id} Issue={IssueId} Author={Author}",
             c.Id, c.IssueId, c.AuthorId);
@@ -79,5 +99,37 @@ public sealed class CommentService : ICommentService
         _repo.Remove(c);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "comment.deleted");
+    }
+
+    private async Task PublishCommentAddedAsync(Comment.Domain.Comment c, CancellationToken ct)
+    {
+        IssueNotificationSnapshot? snap = await _issueSnapshot.GetAsync(c.IssueId, ct);
+        if (snap is null)
+            return;
+
+        List<Guid> mentionIds = new();
+        foreach (string userName in c.Mentions)
+        {
+            Guid? id = await _userNames.FindActiveUserIdByUserNameAsync(userName, ct);
+            if (id is not null)
+                mentionIds.Add(id.Value);
+        }
+
+        string preview = c.Body.Length <= 200 ? c.Body : c.Body[..200];
+
+        var evt = new CommentAddedIntegrationEvent(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            Activity.Current?.TraceId.ToString(),
+            snap.IssueId,
+            snap.IssueKey,
+            snap.ProjectId,
+            c.Id,
+            c.AuthorId,
+            preview,
+            mentionIds,
+            snap.WatcherUserIds.ToList());
+
+        await _eventBus.PublishAsync(evt, ct);
     }
 }

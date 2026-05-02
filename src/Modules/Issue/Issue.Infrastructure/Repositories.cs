@@ -23,13 +23,18 @@ public sealed class IssueRepository : Repository<Domain.Issue>, IIssueRepository
 
     public async Task<PagedList<Domain.Issue>> SearchAsync(IssueSearchCriteria criteria, CancellationToken ct = default)
     {
+        int page = Math.Max(criteria.PageIndex, 1);
+        int size = Math.Max(criteria.PageSize, 1);
+
+        if (criteria.RestrictToIssueIds is { Count: 0 })
+        {
+            return new PagedList<Domain.Issue>(new List<Domain.Issue>(), 0, page, size);
+        }
+
         ISpecification<Domain.Issue> spec = IssueSpecifications.From(criteria);
         IQueryable<Domain.Issue> q = _ctx.Issues.AsNoTracking().Where(spec.Criteria);
 
         var total = await q.LongCountAsync(ct);
-        var page = Math.Max(criteria.PageIndex, 1);
-        var size = Math.Max(criteria.PageSize, 1);
-
         // Sort: mặc định CreatedAt desc; cho phép "key", "priority", "summary"
         q = (criteria.Sort?.ToLowerInvariant()) switch
         {

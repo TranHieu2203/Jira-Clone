@@ -1,4 +1,7 @@
+using System.Diagnostics;
 using BB.Common;
+using BB.EventBus;
+using BB.EventBus.IntegrationEvents;
 using BB.Security;
 using CustomField.Application;
 using Issue.Application.Repositories;
@@ -21,6 +24,8 @@ public sealed class IssueService : IIssueService
     private readonly IWorkflowProvisioner _workflowProvisioner;
     private readonly IWorkflowEngine _workflowEngine;
     private readonly IIssueFieldValueService _fieldValueService;
+    private readonly IIssueFieldValueIssueFilter _fieldIssueFilter;
+    private readonly IEventBus _eventBus;
     private readonly ILogger<IssueService> _logger;
 
     public IssueService(
@@ -33,6 +38,8 @@ public sealed class IssueService : IIssueService
         IWorkflowProvisioner workflowProvisioner,
         IWorkflowEngine workflowEngine,
         IIssueFieldValueService fieldValueService,
+        IIssueFieldValueIssueFilter fieldIssueFilter,
+        IEventBus eventBus,
         ILogger<IssueService> logger)
     {
         _repo = repo;
@@ -44,6 +51,8 @@ public sealed class IssueService : IIssueService
         _workflowProvisioner = workflowProvisioner;
         _workflowEngine = workflowEngine;
         _fieldValueService = fieldValueService;
+        _fieldIssueFilter = fieldIssueFilter;
+        _eventBus = eventBus;
         _logger = logger;
     }
 
@@ -65,10 +74,66 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<PagedList<IssueSummaryDto>>> SearchAsync(SearchIssuesRequest request, CancellationToken ct = default)
     {
+        Result<JqlLiteResult> jql = JqlLiteParser.Parse(request.Jql, _currentUser.UserId);
+        if (!jql.IsSuccess || jql.Data is null)
+        {
+            return Result.Failure<PagedList<IssueSummaryDto>>(
+                jql.ErrorType,
+                jql.MessageKey ?? "issue.search.jql.invalid",
+                jql.Errors);
+        }
+
+        Guid? assigneeId = request.AssigneeId;
+        bool assigneeUnassigned = false;
+        Guid? statusId = request.CurrentStatusId;
+        string? textSearch = request.TextSearch;
+
+        if (jql.Data.HasAssigneeClause)
+        {
+            assigneeUnassigned = jql.Data.AssigneeUnassignedOnly;
+            assigneeId = jql.Data.AssigneeUnassignedOnly ? null : jql.Data.AssigneeId;
+        }
+
+        if (jql.Data.HasStatusClause)
+            statusId = jql.Data.StatusId;
+
+        if (jql.Data.HasTextClause)
+            textSearch = jql.Data.TextContains;
+
+        if (assigneeId.HasValue && assigneeUnassigned)
+        {
+            return Result.Failure<PagedList<IssueSummaryDto>>(
+                ErrorType.Validation,
+                "issue.search.conflicting_assignee_filters");
+        }
+
+        IReadOnlySet<Guid>? restrict = null;
+        if (request.FieldFilters is { Count: > 0 })
+        {
+            List<IssueFieldIndexedCriterion> fc = request.FieldFilters
+                .Select(f => new IssueFieldIndexedCriterion(
+                    f.CustomFieldId,
+                    f.IndexedStringEquals,
+                    f.IndexedNumberEquals,
+                    f.IndexedDateEquals))
+                .ToList();
+
+            restrict = await _fieldIssueFilter.MatchingIssueIdsAsync(fc, ct);
+            if (restrict is not null && restrict.Count == 0)
+            {
+                int p = Math.Max(request.PageIndex, 1);
+                int s = Math.Max(request.PageSize, 1);
+                var empty = new PagedList<IssueSummaryDto>(new List<IssueSummaryDto>(), 0, p, s);
+                return Result.Success(empty);
+            }
+        }
+
         var criteria = new IssueSearchCriteria(
-            request.ProjectId, request.IssueTypeId, request.AssigneeId, request.ReporterId,
-            request.CurrentStatusId, request.Priority, request.TextSearch, request.IncludeArchived,
-            request.PageIndex, request.PageSize, request.Sort);
+            request.ProjectId, request.IssueTypeId, assigneeId, request.ReporterId,
+            statusId, request.Priority, textSearch, request.IncludeArchived,
+            request.PageIndex, request.PageSize, request.Sort,
+            assigneeUnassigned,
+            restrict);
 
         var page = await _repo.SearchAsync(criteria, ct);
         var dtos = page.Items.Select(Mappers.ToSummary).ToList();
@@ -151,6 +216,8 @@ public sealed class IssueService : IIssueService
             }
         }
 
+        await PublishAssigneeChangedIfNeededAsync(issue, null, issue.AssigneeId, ct);
+
         _logger.LogInformation("Issue created Key={Key} Project={ProjectId}", issue.Key, issue.ProjectId);
         return Result.Success(Mappers.ToDto(issue), "issue.created.success", new { key = issue.Key });
     }
@@ -159,6 +226,8 @@ public sealed class IssueService : IIssueService
     {
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        Guid? prevAssignee = issue.AssigneeId;
 
         issue.UpdateSummary(request.Summary);
         issue.UpdateDescription(request.Description);
@@ -174,6 +243,9 @@ public sealed class IssueService : IIssueService
 
         _repo.Update(issue);
         await _uow.SaveChangesAsync(ct);
+
+        await PublishAssigneeChangedIfNeededAsync(issue, prevAssignee, issue.AssigneeId, ct);
+
         return Result.Success(Mappers.ToDto(issue), "issue.updated.success");
     }
 
@@ -209,6 +281,9 @@ public sealed class IssueService : IIssueService
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
 
+        Guid fromStatus = issue.CurrentStatusId;
+        Guid? prevAssignee = issue.AssigneeId;
+
         // Engine validates + executes rules/validators/post-functions, persists history.
         var outcome = await _workflowEngine.TransitionAsync(
             issue.Id, issue.ProjectId, issue.IssueTypeId, issue.CurrentStatusId,
@@ -226,6 +301,25 @@ public sealed class IssueService : IIssueService
 
         _repo.Update(issue);
         await _uow.SaveChangesAsync(ct);
+
+        List<Guid> watchers = WatcherUserIds(issue);
+
+        if (fromStatus != issue.CurrentStatusId)
+        {
+            await _eventBus.PublishAsync(new IssueStatusChangedIntegrationEvent(
+                Guid.NewGuid(),
+                DateTimeOffset.UtcNow,
+                IntegrationTraceId(),
+                issue.Id,
+                issue.Key,
+                issue.ProjectId,
+                fromStatus,
+                issue.CurrentStatusId,
+                _currentUser.UserId,
+                watchers), ct);
+        }
+
+        await PublishAssigneeChangedIfNeededAsync(issue, prevAssignee, issue.AssigneeId, ct);
 
         return Result.Success(Mappers.ToDto(issue), "issue.transitioned",
             new { from = outcome.Data.FromStatusId, to = outcome.Data.ToStatusId });
@@ -263,5 +357,38 @@ public sealed class IssueService : IIssueService
         issue.RemoveWatcher(userId);
         _repo.Update(issue); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(issue), "issue.watcher.removed");
+    }
+
+    private static string? IntegrationTraceId() =>
+        Activity.Current?.TraceId.ToString();
+
+    private static List<Guid> WatcherUserIds(Domain.Issue issue) =>
+        issue.Watchers.Select(w => w.UserId).Distinct().ToList();
+
+    private async Task PublishAssigneeChangedIfNeededAsync(
+        Domain.Issue issue,
+        Guid? previousAssignee,
+        Guid? newAssignee,
+        CancellationToken ct)
+    {
+        if (newAssignee == previousAssignee || newAssignee is null)
+            return;
+
+        if (_currentUser.UserId is null)
+            return;
+
+        var evt = new IssueAssigneeChangedIntegrationEvent(
+            Guid.NewGuid(),
+            DateTimeOffset.UtcNow,
+            IntegrationTraceId(),
+            issue.Id,
+            issue.Key,
+            issue.ProjectId,
+            previousAssignee,
+            newAssignee,
+            _currentUser.UserId,
+            WatcherUserIds(issue));
+
+        await _eventBus.PublishAsync(evt, ct);
     }
 }

@@ -96,6 +96,18 @@
     "reports_coming_soon":
       "Reports and dashboards are not implemented yet. Use Board and Issues for now; burndown and gadgets are tracked as future work (see backlog P8/P12)."
   },
+  "notifications": {
+    "title": "Notifications",
+    "mark_all": "Mark all read",
+    "loading": "Loading…",
+    "empty": "No notifications yet.",
+    "type": {
+      "assignee_changed": "Assignee",
+      "status_changed": "Status",
+      "comment_added": "Comment",
+      "generic": "Update"
+    }
+  },
   "issue": {
     "title": "Issues",
     "create": "Create issue",
@@ -114,6 +126,7 @@
     "transition": "Transition",
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
+    "jql_placeholder": "JQL (e.g. assignee = currentUser() AND text ~ \"bug\")",
     "empty": "No issues match the criteria.",
     "assignee_save": "Save assignee",
     "custom_fields": "Custom fields",
