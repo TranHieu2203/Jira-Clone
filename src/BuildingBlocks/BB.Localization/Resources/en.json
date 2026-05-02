@@ -15,6 +15,25 @@
   "system": {
     "unexpected": "An unexpected error occurred"
   },
+  "activity": {
+    "title": "Activity",
+    "empty": "No activity recorded yet.",
+    "issue": {
+      "created": "Issue created ({{issueKey}})",
+      "field_updated": "{{field}} updated",
+      "assignee_changed": "Assignee changed",
+      "status_changed": "Status changed",
+      "parent_changed": "Parent issue changed",
+      "watcher_added": "Watcher added",
+      "watcher_removed": "Watcher removed",
+      "archived": "Issue archived"
+    },
+    "comment": {
+      "added": "Comment added",
+      "edited": "Comment edited",
+      "deleted": "Comment deleted"
+    }
+  },
   "product": {
     "created": { "success": "Product {{name}} created successfully" },
     "updated": { "success": "Product {{name}} updated successfully" },

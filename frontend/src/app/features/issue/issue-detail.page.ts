@@ -10,6 +10,7 @@ import { Issue, IssueApiService } from '@core/api/issue.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { ActivityTimelineComponent } from './activity-timeline.component';
 import { CommentsThreadComponent } from './comments-thread.component';
 
 @Component({
@@ -18,7 +19,8 @@ import { CommentsThreadComponent } from './comments-thread.component';
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
     ButtonModule, ButtonGroupModule, InputTextModule,
-    CommentsThreadComponent
+    CommentsThreadComponent,
+    ActivityTimelineComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -49,6 +51,7 @@ import { CommentsThreadComponent } from './comments-thread.component';
           }
 
           <app-comments-thread [issueId]="i.id" />
+          <app-activity-timeline [issueId]="i.id" />
         </main>
 
         <aside class="side">

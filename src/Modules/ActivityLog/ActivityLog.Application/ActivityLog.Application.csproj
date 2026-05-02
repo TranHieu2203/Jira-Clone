@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>ActivityLog.Application</RootNamespace>
+    <AssemblyName>ActivityLog.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ActivityLog.Domain\ActivityLog.Domain.csproj" />
+    <ProjectReference Include="..\..\Comment\Comment.Domain\Comment.Domain.csproj" />
+    <ProjectReference Include="..\..\Issue\Issue.Domain\Issue.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+  </ItemGroup>
+</Project>

@@ -27,7 +27,7 @@
 | P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module. 15 unit test PASS. **Smoke test docker compose: login → workspace → project → issue → transition PASS.** |
 | P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
 | P6 | Board Kanban (drag-drop, signal-based) | `[~]` BoardPageComponent với CDK drag-drop, optimistic update + rollback nếu transition fail. Route `/projects/:projectKey/board`. Còn: filter assignee/issueType, swimlanes, polling/realtime |
-| P7 | Comment + Attachment + Activity Log | `[~]` Comment ✅ (BE module + FE thread + mention `@user`). Attachment defer (cần file storage). ActivityLog defer phase riêng |
+| P7 | Comment + Attachment + Activity Log | `[~]` Comment ✅; ActivityLog ✅ (handlers, schema `activity_log`, `GET /api/v1/activity/by-issue/{id}`, FE timeline trên issue detail). Attachment defer (cần file storage). |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
 | P10 | Workflow Editor UI + Field Editor UI | `[ ]` |
@@ -49,7 +49,7 @@
   - [ ] Field cơ bản: summary, description (rich text), status, priority, assignee, reporter, labels, due date, story points, time tracking
   - [ ] Parent/child (sub-task, epic link)
   - [ ] Attachment, comment (mention `@user`)
-  - [ ] Activity log / history
+  - [x] Activity log / history (ActivityLog module + issue detail timeline)
   - [ ] Watcher
 - [ ] **Workflow & Status**: To Do → In Progress → Done, custom workflow per project, transition rule (chi tiết §3)
 - [ ] **Custom Field per project** (chi tiết §4)
@@ -507,7 +507,7 @@ src/
 │   ├── Sprint/                     (P8)
 │   ├── Comment/                    (P7)
 │   ├── Attachment/                 (P7)
-│   ├── ActivityLog/                (P7)
+│   ├── ActivityLog/                (P7) — ✅ MVP (handlers + API + FE timeline)
 │   ├── Search/                     (P9)
 │   └── Notification/               (P9)
 ├── Bootstrapper/
@@ -613,3 +613,4 @@ tests/
 | 2026-05-02 | claude | P6 partial — Board Kanban: `BoardPageComponent` dùng `@angular/cdk/drag-drop`. Cột theo workflow status, card = issue (key+pri+summary+assignee initials). Drop card sang cột khác → resolve transition phù hợp (qua /transitions/available) → call transition API. Optimistic UI: card di chuyển ngay, rollback nếu fail. Route `/projects/:projectKey/board`. (commit b013a10) |
 | 2026-05-02 | claude | P7 partial ✅ Comment — Module Comment (Domain aggregate + soft-delete + mention `@user` regex extract, Application service, Infrastructure DbContext schema "comment", Api controller). FE: CommentApiService + CommentsThreadComponent (list + add + edit + delete với optimistic UI, hiển thị mentions, edited badge, author=current user thì show edit/delete). Wire vào IssueDetailPage. Smoke test PASS. (commit 9840e40) |
 | 2026-05-02 | claude | 📌 Tạo `docs/BACKLOG.md` — single source cho việc dang dở + quick start session sau. Tổng hợp 14 limitations, 4 mức ưu tiên, recommend P7.activity (ActivityLog) làm tiếp. |
+| 2026-05-02 | cursor | P7 Activity Log ✅ — Module `ActivityLog` (Domain `ActivityEntry`, 11× `IDomainEventHandler` Issue+Comment, Infra Postgres migration `InitActivityLog_Postgres`, Api `ActivityLogController`). FE: `ActivityApiService`, `ActivityTimelineComponent` trên issue detail. i18n `activity.*` (BE vi/en + FE vi/en). |

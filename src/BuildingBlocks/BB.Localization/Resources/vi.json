@@ -15,6 +15,25 @@
   "system": {
     "unexpected": "Có lỗi xảy ra, vui lòng thử lại"
   },
+  "activity": {
+    "title": "Hoạt động",
+    "empty": "Chưa có hoạt động nào được ghi lại.",
+    "issue": {
+      "created": "Đã tạo issue ({{issueKey}})",
+      "field_updated": "Đã cập nhật {{field}}",
+      "assignee_changed": "Đổi người được giao",
+      "status_changed": "Đổi trạng thái",
+      "parent_changed": "Đổi issue cha",
+      "watcher_added": "Thêm người theo dõi",
+      "watcher_removed": "Bỏ người theo dõi",
+      "archived": "Đã lưu trữ issue"
+    },
+    "comment": {
+      "added": "Đã thêm bình luận",
+      "edited": "Đã sửa bình luận",
+      "deleted": "Đã xóa bình luận"
+    }
+  },
   "product": {
     "created": { "success": "Tạo sản phẩm {{name}} thành công" },
     "updated": { "success": "Cập nhật sản phẩm {{name}} thành công" },

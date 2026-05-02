@@ -28,5 +28,6 @@
     <ProjectReference Include="..\..\Modules\CustomField\CustomField.Api\CustomField.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Issue\Issue.Api\Issue.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Comment\Comment.Api\Comment.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\ActivityLog\ActivityLog.Api\ActivityLog.Api.csproj" />
   </ItemGroup>
 </Project>

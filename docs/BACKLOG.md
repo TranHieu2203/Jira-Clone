@@ -57,7 +57,7 @@ cd frontend && npx ng build --configuration=development
 
 ## 1. Trạng thái hiện tại (snapshot)
 
-### Modules BE (8 modules đã có)
+### Modules BE (9 modules đã có)
 | Module | Status |
 |---|---|
 | BB.* (BuildingBlocks) | ✅ 9/12 items, defer 3 |
@@ -68,12 +68,13 @@ cd frontend && npx ng build --configuration=development
 | **CustomField** (EAV + 13 type handlers) | ✅ 20 tests |
 | **Issue** (tích hợp 4 module) | ✅ 15 tests |
 | **Comment** (mention + edit/delete) | ✅ chưa có test |
+| **ActivityLog** (domain handlers → `activity_entries`, GET by issue) | ✅ chưa có test |
 
 ### Frontend
 - Layout hybrid: top bar 48px + sidebar contextual + breadcrumb
 - 8 feature pages: workspaces (list/detail), projects (list/detail), board, issues (search), issue detail, login
 - Create dialogs: project, issue (global qua topbar `+`)
-- Comment thread inline trong issue detail
+- Comment thread + **Activity** timeline inline trong issue detail
 - Board Kanban drag-drop với optimistic update + rollback
 - StatusCacheService resolve status name + category color
 
@@ -83,16 +84,6 @@ cd frontend && npx ng build --configuration=development
 ---
 
 ## 2. Backlog priority — **Ưu tiên cao** (làm trước)
-
-### 🔴 P7.activity — Activity Log module
-**Lý do làm**: domain events đã raise sẵn, chỉ cần module subscribe + lưu → có timeline đầy đủ trong issue detail (ai làm gì khi nào). Hiệu quả cao, nỗ lực vừa.
-
-**Scope**:
-- Module `ActivityLog`: Domain (ActivityEntry entity), Application (`IActivityLogService`, `IDomainEventHandler<>` cho 8 event Issue + 3 event Comment), Infra, Api
-- Subscribe events: `IssueCreated`, `IssueUpdated`, `IssueAssigneeChanged`, `IssueStatusChanged`, `IssueParentChanged`, `IssueWatcherAdded/Removed`, `IssueArchived`, `CommentAdded`, `CommentEdited`, `CommentDeleted`
-- FE: `ActivityTimelineComponent` trong issue detail (tab "Activity" cạnh tab "Comments" hoặc combined feed)
-
-**Gotcha**: ActivityLog.Application phải reference `Issue.Domain` + `Comment.Domain` để biết event types. Handler chạy sau `SaveChangesAsync` của producing context — khác transaction → log loss có thể xảy ra (chấp nhận cho MVP).
 
 ### 🔴 P5.frontend — Form Create Workspace + tooltip user picker
 **Lý do**: hiện workspace chỉ tạo được qua `/workspaces` page với form đơn giản (đã có) — nhưng user picker (cho member) chưa có. Lead/assignee dialog hiện chỉ nhập userId thô.
@@ -224,10 +215,10 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 ## 7. Recommended next session start
 
 **Open prompt**:
-> Đọc `docs/BACKLOG.md` để hiểu trạng thái. Tiếp tục với **P7.activity (Activity Log module)** vì là next high-priority, leverage được domain events đã có.
+> Đọc `docs/BACKLOG.md` để hiểu trạng thái. Tiếp tục với **P5.frontend (User picker)** — gap lớn nhất hiện tại là không thể chọn assignee/lead bằng tên người, chỉ nhập UUID.
 
-Hoặc nếu user muốn UX improvement:
-> Tiếp tục với **P5.frontend (User picker)** — gap lớn nhất hiện tại là không thể chọn assignee/lead bằng tên người, chỉ nhập UUID.
+Hoặc board polish:
+> Tiếp tục **P6.polish** — filter assignee/issueType trên board + dialog chọn transition khi có nhiều transition phù hợp.
 
 ---
 
