@@ -4,11 +4,13 @@
 > Mỗi item có checkbox: `[ ]` chưa làm — `[~]` đang làm — `[x]` xong.
 > Khi hoàn thành một item, đánh dấu `[x]` và ghi commit/PR liên quan ở cột "Note" (nếu có).
 > Cập nhật file này mỗi khi xong một mốc.
+>
+> 👉 **Mở [`docs/BACKLOG.md`](BACKLOG.md) để xem việc còn dang dở + quick start cho session sau.**
 
 **Stack**: .NET 8 (Layered, no CQRS) + Angular 18+ PrimeNG v18 + PostgreSQL **hoặc** Oracle (config-switch)
 **Theme**: Monochrome trắng/đen
 **i18n**: vi (default) / en
-**Cập nhật lần cuối**: 2026-05-01
+**Cập nhật lần cuối**: 2026-05-02
 
 ---
 
@@ -609,4 +611,5 @@ tests/
 | 2026-05-02 | claude | End-to-end smoke ✅ — Stack docker postgres+api+web chạy, smoke test PASS: admin login → tạo workspace `acme` → tạo project `DEMO` → tạo `DEMO-1` (auto-provision workflow scheme từ template SOFTWARE_SIMPLE) → transition Force Close → status Done. FE↔BE qua nginx proxy. Phát hiện gap → fix bằng IWorkflowProvisioner (commit 64d8625). Branch merged vào main (commit 6cfd6e4). |
 | 2026-05-02 | claude | FE create flows ✅ — CreateProjectDialog (workspace detail), CreateIssueDialog (issues page + topbar global), StatusCacheService (resolve status name + category color). Topbar "+" mở dialog → sau khi tạo navigate đến `/issues/{key}`. Status pill dùng màu theo category (ToDo=xám / InProgress=xanh / Done=lục). (commit c05e0a3) |
 | 2026-05-02 | claude | P6 partial — Board Kanban: `BoardPageComponent` dùng `@angular/cdk/drag-drop`. Cột theo workflow status, card = issue (key+pri+summary+assignee initials). Drop card sang cột khác → resolve transition phù hợp (qua /transitions/available) → call transition API. Optimistic UI: card di chuyển ngay, rollback nếu fail. Route `/projects/:projectKey/board`. (commit b013a10) |
-| 2026-05-02 | claude | P7 partial ✅ Comment — Module Comment (Domain aggregate + soft-delete + mention `@user` regex extract, Application service, Infrastructure DbContext schema "comment", Api controller). FE: CommentApiService + CommentsThreadComponent (list + add + edit + delete với optimistic UI, hiển thị mentions, edited badge, author=current user thì show edit/delete). Wire vào IssueDetailPage. Smoke test PASS. |
+| 2026-05-02 | claude | P7 partial ✅ Comment — Module Comment (Domain aggregate + soft-delete + mention `@user` regex extract, Application service, Infrastructure DbContext schema "comment", Api controller). FE: CommentApiService + CommentsThreadComponent (list + add + edit + delete với optimistic UI, hiển thị mentions, edited badge, author=current user thì show edit/delete). Wire vào IssueDetailPage. Smoke test PASS. (commit 9840e40) |
+| 2026-05-02 | claude | 📌 Tạo `docs/BACKLOG.md` — single source cho việc dang dở + quick start session sau. Tổng hợp 14 limitations, 4 mức ưu tiên, recommend P7.activity (ActivityLog) làm tiếp. |
