@@ -1,0 +1,1 @@
+Playwright headed — file đính kèm smoke test.

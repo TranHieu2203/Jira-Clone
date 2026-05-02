@@ -1,120 +1,260 @@
-// Playwright E2E driving real Chrome (headed) so the user can watch.
-// Screenshots saved to ./screenshots/<step>.png
+/**
+ * Jira-Clone — Playwright headed smoke (một lượt các tính năng hiện có).
+ *
+ * Tiêu chí: login + ErrorDialog (401), workspace/project/issue, board + swimlane,
+ * comment + attachment + activity (hiển thị), UserPicker (workspace member dialog),
+ * module Sample /products (validation ErrorDialog), i18n VI/EN, logout.
+ *
+ * Yêu cầu: stack Docker dev chạy (nginx http://localhost:4200) hoặc FE+BE tương đương.
+ *
+ * Chạy:  cd e2e && node run.js
+ * Hoặc: npm run jira-flow --prefix e2e
+ */
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
+const BASE = process.env.E2E_BASE_URL || 'http://localhost:4200';
 const SHOTS = path.join(__dirname, 'screenshots');
+const UPLOAD_FILE = path.join(__dirname, 'fixtures', 'e2e-upload.txt');
+
 fs.mkdirSync(SHOTS, { recursive: true });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** PrimeNG đưa overlay ra body — đừng chờ visibility trên host `app-error-dialog`. */
+async function dismissErrorDialog(page) {
+  const dlg = page.getByRole('dialog').filter({ hasText: /Trace|Mã truy vết|Chi tiết|Lỗi|Error/i });
+  if (await dlg.count() && await dlg.first().isVisible().catch(() => false)) {
+    await dlg.first().getByRole('button', { name: /Đồng ý|OK/i }).click();
+    await sleep(400);
+  }
+}
+
+async function shot(page, name) {
+  const file = path.join(SHOTS, `${name}.png`);
+  await page.screenshot({ path: file, fullPage: false });
+  console.log(`  📸 ${name}.png`);
+}
+
+/** PrimeNG p-select: mở dropdown (tránh label che pointer). */
+async function pickPrimeSelectOption(page, selectName, optionTextRegex) {
+  const sel = page.locator(`p-dialog p-select[name="${selectName}"]`);
+  const trigger = sel.locator('.p-select-dropdown');
+  await trigger.click({ force: true });
+  await sleep(400);
+  await page.getByRole('option', { name: optionTextRegex }).click();
+  await sleep(250);
+}
+
 (async () => {
+  const ts = Date.now();
+  const wsSlug = `e2e${ts}`;
+  const wsName = `E2E WS ${ts}`;
+  const projKey = `E${String(ts).slice(-6)}`;
+  const projName = `E2E Kanban ${ts}`;
+
   const browser = await chromium.launch({
-    headless: false,            // headed so user can watch
-    slowMo: 350,                // slow down each action so it's visible
-    args: ['--window-size=1280,820', '--window-position=80,40']
+    headless: false,
+    slowMo: 280,
+    args: ['--window-size=1360,880', '--window-position=60,32']
   });
   const ctx = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
+    viewport: { width: 1280, height: 820 },
     locale: 'vi-VN'
   });
   const page = await ctx.newPage();
 
-  page.on('console', (msg) => console.log(`  [browser ${msg.type()}] ${msg.text()}`));
-  page.on('pageerror', (err) => console.log(`  [browser ERROR] ${err.message}`));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') console.log(`  [browser ${msg.type()}] ${msg.text()}`);
+  });
+  page.on('pageerror', (err) => console.log(`  [browser PAGEERROR] ${err.message}`));
 
-  const shot = async (name) => {
-    const file = path.join(SHOTS, `${name}.png`);
-    await page.screenshot({ path: file, fullPage: false });
-    console.log(`  📸 ${name}.png`);
-  };
+  console.log(`Base URL: ${BASE}`);
 
-  console.log('Step 1: open login page');
-  await page.goto('http://localhost:4200/login', { waitUntil: 'networkidle' });
-  await sleep(500);
-  await shot('01-login-empty');
+  // --- Login: sai mật khẩu → ErrorDialog + TraceId ---
+  console.log('\nStep 1: Login sai → ErrorDialog');
+  await page.goto(`${BASE}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await sleep(400);
+  await shot(page, '01-login');
 
-  console.log('Step 2: clear pre-filled fields, type creds');
-  // The form is pre-filled (admin / Admin@123). Clear and re-type to make typing visible.
-  const userInput = page.locator('input[name="userName"]');
-  const passInput = page.locator('input[name="password"]');
-  await userInput.click();
-  await userInput.fill('');
-  await userInput.type('admin', { delay: 60 });
-  await passInput.click();
-  await passInput.fill('');
-  await passInput.type('Admin@123', { delay: 60 });
-  await shot('02-login-typed');
-
-  console.log('Step 3: submit login → expect redirect to /products');
+  await page.locator('input[name="password"]').fill('');
+  await page.locator('input[name="password"]').type('WrongPassword!', { delay: 40 });
   await page.locator('button[type="submit"]').click();
-  await page.waitForURL('**/products', { timeout: 10000 });
+  await page.getByText(/Tài khoản hoặc mật khẩu không đúng|invalid credentials|Unauthorized/i).waitFor({
+    state: 'visible',
+    timeout: 20000
+  });
+  await shot(page, '02-login-error-dialog');
+  await dismissErrorDialog(page);
+
+  // --- Login đúng → Workspaces ---
+  console.log('\nStep 2: Login admin → /workspaces');
+  await page.locator('input[name="userName"]').fill('');
+  await page.locator('input[name="userName"]').type('admin', { delay: 35 });
+  await page.locator('input[name="password"]').fill('');
+  await page.locator('input[name="password"]').type('Admin@123', { delay: 35 });
+  await page.locator('button[type="submit"]').click();
+  await page.waitForURL('**/workspaces', { timeout: 30000 });
   await page.waitForLoadState('networkidle');
-  await sleep(800);
-  await shot('03-products-list-empty');
-
-  console.log('Step 4: open create dialog');
-  await page.getByRole('button', { name: /Tạo mới|Tạo sản phẩm|Create/i }).first().click();
   await sleep(600);
-  await shot('04-create-dialog-open');
+  await shot(page, '03-workspaces');
 
-  console.log('Step 5: fill product form');
-  await page.locator('input[name="name"]').type('Sản phẩm demo', { delay: 50 });
-  await page.locator('input[name="sku"]').type('SKU-DEMO-1', { delay: 50 });
-  // p-inputNumber wraps the input in a different element; locate by label/parent
-  const priceInput = page.locator('p-inputnumber[name="price"] input').first();
-  await priceInput.click();
-  await priceInput.type('199.5', { delay: 50 });
-  await page.locator('input[name="description"]').type('Một sản phẩm tạo từ Playwright', { delay: 30 });
-  await shot('05-create-form-filled');
+  // --- Tạo workspace ---
+  console.log('\nStep 3: Tạo workspace');
+  await page.getByRole('button', { name: /Tạo workspace/i }).click();
+  await sleep(500);
+  await page.locator('input[name="name"]').fill(wsName);
+  await page.locator('input[name="slug"]').fill(wsSlug);
+  await page.locator('p-dialog').getByRole('button', { name: /^Lưu$/i }).click();
+  await sleep(1200);
+  await shot(page, '04-workspace-created');
 
-  console.log('Step 6: submit create → expect toast + dialog closed + row added');
+  // --- Vào workspace theo slug ---
+  console.log('\nStep 4: Mở workspace detail');
+  await page.locator(`a.card`).filter({ hasText: `@${wsSlug}` }).click();
+  await page.waitForURL(`**/workspaces/${wsSlug}`, { timeout: 15000 });
+  await sleep(700);
+  await shot(page, '05-workspace-detail');
+
+  // --- Tạo project Kanban ---
+  console.log('\nStep 5: Tạo dự án Kanban');
+  await page.getByRole('button', { name: /Tạo dự án/i }).click();
+  await sleep(500);
+  await page.locator('p-dialog input[name="name"]').fill(projName);
+  await page.locator('p-dialog input[name="key"]').fill(projKey);
+  await pickPrimeSelectOption(page, 'type', /Kanban/i);
+  await page.locator('p-dialog').getByRole('button', { name: /^Lưu$/i }).click();
+  await sleep(1500);
+  await shot(page, '06-project-created');
+
+  // --- Project detail → Board ---
+  console.log('\nStep 6: Board Kanban');
+  await page.locator('a.proj').filter({ hasText: projKey }).click();
+  await page.waitForURL(`**/projects/${projKey}`, { timeout: 15000 });
+  await sleep(600);
+  await page.getByRole('link', { name: /Bảng/i }).click();
+  await page.waitForURL(`**/projects/${projKey}/board`, { timeout: 15000 });
+  await page.waitForLoadState('networkidle');
+  await sleep(1200);
+  await shot(page, '07-board-flat');
+
+  // Swimlane theo assignee (native select value)
+  const layoutSel = page.locator('select.layout-native');
+  if (await layoutSel.count()) {
+    await layoutSel.selectOption('assignee');
+    await sleep(600);
+    await shot(page, '08-board-swimlane-assignee');
+  }
+
+  // --- Create issue (topbar) — project đã context từ board ---
+  console.log('\nStep 7: Tạo issue từ topbar');
+  await page.locator('button[aria-label="Create"]').click();
+  await sleep(400);
+  await page.locator('p-dialog input[name="summary"]').waitFor({ state: 'visible', timeout: 15000 });
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('p-dialog p-select[name="type"]');
+      return el && !el.classList.contains('p-disabled');
+    },
+    null,
+    { timeout: 25000 }
+  );
+  await page.locator('p-dialog input[name="summary"]').fill(`Playwright issue ${ts}`);
+  await page.locator('p-dialog button[type="submit"]').click({ timeout: 15000 });
+  await page.waitForURL(/\/issues\/.+/, { timeout: 20000 });
+  await sleep(1000);
+  await shot(page, '09-issue-detail');
+
+  // --- Bình luận ---
+  console.log('\nStep 8: Comment');
+  await page.locator('textarea[name="newBody"]').fill(`Bình luận E2E ${ts}`);
+  await page.getByRole('button', { name: /^Bình luận$/i }).click();
+  await sleep(1200);
+  await shot(page, '10-after-comment');
+
+  console.log('\nStep 8b: Theme dark / light (data-theme)');
+  await page.locator('button.theme-btn').click();
+  await sleep(500);
+  {
+    const th = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+    if (th !== 'dark') throw new Error(`expected data-theme=dark, got ${th}`);
+  }
+  await shot(page, '10b-theme-dark');
+  await page.locator('button.theme-btn').click();
+  await sleep(400);
+  {
+    const th = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+    if (th !== 'light') throw new Error(`expected data-theme=light, got ${th}`);
+  }
+  await shot(page, '10c-theme-light');
+
+  console.log('\nStep 8c: Xóa comment — PrimeNG ConfirmDialog');
+  await page.locator('app-comments-thread').getByRole('button', { name: /^Xóa$/i }).first().click();
+  await sleep(500);
+  await page.getByRole('button', { name: /^Có$/i }).click();
+  await sleep(1000);
+  await shot(page, '10d-comment-deleted');
+
+  // --- Attachment ---
+  console.log('\nStep 9: Upload attachment');
+  const fileInput = page.locator('app-attachment-panel input[type="file"]');
+  await fileInput.setInputFiles(UPLOAD_FILE);
+  await sleep(2000);
+  await shot(page, '11-attachment-listed');
+
+  // --- Workspace: Add member dialog + UserPicker (chỉ thử tìm user, Hủy) ---
+  console.log('\nStep 10: Workspace — UserPicker (không submit member)');
+  await page.goto(`${BASE}/workspaces/${wsSlug}`, { waitUntil: 'networkidle' });
+  await sleep(600);
+  await page.getByRole('button', { name: /Thêm thành viên/i }).click();
+  await sleep(400);
+  const pickerInput = page.locator('.user-picker-input, app-user-picker input').first();
+  await pickerInput.click();
+  await pickerInput.fill('admin');
+  await sleep(800);
+  await page.locator('.p-autocomplete-panel li').first().click({ timeout: 8000 }).catch(() => {});
+  await sleep(400);
+  await shot(page, '12-add-member-picker');
+  await page.getByRole('button', { name: /^Hủy$/i }).click();
+  await sleep(400);
+
+  // --- Sample products: validation → ErrorDialog ---
+  console.log('\nStep 11: Sample /products — validation');
+  await page.goto(`${BASE}/products`, { waitUntil: 'networkidle' });
+  await sleep(600);
+  await shot(page, '13-products');
+  await page.getByRole('button', { name: /Tạo sản phẩm/i }).click();
+  await sleep(400);
   await page.locator('p-dialog button[type="submit"]').click();
   await sleep(1200);
-  await shot('06-after-create-toast');
+  await page.getByRole('dialog').filter({ hasText: /Mã truy vết|Trace|Lỗi|Error/i }).waitFor({
+    state: 'visible',
+    timeout: 20000
+  });
+  await shot(page, '14-products-validation-error');
+  await dismissErrorDialog(page);
+  await page.getByRole('button', { name: /^Hủy$/i }).click();
+  await sleep(300);
 
-  console.log('Step 7: trigger validation error to see ErrorDialog (TraceId)');
-  // Re-open dialog with an invalid SKU (duplicate of seeded one) won't work as we just created it.
-  // Use empty values to trip the FluentValidation backend errors.
-  await page.getByRole('button', { name: /Tạo mới|Tạo sản phẩm|Create/i }).first().click();
+  // --- i18n EN → VI ---
+  console.log('\nStep 12: Ngôn ngữ EN / VI');
+  await page.locator('.lang-switch button').filter({ hasText: 'EN' }).click();
+  await sleep(700);
+  await shot(page, '15-lang-en');
+  await page.locator('.lang-switch button').filter({ hasText: 'VI' }).click();
   await sleep(500);
-  // Leave the form blank then submit
-  await page.locator('p-dialog button[type="submit"]').click();
-  await sleep(1500);
-  await shot('07-error-dialog-traceid');
+  await shot(page, '16-lang-vi');
 
-  console.log('Step 8: dismiss error dialog & cancel form');
-  // Close ErrorDialog (the OK button)
-  const okBtn = page.locator('p-dialog').filter({ hasText: /Trace|Mã truy/i }).getByRole('button', { name: /OK|Đồng ý/i });
-  if (await okBtn.count()) {
-    await okBtn.first().click();
-    await sleep(400);
-  }
-  // Cancel the create dialog if it's still open
-  const cancelBtn = page.getByRole('button', { name: /Hủy|Cancel/i }).first();
-  if (await cancelBtn.isVisible().catch(() => false)) {
-    await cancelBtn.click();
-    await sleep(400);
-  }
+  // --- Logout ---
+  console.log('\nStep 13: Logout');
+  await page.getByRole('button', { name: /Profile/i }).click();
+  await sleep(400);
+  await page.getByRole('menuitem', { name: /Logout/i }).click();
+  await page.waitForURL('**/login', { timeout: 15000 });
+  await shot(page, '17-logged-out');
 
-  console.log('Step 9: switch language to EN, capture re-translated UI');
-  await page.locator('.lang-switch button', { hasText: 'EN' }).click();
-  await sleep(800);
-  await shot('08-language-en');
-
-  console.log('Step 10: switch back to VI');
-  await page.locator('.lang-switch button', { hasText: 'VI' }).click();
-  await sleep(600);
-  await shot('09-language-vi');
-
-  console.log('Step 11: logout');
-  await page.getByRole('button', { name: /Đăng xuất|Logout/i }).click();
-  await page.waitForURL('**/login', { timeout: 10000 });
-  await sleep(500);
-  await shot('10-logged-out');
-
-  console.log('All done. Closing browser in 2s.');
+  console.log('\n✅ Jira-Clone E2E flow done. Closing browser in 2s…');
   await sleep(2000);
   await browser.close();
 })().catch(async (err) => {

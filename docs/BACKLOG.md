@@ -158,7 +158,7 @@ cd frontend && npx ng build --configuration=development
 - Refactor: hiện `ProjectDetailPage` dùng `listMine()` + filter — nên thêm endpoint `GET /projects/by-key/{key}` (không cần workspaceId) để load trực tiếp
 - `IIssueTypeReader.GetAsync` đang return null — implement đầy đủ
 - Status name trong IssueList chỉ resolve khi `fixedProjectId` — cross-project search vẫn show UUID
-- Refactor `confirm()` native trong CommentsThread → dùng PrimeNG ConfirmDialog
+- ~~Refactor `confirm()` native trong CommentsThread → dùng PrimeNG ConfirmDialog~~ ✅
 
 ---
 
@@ -174,10 +174,10 @@ cd frontend && npx ng build --configuration=development
 | L6 | Status name không resolve cho cross-project search | StatusCache hiện chỉ load 1 project. Cần multi-project preload hoặc BE include status name trong DTO |
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |
-| L9 | Attachment chưa có | Cần BB.Storage + MinIO container |
+| L9 | ~~Attachment chưa có~~ | ✅ Đã có BB.Storage + module Attachment (MinIO optional) |
 | L10 | Email notification chưa có | Cần SMTP config + template engine. Phase P11+ |
 | L11 | Sample module (Product) còn trong repo | Xóa khi cleanup |
-| L12 | Dark mode toggle không có UI | CSS đã sẵn `[data-theme="dark"]`, chỉ thiếu nút toggle |
+| L12 | ~~Dark mode toggle không có UI~~ | ✅ Topbar nút ☾/☀ + `ThemeService` + localStorage |
 | L13 | i18n message keys vi/en có thể chưa cover hết error từ BE | Audit cần thiết — BE trả `messageKey` mà FE chưa có sẽ fallback show key thô |
 | L14 | Test coverage: chỉ 69 unit tests, 0 integration test với DB thật | Defer cùng BB#12 (cần Testcontainers) |
 
@@ -190,7 +190,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 - **D2** Workflow scope: project-scoped + IsTemplate flag ✅
 - **D3** Transition step: strategy pattern + registry ✅
 - **D4** Realtime: polling MVP, SignalR P11 ⏳
-- **D5** File storage: AWSSDK.S3 + IFileStorage ⏳ chưa impl
+- **D5** File storage: AWSSDK.S3 + IFileStorage ✅ (`BB.Storage`)
 - **D6** Permission: 4 role cố định MVP, scheme P11 ✅ phần MVP
 
 ---

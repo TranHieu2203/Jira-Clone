@@ -29,3 +29,6 @@ logs/
 ## OS
 .DS_Store
 Thumbs.db
+
+## E2E artifacts (headed screenshots — tái tạo bằng node run.js)
+e2e/screenshots/*.png

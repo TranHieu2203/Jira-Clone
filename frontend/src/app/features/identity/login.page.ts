@@ -53,7 +53,7 @@ export class LoginPageComponent {
     this.auth.login(this.userName, this.password).subscribe({
       next: () => {
         this.loading.set(false);
-        this.router.navigate(['/products']);
+        this.router.navigate(['/workspaces']);
       },
       error: () => this.loading.set(false)
     });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -6,6 +6,7 @@ import { MenuModule } from 'primeng/menu';
 import { MenuItem } from 'primeng/api';
 import { AuthService } from '@core/auth/auth.service';
 import { LanguageService } from '@core/i18n/language.service';
+import { ThemeService } from '@core/theme/theme.service';
 
 @Component({
   selector: 'app-topbar',
@@ -39,6 +40,11 @@ import { LanguageService } from '@core/i18n/language.service';
 
       <button class="icon-btn" aria-label="Notifications">
         <span class="icon">🔔</span>
+      </button>
+
+      <button type="button" class="icon-btn theme-btn" (click)="toggleTheme()"
+              [attr.aria-label]="'theme.toggle_aria' | translate">
+        <span class="icon theme-icon">{{ theme.isDark() ? '☀' : '☾' }}</span>
       </button>
 
       <div class="lang-switch">
@@ -100,6 +106,7 @@ import { LanguageService } from '@core/i18n/language.service';
       font-size: 11px; border-radius: 4px; font-weight: 500;
     }
     .lang-switch button.on { background: var(--c-text); color: var(--c-on-primary); border-color: var(--c-text); }
+    .theme-btn .theme-icon { font-size: 15px; line-height: 1; opacity: 0.85; }
     .profile {
       background: transparent; border: none; cursor: pointer;
       width: 32px; height: 32px; padding: 0;
@@ -113,8 +120,10 @@ import { LanguageService } from '@core/i18n/language.service';
   `]
 })
 export class AppTopbarComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   readonly auth = inject(AuthService);
   readonly lang = inject(LanguageService);
+  readonly theme = inject(ThemeService);
 
   readonly toggleSidebar = output<void>();
   readonly create = output<void>();
@@ -147,5 +156,10 @@ export class AppTopbarComponent {
 
   onCreate(): void {
     this.create.emit();
+  }
+
+  toggleTheme(): void {
+    this.theme.toggle();
+    this.cdr.markForCheck();
   }
 }

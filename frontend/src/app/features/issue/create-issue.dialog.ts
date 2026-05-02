@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, model, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject, input, model, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
@@ -67,7 +67,7 @@ import { UserPickerComponent } from '@shared/ui/user-picker.component';
                   [label]="'common.cancel' | translate"></button>
           <button pButton type="submit"
                   [loading]="saving()"
-                  [disabled]="!canSave() || saving()"
+                  [disabled]="!canSubmitForm() || saving()"
                   [label]="'common.save' | translate"></button>
         </div>
       </form>
@@ -80,9 +80,10 @@ import { UserPickerComponent } from '@shared/ui/user-picker.component';
     .actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
   `]
 })
-export class CreateIssueDialogComponent implements OnInit {
+export class CreateIssueDialogComponent {
   private readonly issueApi = inject(IssueApiService);
   private readonly projectApi = inject(ProjectApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /** Pre-fix project (vd. khi mở từ project detail). null = cho phép user chọn. */
   readonly fixedProjectId = input<string | null>(null);
@@ -108,19 +109,29 @@ export class CreateIssueDialogComponent implements OnInit {
     summary: '', description: '', priority: 3
   };
 
-  readonly canSave = computed(() =>
-    !!this.selectedProjectId && !!this.selectedTypeId && this.model.summary.trim().length > 0
-  );
+  /** Không dùng computed(signal-only): selectedTypeId là field gán async — method + markForCheck. */
+  canSubmitForm(): boolean {
+    return !!this.selectedProjectId && !!this.selectedTypeId && this.model.summary.trim().length > 0;
+  }
 
-  ngOnInit(): void {
-    if (this.fixedProjectId()) {
-      this.selectedProjectId = this.fixedProjectId();
-      this.loadIssueTypes(this.selectedProjectId!);
-    } else {
-      this.projectApi.listMine().subscribe(list => {
-        this.projects.set(list);
-      });
-    }
+  constructor() {
+    effect(
+      () => {
+        const open = this.visible();
+        const pid = this.fixedProjectId();
+        if (!open) return;
+        if (pid) {
+          this.selectedProjectId = pid;
+          this.loadIssueTypes(pid);
+        } else {
+          this.selectedProjectId = null;
+          this.selectedTypeId = null;
+          this.issueTypes.set([]);
+          this.projectApi.listMine().subscribe((list) => this.projects.set(list));
+        }
+      },
+      { allowSignalWrites: true }
+    );
   }
 
   onProjectChange(): void {
@@ -136,11 +147,12 @@ export class CreateIssueDialogComponent implements OnInit {
       // Default: Story nếu có, không thì cái đầu tiên.
       const def = nonSubtask.find(t => t.key === 'STORY') ?? nonSubtask[0];
       if (def) this.selectedTypeId = def.id;
+      this.cdr.markForCheck();
     });
   }
 
   save(): void {
-    if (!this.canSave()) return;
+    if (!this.canSubmitForm()) return;
     this.saving.set(true);
     this.issueApi.create({
       projectId: this.selectedProjectId!,

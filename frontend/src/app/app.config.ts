@@ -12,6 +12,7 @@ import { routes } from './app.routes';
 import { APP_CONFIG } from './core/config/app-config';
 import { environment } from '../environments/environment';
 import { LanguageService } from './core/i18n/language.service';
+import { ThemeService } from './core/theme/theme.service';
 import {
   apiResponseInterceptor,
   authInterceptor,
@@ -25,6 +26,12 @@ export function HttpLoaderFactory(http: HttpClient) {
 
 export function initLanguageFactory(lang: LanguageService): () => void {
   return () => lang.init(environment.defaultLang, environment.supportedLangs);
+}
+
+export function initThemeFactory(theme: ThemeService): () => void {
+  return () => {
+    theme.init();
+  };
 }
 
 export const appConfig: ApplicationConfig = {
@@ -58,6 +65,12 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initLanguageFactory,
       deps: [LanguageService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initThemeFactory,
+      deps: [ThemeService],
       multi: true
     }
   ]

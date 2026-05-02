@@ -19,6 +19,9 @@
     "no": "No",
     "logout": "Logout"
   },
+  "theme": {
+    "toggle_aria": "Switch light or dark theme"
+  },
   "nav": {
     "home": "Home",
     "workspaces": "Workspaces",
@@ -91,7 +94,9 @@
     "you": "You",
     "edited": "edited",
     "empty": "No comments yet. Be the first.",
-    "placeholder": "Write a comment. Use @username to mention..."
+    "placeholder": "Write a comment. Use @username to mention...",
+    "delete_confirm_title": "Delete comment?",
+    "delete_confirm_detail": "This cannot be undone."
   },
   "activity": {
     "title": "Activity",

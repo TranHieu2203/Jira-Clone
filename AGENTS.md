@@ -27,8 +27,9 @@ curl -s -X POST http://localhost:4200/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"userName":"admin","password":"Admin@123"}'
 
-# E2E headed (xem AI thao tác trên browser)
+# E2E headed — luồng Jira-Clone đầy đủ (workspace → board → issue → comment → **theme dark/light** → **xóa comment (ConfirmDialog)** → attachment → UserPicker → Sample validation → i18n → logout)
 cd e2e && node run.js
+# hoặc: npm run jira-flow --prefix e2e
 ```
 
 Tài khoản seed: **admin / Admin@123**.

@@ -19,6 +19,9 @@
     "no": "Không",
     "logout": "Đăng xuất"
   },
+  "theme": {
+    "toggle_aria": "Đổi giao diện sáng hoặc tối"
+  },
   "nav": {
     "home": "Trang chủ",
     "workspaces": "Workspace",
@@ -91,7 +94,9 @@
     "you": "Bạn",
     "edited": "đã sửa",
     "empty": "Chưa có bình luận. Hãy là người đầu tiên.",
-    "placeholder": "Nhập bình luận. Dùng @username để mention..."
+    "placeholder": "Nhập bình luận. Dùng @username để mention...",
+    "delete_confirm_title": "Xóa bình luận?",
+    "delete_confirm_detail": "Thao tác này không hoàn tác."
   },
   "activity": {
     "title": "Hoạt động",

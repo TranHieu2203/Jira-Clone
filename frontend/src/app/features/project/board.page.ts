@@ -13,6 +13,7 @@ import { ProjectApiService, ProjectDetail } from '@core/api/project.service';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
 import { AvailableTransition, Workflow, WorkflowApiService, WorkflowStatus } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
+import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { NotificationService } from '@core/notification/notification.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
 import { filter, firstValueFrom, forkJoin, interval, switchMap } from 'rxjs';
@@ -311,6 +312,7 @@ export class BoardPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly notif = inject(NotificationService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly workspaceCtx = inject(WorkspaceContextService);
 
   readonly project = signal<ProjectDetail | null>(null);
   readonly workflow = signal<Workflow | null>(null);
@@ -432,6 +434,8 @@ export class BoardPageComponent implements OnInit {
         this.loading.set(false);
         return;
       }
+
+      this.workspaceCtx.setProject(summary);
 
       const result = await firstValueFrom(forkJoin({
         detail: this.projApi.getById(summary.id),

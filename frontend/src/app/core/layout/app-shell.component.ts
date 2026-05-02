@@ -50,8 +50,8 @@ export class AppShellComponent {
   readonly sidebarCollapsed = signal(false);
   readonly createIssueVisible = signal(false);
 
-  /** Khi đang trong project, dialog tự pre-fill project. */
-  readonly contextProjectId = computed(() => null as string | null);
+  /** Khi sidebar đã có project context (detail/board/issues…), dialog Create Issue pre-fill project. */
+  readonly contextProjectId = computed(() => this.ctx.project()?.id ?? null);
 
   onToggle(): void {
     this.sidebarCollapsed.update(v => !v);

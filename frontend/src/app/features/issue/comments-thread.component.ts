@@ -1,16 +1,19 @@
 import { ChangeDetectionStrategy, Component, OnChanges, SimpleChanges, computed, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { TextareaModule } from 'primeng/textarea';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 import { Comment, CommentApiService } from '@core/api/comment.service';
 import { AuthService } from '@core/auth/auth.service';
 
 @Component({
   selector: 'app-comments-thread',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, ButtonModule, TextareaModule],
+  imports: [CommonModule, FormsModule, TranslateModule, ButtonModule, TextareaModule, ConfirmDialogModule],
+  providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="thread">
@@ -35,7 +38,7 @@ import { AuthService } from '@core/auth/auth.service';
               @if (c.authorId === currentUserId() && editingId() !== c.id) {
                 <div class="actions">
                   <button (click)="startEdit(c)" class="link" type="button">{{ 'common.edit' | translate }}</button>
-                  <button (click)="deleteComment(c)" class="link danger" type="button">{{ 'common.delete' | translate }}</button>
+                  <button (click)="requestDelete(c)" class="link danger" type="button">{{ 'common.delete' | translate }}</button>
                 </div>
               }
             </div>
@@ -79,6 +82,8 @@ import { AuthService } from '@core/auth/auth.service';
           </div>
         </div>
       </div>
+
+      <p-confirmDialog />
     </section>
   `,
   styles: [`
@@ -145,6 +150,8 @@ import { AuthService } from '@core/auth/auth.service';
 export class CommentsThreadComponent implements OnChanges {
   private readonly api = inject(CommentApiService);
   private readonly auth = inject(AuthService);
+  private readonly confirm = inject(ConfirmationService);
+  private readonly translate = inject(TranslateService);
 
   readonly issueId = input.required<string>();
 
@@ -211,11 +218,31 @@ export class CommentsThreadComponent implements OnChanges {
     });
   }
 
-  deleteComment(c: Comment): void {
-    if (!confirm('Xóa comment này?')) return;
+  requestDelete(c: Comment): void {
+    this.translate
+      .get([
+        'comment.delete_confirm_title',
+        'comment.delete_confirm_detail',
+        'common.yes',
+        'common.no'
+      ])
+      .subscribe((t) => {
+        this.confirm.confirm({
+          header: t['comment.delete_confirm_title'],
+          message: t['comment.delete_confirm_detail'],
+          icon: 'pi pi-exclamation-triangle',
+          acceptLabel: t['common.yes'],
+          rejectLabel: t['common.no'],
+          acceptButtonStyleClass: 'p-button-danger',
+          accept: () => this.performDelete(c)
+        });
+      });
+  }
+
+  private performDelete(c: Comment): void {
     this.api.delete(c.id).subscribe({
       next: () => {
-        this.comments.update(list => list.filter(x => x.id !== c.id));
+        this.comments.update((list) => list.filter((x) => x.id !== c.id));
       }
     });
   }

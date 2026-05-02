@@ -75,10 +75,13 @@ export class AttachmentPanelComponent {
   readonly deletingId = signal<string | null>(null);
 
   constructor() {
-    effect(() => {
-      const id = this.issueId();
-      if (id) this.loadList(id);
-    });
+    effect(
+      () => {
+        const id = this.issueId();
+        if (id) this.loadList(id);
+      },
+      { allowSignalWrites: true }
+    );
   }
 
   private loadList(issueId: string): void {

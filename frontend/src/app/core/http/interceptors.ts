@@ -63,6 +63,11 @@ export const apiResponseInterceptor: HttpInterceptorFn = (req, next) => {
   );
 };
 
+function shouldLogoutOn401(reqUrl: string): boolean {
+  // Sai mật khẩu /login → không logout (user chưa authenticated); chỉ hiện ErrorDialog.
+  return !reqUrl.includes('/auth/login');
+}
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notif = inject(NotificationService);
   const auth = inject(AuthService);
@@ -70,7 +75,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((err: unknown) => {
       try {
         if (err instanceof ApiException) {
-          if (err.status === 401) auth.logout();
+          if (err.status === 401 && shouldLogoutOn401(req.url)) auth.logout();
           notif.error({
             messageKey: err.messageKey,
             errors: err.errors,
@@ -82,7 +87,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         if (err instanceof HttpErrorResponse) {
           const body = isApiResponse(err.error) ? err.error : null;
           const traceId = err.headers.get(TRACE_HEADER) ?? body?.traceId ?? '-';
-          if (err.status === 401) auth.logout();
+          if (err.status === 401 && shouldLogoutOn401(req.url)) auth.logout();
           notif.error({
             messageKey: body?.messageKey ?? mapStatusKey(err.status),
             errors: body?.errors ?? null,
