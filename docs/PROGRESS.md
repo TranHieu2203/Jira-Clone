@@ -26,7 +26,7 @@
 | P4 | Module Project + Workspace | `[x]` Workspace + Project + IssueType + IPermissionChecker impl + IIssueTypeReader contract + IIssueNumberAllocator. 19 unit test PASS |
 | P5 | Module Issue (dùng Workflow + Field) | `[x]` Issue domain + service tích hợp 4 module. 15 unit test PASS. **Smoke test docker compose: login → workspace → project → issue → transition PASS.** |
 | P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
-| P6 | Board Kanban (drag-drop, signal-based) | `[~]` CDK drag-drop + optimistic rollback + filter assignee/issue type (`p-select`) + dialog chọn transition khi >1 transition cùng target status. Còn: polling 30s / SignalR (P11), swimlanes |
+| P6 | Board Kanban (drag-drop, signal-based) | `[~]` CDK drag-drop + optimistic rollback + filter assignee/issue type (`p-select`) + dialog chọn transition khi >1 transition cùng target status + **polling 30s** (làm mới issue list). Còn: SignalR (P11), swimlanes (optional) |
 | P7 | Comment + Attachment + Activity Log | `[~]` Comment ✅; ActivityLog ✅ (handlers, schema `activity_log`, `GET /api/v1/activity/by-issue/{id}`, FE timeline trên issue detail). Attachment defer (cần file storage). |
 | P8 | Sprint + Backlog | `[ ]` |
 | P9 | Search + Filter (incl. custom field) + Notification | `[ ]` |
@@ -615,3 +615,4 @@ tests/
 | 2026-05-02 | claude | 📌 Tạo `docs/BACKLOG.md` — single source cho việc dang dở + quick start session sau. Tổng hợp 14 limitations, 4 mức ưu tiên, recommend P7.activity (ActivityLog) làm tiếp. |
 | 2026-05-02 | cursor | P7 Activity Log ✅ — Module `ActivityLog` (Domain `ActivityEntry`, 11× `IDomainEventHandler` Issue+Comment, Infra Postgres migration `InitActivityLog_Postgres`, Api `ActivityLogController`). FE: `ActivityApiService`, `ActivityTimelineComponent` trên issue detail. i18n `activity.*` (BE vi/en + FE vi/en). |
 | 2026-05-02 | cursor | P5 FE user picker + P6 board polish: Identity `IUserSearchService`, `UsersController` (`/users/search`, `/users/{id}`), FE `UserApiService`, `UserPickerComponent` (PrimeNG AutoComplete). Gắn CreateProjectDialog (lead), CreateIssueDialog + IssueDetailPage (assignee). Board: filters + multi-transition dialog. i18n `user.*`, `project.lead`, `issue.assignee_save`, `board.filter_*`, `board.pick_transition*`. |
+| 2026-05-02 | cursor | P6 board — polling 30s trên `BoardPageComponent`: `interval` + `switchMap` → `issueApi.search` (pageSize 200), dừng tick khi dialog chọn transition mở (`pickVisible`), huỷ khi destroy; không toast khi lỗi mạng. |

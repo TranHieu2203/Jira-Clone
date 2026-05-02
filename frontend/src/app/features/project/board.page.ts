@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, model, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterModule } from '@angular/router';
@@ -14,7 +15,7 @@ import { AvailableTransition, Workflow, WorkflowApiService, WorkflowStatus } fro
 import { AuthService } from '@core/auth/auth.service';
 import { NotificationService } from '@core/notification/notification.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
-import { firstValueFrom, forkJoin } from 'rxjs';
+import { filter, firstValueFrom, forkJoin, interval, switchMap } from 'rxjs';
 
 interface Column {
   status: WorkflowStatus;
@@ -235,7 +236,11 @@ interface SelectOpt<T> {
   `]
 })
 export class BoardPageComponent implements OnInit {
+  /** Khoảng làm mới board khi có workflow (MVP polling, defer SignalR). */
+  private static readonly PollIntervalMs = 30_000;
+
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly projApi = inject(ProjectApiService);
   private readonly issueApi = inject(IssueApiService);
   private readonly wfApi = inject(WorkflowApiService);
@@ -254,6 +259,7 @@ export class BoardPageComponent implements OnInit {
   readonly pickVisible = model(false);
   readonly pendingPick = signal<PendingTransitionPick | null>(null);
   private pickCommitted = false;
+  private issuePollingStarted = false;
 
   readonly columns = computed(() => {
     const fullWf = this.workflow();
@@ -351,9 +357,41 @@ export class BoardPageComponent implements OnInit {
 
       this.issuesAll.set(page.items);
       this.loading.set(false);
+      this.startIssuePolling();
     } catch {
       this.loading.set(false);
     }
+  }
+
+  /** Đồng bộ danh sách issue định kỳ (không toast; lỗi bỏ qua). */
+  private startIssuePolling(): void {
+    if (this.issuePollingStarted) return;
+    this.issuePollingStarted = true;
+    interval(BoardPageComponent.PollIntervalMs)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        filter(() => {
+          const hasProject = this.project() !== null;
+          const hasWf = this.workflow() !== null;
+          return hasProject && hasWf && !this.loading() && !this.pickVisible();
+        }),
+        switchMap(() => {
+          const projectId = this.project()!.id;
+          return this.issueApi.search({
+            projectId,
+            pageIndex: 1,
+            pageSize: 200,
+            sort: 'key',
+            includeArchived: false
+          });
+        })
+      )
+      .subscribe({
+        next: (page) => this.issuesAll.set(page.items),
+        error: () => {
+          /* silent — không làm gián đoạn board */
+        }
+      });
   }
 
   async onDrop(event: CdkDragDrop<Column>): Promise<void> {

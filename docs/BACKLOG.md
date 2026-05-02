@@ -87,9 +87,8 @@ cd frontend && npx ng build --configuration=development
 ## 2. Backlog priority — **Ưu tiên cao** (làm trước)
 
 ### 🟡 P6.polish — Board realtime (còn lại)
-**Đã có**: filter assignee / issue type trên board; dialog chọn transition khi có nhiều transition cùng target status.
+**Đã có**: filter assignee / issue type trên board; dialog chọn transition khi có nhiều transition cùng target status; **polling 30s** làm mới `issueApi.search` (tạm thời; defer SignalR đến P11).
 **Còn làm**:
-- Auto-refresh polling 30s (defer SignalR đến P11)
 - Swimlanes (optional)
 
 ### 🟡 BB#12 — Oracle migration + per-provider runner
@@ -209,7 +208,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 ## 7. Recommended next session start
 
 **Open prompt**:
-> Tiếp tục **BB#12 (Oracle migrations)** hoặc **P7.attachment** (sau khi có BB.Storage). Hoặc **P6** polling 30s cho board.
+> Tiếp tục **BB#12 (Oracle migrations)** hoặc **P7.attachment** (sau khi có BB.Storage). Hoặc P6 swimlanes (optional).
 
 Optional UX:
 > Workspace **Add member** dialog — hiện vẫn nhập raw `userId`; có thể tái sử dụng `UserPicker` + API search.
