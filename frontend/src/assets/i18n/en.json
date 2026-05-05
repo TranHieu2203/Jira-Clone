@@ -17,7 +17,8 @@
     "details": "Details",
     "yes": "Yes",
     "no": "No",
-    "logout": "Logout"
+    "logout": "Logout",
+    "clear": "Clear"
   },
   "theme": {
     "toggle_aria": "Switch light or dark theme"
@@ -251,7 +252,11 @@
     "unassigned": "Unassigned",
     "details": "Details",
     "transition_menu_title": "Move to",
-    "transition_empty": "No available transition from current status"
+    "transition_empty": "No available transition from current status",
+    "parent": "Parent",
+    "parent_search_placeholder": "Search Epic/Story to link...",
+    "parent_unset": "(none)",
+    "parent_save": "Save parent"
   },
   "comment": {
     "title": "Comments",

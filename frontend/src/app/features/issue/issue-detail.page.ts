@@ -9,7 +9,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ButtonGroupModule } from 'primeng/buttongroup';
 import { OverlayPanelModule } from 'primeng/overlaypanel';
 import { TooltipModule } from 'primeng/tooltip';
-import { Issue, IssueApiService, UpdateIssueRequest } from '@core/api/issue.service';
+import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
+import { Issue, IssueApiService, IssueSummary, UpdateIssueRequest } from '@core/api/issue.service';
 import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
@@ -27,6 +28,7 @@ import { IssueStatusBadgeComponent } from '@shared/ui/issue-status-badge.compone
 import { IssuePriorityIconComponent } from '@shared/ui/issue-priority-icon.component';
 import { IssueTypePillComponent } from '@shared/ui/issue-type-pill.component';
 import { UserAvatarComponent } from '@shared/ui/user-avatar.component';
+import { firstValueFrom } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 @Component({
@@ -34,7 +36,7 @@ import { switchMap } from 'rxjs/operators';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
-    ButtonModule, ButtonGroupModule, InputTextModule, OverlayPanelModule, TooltipModule, RichTextEditorComponent,
+    ButtonModule, ButtonGroupModule, InputTextModule, OverlayPanelModule, TooltipModule, AutoCompleteModule, RichTextEditorComponent,
     CommentsThreadComponent,
     AttachmentPanelComponent,
     LinkedIssuesPanelComponent,
@@ -182,6 +184,57 @@ import { switchMap } from 'rxjs/operators';
             </div>
           </div>
           <div class="side-section">
+            <div class="kv parent-row">
+              <span>{{ 'issue.parent' | translate }}</span>
+              @if (!editingParent()) {
+                <span class="parent-display">
+                  @if (i.parentIssueId; as pid) {
+                    <a [routerLink]="['/issues', parentDisplay()?.key ?? pid]" class="parent-link">
+                      <code>{{ parentDisplay()?.key ?? pid.slice(0, 8) + '…' }}</code>
+                      @if (parentDisplay(); as p) { <span class="parent-summary">{{ p.summary }}</span> }
+                    </a>
+                  } @else {
+                    <span class="muted">{{ 'issue.parent_unset' | translate }}</span>
+                  }
+                  <button pButton type="button" size="small" [text]="true" class="parent-edit-btn"
+                          (click)="startEditParent()"
+                          icon="pi pi-pencil"></button>
+                </span>
+              } @else {
+                <div class="parent-edit">
+                  <p-autoComplete
+                    name="parentEdit"
+                    [(ngModel)]="parentDraft"
+                    [suggestions]="parentSuggestions()"
+                    (completeMethod)="onParentSearch($event)"
+                    [forceSelection]="true"
+                    [delay]="200"
+                    [minLength]="1"
+                    appendTo="body"
+                    [placeholder]="'issue.parent_search_placeholder' | translate">
+                    <ng-template let-p pTemplate="item">
+                      <span class="suggest"><span class="key">{{ p.key }}</span><span class="summary">{{ p.summary }}</span></span>
+                    </ng-template>
+                    <ng-template let-p pTemplate="selectedItem">
+                      <span class="suggest"><span class="key">{{ p.key }}</span><span class="summary">{{ p.summary }}</span></span>
+                    </ng-template>
+                  </p-autoComplete>
+                  <div class="parent-actions">
+                    <button pButton type="button" size="small" [text]="true"
+                            (click)="cancelEditParent()"
+                            [label]="'common.cancel' | translate"></button>
+                    <button pButton type="button" size="small" [text]="true"
+                            (click)="parentDraft = null; saveParent()"
+                            [label]="'common.clear' | translate"></button>
+                    <button pButton type="button" size="small"
+                            [loading]="savingParent()"
+                            [disabled]="savingParent()"
+                            (click)="saveParent()"
+                            [label]="'issue.parent_save' | translate"></button>
+                  </div>
+                </div>
+              }
+            </div>
             @if (i.dueDate) { <div class="kv"><span>{{ 'issue.due_date' | translate }}</span>{{ i.dueDate | date:'short' }}</div> }
             @if (i.storyPoints !== null && i.storyPoints !== undefined) {
               <div class="kv"><span>{{ 'issue.story_points' | translate }}</span>{{ i.storyPoints }}</div>
@@ -321,6 +374,28 @@ import { switchMap } from 'rxjs/operators';
     .pri-label { font-size: 12px; color: var(--c-text); }
     .reporter-cell { display: inline-flex; align-items: center; gap: 6px; }
     .reporter-name { font-size: 12px; color: var(--c-text); }
+    .parent-row { flex-direction: column; align-items: stretch; gap: 6px; }
+    .parent-row > span:first-child { flex: none; }
+    .parent-display {
+      display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
+    }
+    .parent-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      flex: 1; min-width: 0; text-decoration: none; color: var(--c-text);
+    }
+    .parent-link code { font-family: monospace; font-size: 11px; color: var(--c-text-muted); }
+    .parent-link:hover code { color: var(--c-text); text-decoration: underline; }
+    .parent-summary {
+      flex: 1; min-width: 0; font-size: 12px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .parent-edit-btn { padding: 4px; min-width: 26px; }
+    .muted { color: var(--c-text-muted); font-style: italic; }
+    .parent-edit { display: flex; flex-direction: column; gap: 6px; }
+    .parent-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+    .suggest { display: inline-flex; gap: 8px; align-items: center; }
+    .suggest .key { font-family: monospace; font-weight: 600; font-size: 12px; color: var(--c-text-muted); }
+    .suggest .summary { font-size: 12px; }
     .labels { display: flex; flex-wrap: wrap; gap: 4px; }
     .lbl {
       font-size: 11px; padding: 1px 6px; border-radius: 3px;
@@ -366,6 +441,13 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
   readonly savingDescription = signal(false);
   descriptionDraft = '';
 
+  // ─── Parent editing state ────────────────────────────────────────
+  readonly editingParent = signal(false);
+  readonly savingParent = signal(false);
+  readonly parentDisplay = signal<IssueSummary | null>(null);
+  readonly parentSuggestions = signal<IssueSummary[]>([]);
+  parentDraft: IssueSummary | null = null;
+
   readonly assigneeDirty = computed(() => {
     const i = this.issue();
     if (!i) return false;
@@ -409,21 +491,108 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ─── Parent edit ─────────────────────────────────────────────────
+
+  startEditParent(): void {
+    this.parentDraft = this.parentDisplay();
+    this.parentSuggestions.set([]);
+    this.editingParent.set(true);
+  }
+
+  cancelEditParent(): void {
+    this.parentDraft = this.parentDisplay();
+    this.editingParent.set(false);
+  }
+
+  /**
+   * Search non-subtask issues trong project hiện tại để chọn parent.
+   * Loại bỏ chính issue đang xem (không thể là parent của chính nó).
+   */
+  onParentSearch(event: AutoCompleteCompleteEvent): void {
+    const i = this.issue();
+    const q = (event.query ?? '').trim();
+    if (!i) {
+      this.parentSuggestions.set([]);
+      return;
+    }
+    this.api.search({
+      projectId: i.projectId,
+      pageIndex: 1,
+      pageSize: 20,
+      sort: 'key',
+      textSearch: q.length >= 1 ? q : null,
+      includeArchived: false
+    }).subscribe({
+      next: page => {
+        const filtered = page.items
+          .filter(x => x.id !== i.id)
+          .slice(0, 10);
+        this.parentSuggestions.set(filtered);
+      },
+      error: () => this.parentSuggestions.set([])
+    });
+  }
+
+  saveParent(): void {
+    const i = this.issue();
+    if (!i) return;
+    const newParentId = this.parentDraft?.id ?? null;
+    if (newParentId === (i.parentIssueId ?? null)) {
+      this.editingParent.set(false);
+      return;
+    }
+    this.savingParent.set(true);
+    const req: UpdateIssueRequest = {
+      summary: i.summary,
+      description: i.description ?? null,
+      priority: i.priority,
+      assigneeId: i.assigneeId ?? null,
+      parentIssueId: newParentId,
+      dueDate: i.dueDate ?? null,
+      storyPoints: i.storyPoints ?? null,
+      labels: i.labels ?? null,
+      originalEstimateMinutes: i.originalEstimateMinutes ?? null,
+      remainingEstimateMinutes: i.remainingEstimateMinutes ?? null,
+      timeSpentMinutes: i.timeSpentMinutes ?? null
+    };
+    this.api.update(i.id, req).subscribe({
+      next: updated => {
+        this.issue.set(updated);
+        this.parentDisplay.set(this.parentDraft);
+        this.editingParent.set(false);
+        this.savingParent.set(false);
+      },
+      error: () => this.savingParent.set(false)
+    });
+  }
+
   private load(issueKey: string): void {
     this.api.getByKey(issueKey).subscribe(async (i) => {
       this.issue.set(i);
       this.assigneeDraft.set(i.assigneeId ?? null);
       this.descriptionDraft = i.description ?? '';
       this.editingDescription.set(false);
+      this.editingParent.set(false);
+      this.parentDisplay.set(null);
       // Warm caches THEN trigger CD so type pill / status badge / reporter
       // hiển thị tên thật ngay khi caches resolve (thay vì "?" / GUID slice).
       const userIds: string[] = [i.reporterId];
       if (i.assigneeId) userIds.push(i.assigneeId);
-      await Promise.all([
+      const tasks: Promise<unknown>[] = [
         this.statusCache.ensureProjectLoaded(i.projectId),
         this.typeCache.ensureProjectLoaded(i.projectId),
         this.userCache.ensureLoaded(userIds)
-      ]);
+      ];
+      // Lookup parent summary để hiển thị key + summary thay vì GUID raw.
+      if (i.parentIssueId) {
+        tasks.push(
+          firstValueFrom(this.api.search({
+            issueIds: [i.parentIssueId], pageIndex: 1, pageSize: 1, sort: 'key', includeArchived: true
+          })).then(page => this.parentDisplay.set(page.items[0] ?? null)).catch(() => {})
+        );
+      }
+      await Promise.all(tasks);
+      this.parentDraft = this.parentDisplay();
       this.cdr.markForCheck();
       this.loadTransitions(i);
       // F12: join hub group cho issue này (re-join idempotent nếu đã join).

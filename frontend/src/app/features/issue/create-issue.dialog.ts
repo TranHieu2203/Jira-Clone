@@ -18,7 +18,8 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
 import { SelectModule } from 'primeng/select';
-import { Issue, IssueApiService, IssuePriority } from '@core/api/issue.service';
+import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
+import { Issue, IssueApiService, IssuePriority, IssueSummary } from '@core/api/issue.service';
 import { IssueType, ProjectApiService, ProjectDetail, ProjectSummary } from '@core/api/project.service';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
 import { RichTextEditorComponent } from '@shared/ui/rich-text-editor.component';
@@ -29,7 +30,7 @@ import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.compo
   standalone: true,
   imports: [
     CommonModule, FormsModule, TranslateModule,
-    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule,
+    ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule, AutoCompleteModule,
     UserPickerComponent, RichTextEditorComponent, IssueCustomFieldsFormComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -55,6 +56,38 @@ import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.compo
                     [options]="issueTypes()" optionLabel="name" optionValue="id"
                     [disabled]="issueTypes().length === 0"
                     appendTo="body" />
+        </label>
+        <label class="field">
+          <span>{{ 'issue.parent' | translate }}</span>
+          <p-autoComplete
+            name="parent"
+            [(ngModel)]="parentSelection"
+            [suggestions]="parentSuggestions()"
+            (completeMethod)="onParentSearch($event)"
+            [forceSelection]="true"
+            [delay]="200"
+            [minLength]="1"
+            appendTo="body"
+            [placeholder]="'issue.parent_search_placeholder' | translate"
+            [disabled]="!selectedProjectId">
+            <ng-template let-i pTemplate="item">
+              <span class="parent-suggest">
+                <span class="key">{{ i.key }}</span>
+                <span class="summary">{{ i.summary }}</span>
+              </span>
+            </ng-template>
+            <ng-template let-i pTemplate="selectedItem">
+              <span class="parent-suggest">
+                <span class="key">{{ i.key }}</span>
+                <span class="summary">{{ i.summary }}</span>
+              </span>
+            </ng-template>
+          </p-autoComplete>
+          @if (parentSelection) {
+            <button pButton type="button" size="small" [text]="true" class="clear-parent"
+                    (click)="clearParent()"
+                    [label]="'common.clear' | translate"></button>
+          }
         </label>
         <label class="field">
           <span>{{ 'issue.summary' | translate }} *</span>
@@ -102,6 +135,10 @@ import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.compo
     .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--c-text-muted); }
     textarea { resize: vertical; }
     .actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; }
+    .parent-suggest { display: inline-flex; gap: 8px; align-items: center; }
+    .parent-suggest .key { font-family: monospace; font-weight: 600; font-size: 12px; color: var(--c-text-muted); }
+    .parent-suggest .summary { font-size: 13px; }
+    .clear-parent { align-self: flex-start; padding: 0; color: var(--c-text-muted); }
   `]
 })
 export class CreateIssueDialogComponent {
@@ -113,12 +150,15 @@ export class CreateIssueDialogComponent {
 
   /** Pre-fix project (vd. khi mở từ project detail). null = cho phép user chọn. */
   readonly fixedProjectId = input<string | null>(null);
+  /** Pre-fill parent issue (e.g. mở dialog từ Epic detail). User vẫn có thể clear. */
+  readonly initialParentIssueId = input<string | null>(null);
   readonly visible = model<boolean>(false);
   readonly assigneeUserId = model<string | null>(null);
   readonly created = output<Issue>();
 
   readonly projects = signal<ProjectSummary[]>([]);
   readonly issueTypes = signal<IssueType[]>([]);
+  readonly parentSuggestions = signal<IssueSummary[]>([]);
   readonly saving = signal(false);
 
   readonly priorityOptions = [
@@ -131,6 +171,7 @@ export class CreateIssueDialogComponent {
 
   selectedProjectId: string | null = null;
   selectedTypeId: string | null = null;
+  parentSelection: IssueSummary | null = null;
   model: { summary: string; description: string; priority: IssuePriority } = {
     summary: '', description: '', priority: 3
   };
@@ -145,6 +186,7 @@ export class CreateIssueDialogComponent {
       () => {
         const open = this.visible();
         const pid = this.fixedProjectId();
+        const parentId = this.initialParentIssueId();
         if (!open) return;
         if (pid) {
           this.selectedProjectId = pid;
@@ -155,6 +197,20 @@ export class CreateIssueDialogComponent {
           this.issueTypes.set([]);
           this.projectApi.listMine().subscribe((list) => this.projects.set(list));
         }
+        // Pre-fill parent nếu caller cung cấp initialParentIssueId.
+        if (parentId) {
+          this.issueApi.search({
+            issueIds: [parentId], pageIndex: 1, pageSize: 1, sort: 'key', includeArchived: false
+          }).subscribe(page => {
+            const found = page.items[0] ?? null;
+            if (found) {
+              this.parentSelection = found;
+              this.cdr.markForCheck();
+            }
+          });
+        } else {
+          this.parentSelection = null;
+        }
       },
       { allowSignalWrites: true }
     );
@@ -162,8 +218,50 @@ export class CreateIssueDialogComponent {
 
   onProjectChange(): void {
     this.selectedTypeId = null;
+    this.parentSelection = null;
+    this.parentSuggestions.set([]);
     this.issueTypes.set([]);
     if (this.selectedProjectId) this.loadIssueTypes(this.selectedProjectId);
+  }
+
+  /**
+   * Search issues trong project hiện tại để chọn parent. Trả về tối đa 10 kết quả,
+   * loại bỏ sub-task (không thể là parent của issue khác).
+   *
+   * BE chưa expose filter "non-subtask" qua search → filter tại FE bằng issueTypeId
+   * lookup. Đủ dùng MVP; nếu list project có nhiều subtask, server-side filter sau.
+   */
+  onParentSearch(event: AutoCompleteCompleteEvent): void {
+    const q = (event.query ?? '').trim();
+    const pid = this.selectedProjectId;
+    if (!pid) {
+      this.parentSuggestions.set([]);
+      return;
+    }
+    const subtaskTypeIds = new Set(
+      this.issueTypes().filter(t => t.isSubtask).map(t => t.id)
+    );
+    this.issueApi.search({
+      projectId: pid,
+      pageIndex: 1,
+      pageSize: 20,
+      sort: 'key',
+      textSearch: q.length >= 1 ? q : null,
+      includeArchived: false
+    }).subscribe({
+      next: page => {
+        const filtered = page.items
+          .filter(i => !subtaskTypeIds.has(i.issueTypeId))
+          .slice(0, 10);
+        this.parentSuggestions.set(filtered);
+      },
+      error: () => this.parentSuggestions.set([])
+    });
+  }
+
+  clearParent(): void {
+    this.parentSelection = null;
+    this.parentSuggestions.set([]);
   }
 
   private loadIssueTypes(projectId: string): void {
@@ -188,7 +286,7 @@ export class CreateIssueDialogComponent {
       description: this.model.description || null,
       priority: this.model.priority,
       assigneeId: this.assigneeUserId(),
-      parentIssueId: null,
+      parentIssueId: this.parentSelection?.id ?? null,
       dueDate: null,
       storyPoints: null,
       labels: null,
@@ -207,6 +305,8 @@ export class CreateIssueDialogComponent {
   private reset(): void {
     if (!this.fixedProjectId()) this.selectedProjectId = null;
     this.selectedTypeId = null;
+    this.parentSelection = null;
+    this.parentSuggestions.set([]);
     this.model = { summary: '', description: '', priority: 3 };
     this.assigneeUserId.set(null);
   }

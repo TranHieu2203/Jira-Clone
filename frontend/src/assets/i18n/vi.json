@@ -17,7 +17,8 @@
     "details": "Chi tiết",
     "yes": "Có",
     "no": "Không",
-    "logout": "Đăng xuất"
+    "logout": "Đăng xuất",
+    "clear": "Xóa"
   },
   "theme": {
     "toggle_aria": "Đổi giao diện sáng hoặc tối"
@@ -251,7 +252,11 @@
     "unassigned": "Chưa giao",
     "details": "Chi tiết",
     "transition_menu_title": "Chuyển sang",
-    "transition_empty": "Không có transition khả dụng từ trạng thái này"
+    "transition_empty": "Không có transition khả dụng từ trạng thái này",
+    "parent": "Issue cha",
+    "parent_search_placeholder": "Tìm Epic/Story để gắn...",
+    "parent_unset": "(không có)",
+    "parent_save": "Lưu cha"
   },
   "comment": {
     "title": "Bình luận",
