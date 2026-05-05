@@ -423,7 +423,11 @@
     "group_flat": "Flat",
     "group_no_epic": "No Epic",
     "count_issues": "{{count}} issues",
-    "story_points": "Story points"
+    "story_points": "Story points",
+    "no_project_title": "You're not a member of any project yet",
+    "no_project_hint": "Create or join a project to see its backlog.",
+    "pick_project_title": "Pick a project to view its backlog",
+    "pick_project_hint": "We'll remember your last choice next time."
   },
   "sprint": {
     "create": "New sprint",

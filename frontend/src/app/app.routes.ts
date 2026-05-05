@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () => import('@features/project/board.page').then((m) => m.BoardPageComponent)
       },
       {
+        path: 'backlog',
+        loadComponent: () =>
+          import('@features/project/backlog-redirect.page').then((m) => m.BacklogRedirectPageComponent)
+      },
+      {
         path: 'projects/:projectKey/backlog',
         loadComponent: () => import('@features/project/backlog.page').then((m) => m.BacklogPageComponent)
       },

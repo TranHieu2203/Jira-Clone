@@ -423,7 +423,11 @@
     "group_flat": "Phẳng",
     "group_no_epic": "Không thuộc Epic",
     "count_issues": "{{count}} issue",
-    "story_points": "Story points"
+    "story_points": "Story points",
+    "no_project_title": "Bạn chưa thuộc project nào",
+    "no_project_hint": "Tạo hoặc tham gia một project để xem backlog.",
+    "pick_project_title": "Chọn project để xem backlog",
+    "pick_project_hint": "Lần sau hệ thống sẽ tự nhớ project bạn vừa chọn."
   },
   "sprint": {
     "create": "Tạo sprint",

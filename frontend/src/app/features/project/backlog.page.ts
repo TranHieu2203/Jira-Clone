@@ -661,6 +661,8 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
       this.project.set(detail);
       this.ctx.setProject(projectDetailToSummary(detail));
       this.typeMap.set(new Map(detail.issueTypes.map((t) => [t.id, t])));
+      // Persist last-visited project for `/backlog` shortcut redirect.
+      try { localStorage.setItem('jira-clone:last-project-key', detail.key); } catch { /* ignore quota */ }
       await this.reloadSprints();
       await this.reloadAll();
     } finally {

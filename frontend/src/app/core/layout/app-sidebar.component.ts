@@ -123,7 +123,8 @@ export class AppSidebarComponent {
     { label: 'Home', i18nKey: 'nav.home', icon: '🏠', link: '/', exact: true },
     { label: 'Workspaces', i18nKey: 'nav.workspaces', icon: '📁', link: '/workspaces' },
     { label: 'Projects', i18nKey: 'nav.projects', icon: '📋', link: '/projects' },
-    { label: 'My Issues', i18nKey: 'nav.my_issues', icon: '✦', link: '/issues' }
+    { label: 'My Issues', i18nKey: 'nav.my_issues', icon: '✦', link: '/issues' },
+    { label: 'Backlog', i18nKey: 'nav.backlog', icon: '☰', link: '/backlog' }
   ]);
 
   readonly isSystemAdmin = computed(() => (this.auth.user()?.roles ?? []).includes('Admin'));
