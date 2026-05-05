@@ -447,6 +447,13 @@ public sealed class IssueService : IIssueService
 
         await PublishAssigneeChangedIfNeededAsync(issue, prevAssignee, issue.AssigneeId, ct);
 
+        // F12: realtime update — clients đang xem issue/board sẽ reload metadata.
+        await _realtime.NotifyProjectBoardAsync(
+            issue.ProjectId,
+            new IssueBoardRealtimeEvent("updated", issue.Id, issue.Key),
+            ct);
+        await _realtime.NotifyIssueThreadAsync(issue.Id, new IssueThreadRealtimeEvent("updated"), ct);
+
         return Result.Success(Mappers.ToDto(issue), "issue.updated.success");
     }
 

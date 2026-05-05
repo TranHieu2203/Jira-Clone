@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, SecurityContext, computed, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, SecurityContext, computed, inject, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -8,6 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonGroupModule } from 'primeng/buttongroup';
 import { Issue, IssueApiService, UpdateIssueRequest } from '@core/api/issue.service';
+import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
@@ -211,13 +212,30 @@ import { switchMap } from 'rxjs/operators';
     .empty { padding: 40px; text-align: center; color: var(--c-text-muted); }
   `]
 })
-export class IssueDetailPageComponent implements OnInit {
+export class IssueDetailPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(IssueApiService);
   private readonly wfApi = inject(WorkflowApiService);
   private readonly auth = inject(AuthService);
   private readonly statusCache = inject(StatusCacheService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly hub = inject(WorkspaceHubService);
+
+  /**
+   * F12: handler được lưu ref để hub.removeIssueListener khớp khi destroy.
+   * Listen các action từ phía issue khác user/tab gây ra:
+   * - "status", "assignee", "updated" → reload toàn bộ issue
+   * - "comment*", "attachment", "link" → bỏ qua ở đây (panel con tự reload)
+   */
+  private readonly issueRealtimeHandler = (payload: IssueThreadRealtimePayload): void => {
+    const i = this.issue();
+    if (!i) return;
+    if (payload.action === 'status' || payload.action === 'assignee' || payload.action === 'updated') {
+      this.load(i.key);
+    }
+  };
+
+  private joinedIssueId: string | null = null;
 
   readonly issue = signal<Issue | null>(null);
   readonly transitions = signal<AvailableTransition[]>([]);
@@ -238,6 +256,16 @@ export class IssueDetailPageComponent implements OnInit {
     const key = this.route.snapshot.paramMap.get('issueKey');
     if (!key) return;
     this.load(key);
+    // F12: subscribe realtime — handler chỉ phản ứng cho issue hiện tại (filter trong handler).
+    this.hub.addIssueListener(this.issueRealtimeHandler);
+  }
+
+  ngOnDestroy(): void {
+    this.hub.removeIssueListener(this.issueRealtimeHandler);
+    if (this.joinedIssueId) {
+      void this.hub.leaveIssue(this.joinedIssueId);
+      this.joinedIssueId = null;
+    }
   }
 
   statusName(statusId: string): string {
@@ -256,6 +284,12 @@ export class IssueDetailPageComponent implements OnInit {
       this.editingDescription.set(false);
       this.statusCache.ensureProjectLoaded(i.projectId);
       this.loadTransitions(i);
+      // F12: join hub group cho issue này (re-join idempotent nếu đã join).
+      if (this.joinedIssueId !== i.id) {
+        if (this.joinedIssueId) void this.hub.leaveIssue(this.joinedIssueId);
+        this.joinedIssueId = i.id;
+        void this.hub.joinIssue(i.id);
+      }
     });
   }
 

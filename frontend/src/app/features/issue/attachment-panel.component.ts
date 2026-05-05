@@ -1,9 +1,10 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, effect, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { AttachmentApiService, IssueAttachmentSummary } from '@core/api/attachment.service';
 import { AuthService } from '@core/auth/auth.service';
+import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 
 @Component({
   selector: 'app-attachment-panel',
@@ -63,9 +64,17 @@ import { AuthService } from '@core/auth/auth.service';
     ::ng-deep .danger.p-button { color: var(--c-accent-danger); }
   `]
 })
-export class AttachmentPanelComponent {
+export class AttachmentPanelComponent implements OnInit, OnDestroy {
   private readonly api = inject(AttachmentApiService);
   private readonly auth = inject(AuthService);
+  private readonly hub = inject(WorkspaceHubService);
+
+  /** F12: realtime — chỉ reload khi event = "attachment" để tránh refetch không cần. */
+  private readonly issueRealtimeHandler = (payload: IssueThreadRealtimePayload): void => {
+    if (payload.action !== 'attachment') return;
+    const id = this.issueId();
+    if (id) this.loadList(id);
+  };
 
   readonly issueId = input.required<string>();
 
@@ -82,6 +91,14 @@ export class AttachmentPanelComponent {
       },
       { allowSignalWrites: true }
     );
+  }
+
+  ngOnInit(): void {
+    this.hub.addIssueListener(this.issueRealtimeHandler);
+  }
+
+  ngOnDestroy(): void {
+    this.hub.removeIssueListener(this.issueRealtimeHandler);
   }
 
   private loadList(issueId: string): void {

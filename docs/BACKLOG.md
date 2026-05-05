@@ -277,7 +277,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F9** | Workflow Editor UI (drag-drop graph) — **P10** | L | ⬜ | |
 | **F10** | Field Editor UI + Screen/ScreenScheme/IssueTypeScreenScheme — **P10** | L | ⬜ | |
 | **F11** | Permission scheme custom (replace 4-role fixed) — **P11** | L | ⬜ | |
-| **F12** | SignalR realtime (board + comment) — **P11** (D4) | M | ⬜ | |
+| **F12** | SignalR realtime (board + comment + issue + attachment + link) | M | ✅ | Done — BE: `WorkspaceHub` (JoinProject/JoinIssue groups) + `SignalRIssueRealtimeNotifier` đã có sẵn. Bổ sung emit `IssueThreadRealtimeEvent`/`IssueBoardRealtimeEvent` cho 3 service mới: `IssueService.UpdateAsync` ("updated"), `AttachmentService.Upload/Delete` ("attachment"), `IssueLinkService.Create/Delete` ("link", emit cho cả source+target). FE: `WorkspaceHubService` đã có connect/reconnect/JWT-via-query (`accessTokenFactory`). Wire listener vào: `IssueDetailPage` (status/assignee/updated → reload issue), `ActivityTimelineComponent` (any event → reload list), `AttachmentPanelComponent` (action="attachment" → reload), `LinkedIssuesPanelComponent` (action="link" → reload). BoardPage + CommentsThread đã listen sẵn từ trước. **D4 đã đạt** — multi-user collab feel real-time, polling 30s vẫn giữ làm fallback. Build BE 0/0, ng build OK, 94 test PASS. |
 | **F13** | 2FA + Password reset + SSO/OAuth — **P11** | L | ⬜ | |
 | **F14** | Webhook + Public REST API + API token | L | ⬜ | |
 | **F15** | Audit log (admin actions, khác Activity log) | M | ⬜ | |
@@ -301,19 +301,20 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 > ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F5 + F7 + F8a** xong (7/9, vì F8 split → F8a done + F8b defer).
+> ✅ Phase C: F1 + F2 + F3 + F4 + F5 + F7 + F8a xong (7/9 — F6 + F8b defer).
 >
-> Tiếp theo:
-> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic theo dueDate, group by epic. Effort L.
-> - **F8b** CSV Import — upload, parse, validate, partial-success. Effort M.
+> ✅ Phase D bắt đầu: **F12 (SignalR realtime)** xong (1/12).
 >
-> Đề xuất chuyển sang **Phase D ops/enterprise** vì Phase C đã xong các Jira-feature core nhất:
-> - **F12** SignalR realtime (board + comment) — đã có hub stub, chỉ cần wire client. Effort M, UX win lớn.
-> - **F15** Audit log admin — admin actions (delete project, change role…). Effort M.
-> - **O1** Production Dockerfile multi-stage. Effort M.
-> - **R6** (Phase B) Email pipeline polish (dedupe + opt-out + DLQ). Effort M.
+> Tiếp theo theo độ ưu tiên:
+> - **F15** Audit log admin (M) — track admin actions (delete project, change role, edit workflow…). Khác ActivityLog (per-issue).
+> - **R6** Phase B Email pipeline polish (M) — dedupe + opt-out + DLQ admin page.
+> - **O1** Production Dockerfile multi-stage (M) — chuẩn bị deploy.
+> - **F11** Permission scheme custom (L) — replace 4-role fixed.
+> - **F13** 2FA + Password reset + SSO/OAuth (L).
 >
-> Đề xuất **F12 (SignalR realtime)** — backend đã có `IIssueRealtimeNotifier` + WorkspaceHub hooks; chỉ cần FE connect và update list/board live. UX win lớn.
+> Đề xuất **F15 (Audit log)** — value cao cho admin/security review, effort vừa, leverage outbox sẵn có.
+>
+> Hoặc **R6 (Email pipeline polish)** — đóng L10 hoàn toàn, ROI cao.
 
 ---
 

@@ -14,6 +14,7 @@ public sealed class IssueLinkService : IIssueLinkService
     private readonly ICurrentUser _currentUser;
     private readonly IIssueAccessGuard _accessGuard;
     private readonly IPermissionChecker _permissions;
+    private readonly IIssueRealtimeNotifier _realtime;
     private readonly ILogger<IssueLinkService> _logger;
 
     public IssueLinkService(
@@ -22,6 +23,7 @@ public sealed class IssueLinkService : IIssueLinkService
         ICurrentUser currentUser,
         IIssueAccessGuard accessGuard,
         IPermissionChecker permissions,
+        IIssueRealtimeNotifier realtime,
         ILogger<IssueLinkService> logger)
     {
         _repo = repo;
@@ -29,6 +31,7 @@ public sealed class IssueLinkService : IIssueLinkService
         _currentUser = currentUser;
         _accessGuard = accessGuard;
         _permissions = permissions;
+        _realtime = realtime;
         _logger = logger;
     }
 
@@ -95,6 +98,10 @@ public sealed class IssueLinkService : IIssueLinkService
         _logger.LogInformation("IssueLink added Id={Id} {Source} -[{Type}]-> {Target}",
             link.Id, link.SourceIssueId, link.LinkType, link.TargetIssueId);
 
+        // F12: realtime — báo cả 2 phía (source + target) reload "Linked issues" panel.
+        await _realtime.NotifyIssueThreadAsync(link.SourceIssueId, new IssueThreadRealtimeEvent("link"), ct);
+        await _realtime.NotifyIssueThreadAsync(link.TargetIssueId, new IssueThreadRealtimeEvent("link"), ct);
+
         return Result.Success(ToDto(link), "issue_link.added");
     }
 
@@ -116,8 +123,14 @@ public sealed class IssueLinkService : IIssueLinkService
         if (perm.IsFailure) return perm;
 
         link.RaiseRemovedEvent(_currentUser.UserId.Value);
+        Guid sourceIssueId = link.SourceIssueId;
+        Guid targetIssueId = link.TargetIssueId;
         _repo.Remove(link);
         await _uow.SaveChangesAsync(ct);
+
+        // F12: realtime — báo cả 2 phía reload.
+        await _realtime.NotifyIssueThreadAsync(sourceIssueId, new IssueThreadRealtimeEvent("link"), ct);
+        await _realtime.NotifyIssueThreadAsync(targetIssueId, new IssueThreadRealtimeEvent("link"), ct);
 
         return Result.Success(messageKey: "issue_link.removed");
     }

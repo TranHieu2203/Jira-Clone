@@ -17,6 +17,7 @@ public sealed class AttachmentService : IAttachmentService
     private readonly IPermissionChecker _permissions;
     private readonly IFileStorage _storage;
     private readonly ICurrentUser _currentUser;
+    private readonly IIssueRealtimeNotifier _realtime;
     private readonly StorageOptions _storageOpts;
     private readonly ILogger<AttachmentService> _logger;
 
@@ -27,6 +28,7 @@ public sealed class AttachmentService : IAttachmentService
         IPermissionChecker permissions,
         IFileStorage storage,
         ICurrentUser currentUser,
+        IIssueRealtimeNotifier realtime,
         IOptions<StorageOptions> storageOpts,
         ILogger<AttachmentService> logger)
     {
@@ -36,6 +38,7 @@ public sealed class AttachmentService : IAttachmentService
         _permissions = permissions;
         _storage = storage;
         _currentUser = currentUser;
+        _realtime = realtime;
         _storageOpts = storageOpts.Value;
         _logger = logger;
     }
@@ -103,6 +106,13 @@ public sealed class AttachmentService : IAttachmentService
             await _repo.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
+            // F12: realtime — clients đang mở issue/board sẽ reload danh sách attachment.
+            await _realtime.NotifyProjectBoardAsync(
+                access.ProjectId,
+                new IssueBoardRealtimeEvent("attachment", issueId, string.Empty),
+                ct);
+            await _realtime.NotifyIssueThreadAsync(issueId, new IssueThreadRealtimeEvent("attachment"), ct);
+
             _logger.LogInformation("Attachment {AttachmentId} saved for issue {IssueId}", attachmentId, issueId);
             return Result.Success(ToDto(entity), messageKey: "attachment.uploaded");
         }
@@ -169,6 +179,13 @@ public sealed class AttachmentService : IAttachmentService
         {
             _logger.LogWarning(ex, "Storage delete failed for {Key} (metadata removed)", key);
         }
+
+        // F12: realtime — báo client list issue & detail reload.
+        await _realtime.NotifyProjectBoardAsync(
+            access.ProjectId,
+            new IssueBoardRealtimeEvent("attachment", issueId, string.Empty),
+            ct);
+        await _realtime.NotifyIssueThreadAsync(issueId, new IssueThreadRealtimeEvent("attachment"), ct);
 
         return Result.Success(messageKey: "attachment.deleted");
     }

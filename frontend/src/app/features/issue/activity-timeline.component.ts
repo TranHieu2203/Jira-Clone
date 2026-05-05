@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
@@ -7,6 +7,7 @@ import { ActivityApiService, ActivityItem } from '@core/api/activity.service';
 import { CustomFieldApiService, CustomField } from '@core/api/custom-field.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
 import { UserApiService, UserSummary } from '@core/api/user.service';
+import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 
 @Component({
   selector: 'app-activity-timeline',
@@ -56,11 +57,12 @@ import { UserApiService, UserSummary } from '@core/api/user.service';
     .actor { font-family: monospace; font-size: 11px; color: var(--c-text-muted); }
   `]
 })
-export class ActivityTimelineComponent {
+export class ActivityTimelineComponent implements OnInit, OnDestroy {
   private readonly api = inject(ActivityApiService);
   private readonly users = inject(UserApiService);
   private readonly cfApi = inject(CustomFieldApiService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly hub = inject(WorkspaceHubService);
 
   readonly issueId = input.required<string>();
 
@@ -69,6 +71,16 @@ export class ActivityTimelineComponent {
 
   private readonly userCache = new Map<string, UserSummary>();
   private readonly fieldNameById = signal<Record<string, string>>({});
+
+  /**
+   * F12: realtime — bất kỳ IssueEvent nào cũng có thể tạo activity entry
+   * (status/assignee/comment/link/attachment), nên reload luôn list.
+   * Filter theo issueId hiện tại tránh reload khi event khác issue.
+   */
+  private readonly issueRealtimeHandler = (_payload: IssueThreadRealtimePayload): void => {
+    const id = this.issueId();
+    if (id) this.fetch(id);
+  };
 
   constructor() {
     toObservable(this.issueId)
@@ -95,6 +107,21 @@ export class ActivityTimelineComponent {
         },
         error: () => this.loading.set(false)
       });
+  }
+
+  ngOnInit(): void {
+    this.hub.addIssueListener(this.issueRealtimeHandler);
+  }
+
+  ngOnDestroy(): void {
+    this.hub.removeIssueListener(this.issueRealtimeHandler);
+  }
+
+  private fetch(id: string): void {
+    this.api.listByIssue(id, 1, 100).subscribe({
+      next: (page) => this.items.set(page.items),
+      error: () => { /* keep current */ },
+    });
   }
 
   actorLabel(userId: string): string {

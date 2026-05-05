@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, effect, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -15,6 +15,7 @@ import {
   IssueLinksForIssueDto,
 } from '@core/api/issue-link.service';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
+import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 
 interface LinkTypeOption {
   value: IssueLinkType;
@@ -150,13 +151,21 @@ interface LinkRow {
     .danger { color: var(--c-accent-danger); }
   `],
 })
-export class LinkedIssuesPanelComponent {
+export class LinkedIssuesPanelComponent implements OnInit, OnDestroy {
   // Public input
   readonly issueId = input.required<string>();
 
   private readonly api = inject(IssueLinkApiService);
   private readonly issueApi = inject(IssueApiService);
   private readonly confirm = inject(ConfirmationService);
+  private readonly hub = inject(WorkspaceHubService);
+
+  /** F12: realtime — chỉ reload khi event = "link" (avoid noise). */
+  private readonly issueRealtimeHandler = (payload: IssueThreadRealtimePayload): void => {
+    if (payload.action !== 'link') return;
+    const id = this.issueId();
+    if (id) this.load(id);
+  };
 
   // ─── State signals ──────────────────────────────────────────────
   readonly loading = signal(false);
@@ -183,6 +192,14 @@ export class LinkedIssuesPanelComponent {
       const id = this.issueId();
       if (id) this.load(id);
     });
+  }
+
+  ngOnInit(): void {
+    this.hub.addIssueListener(this.issueRealtimeHandler);
+  }
+
+  ngOnDestroy(): void {
+    this.hub.removeIssueListener(this.issueRealtimeHandler);
   }
 
   canSubmit(): boolean {
