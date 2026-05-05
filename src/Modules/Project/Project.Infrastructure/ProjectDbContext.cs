@@ -79,6 +79,12 @@ public sealed class ProjectDbContext : BaseDbContext
             e.Property(x => x.DeletedBy).HasMaxLength(64);
             e.Property(x => x.CreatedTraceId).HasMaxLength(64);
 
+            // C5: chống race condition khi 2 user tạo issue đồng thời cho cùng project.
+            // Đánh dấu NextIssueNumber là concurrency token → EF thêm vào WHERE clause của UPDATE.
+            // Nếu 2 thread cùng đọc value 5 và cùng update → 1 thắng, 1 throw DbUpdateConcurrencyException.
+            // IssueNumberAllocator sẽ retry tự động.
+            e.Property(x => x.NextIssueNumber).IsConcurrencyToken();
+
             e.HasIndex(x => new { x.WorkspaceId, x.Key }).IsUnique()
                 .HasFilter(isPostgres ? "is_deleted = false" : null);
             e.HasIndex(x => x.LeadId);

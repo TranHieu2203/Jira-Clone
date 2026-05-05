@@ -4,6 +4,7 @@
     <AssemblyName>Issue.Infrastructure</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Issue.UnitTests" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

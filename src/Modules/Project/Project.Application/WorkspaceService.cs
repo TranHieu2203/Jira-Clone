@@ -11,13 +11,15 @@ public sealed class WorkspaceService : IWorkspaceService
     private readonly IWorkspaceRepository _repo;
     private readonly IProjectUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
+    private readonly IPermissionChecker _permissions;
     private readonly ILogger<WorkspaceService> _logger;
 
-    public WorkspaceService(IWorkspaceRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, ILogger<WorkspaceService> logger)
+    public WorkspaceService(IWorkspaceRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<WorkspaceService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -69,6 +71,10 @@ public sealed class WorkspaceService : IWorkspaceService
         var w = await _repo.GetWithMembersAsync(id, ct);
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
 
+        // R2: chỉ Owner được rename/cập nhật metadata workspace.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, w.Id, PermissionKeys.OrgManage, ct);
+        if (perm.IsFailure) return Result.Failure<WorkspaceDetailDto>(perm);
+
         w.Rename(request.Name);
         w.UpdateDescription(request.Description);
         w.UpdateAvatar(request.AvatarUrl);
@@ -81,6 +87,11 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         var w = await _repo.GetByIdAsync(id, ct);
         if (w is null) return Result.Failure(ErrorType.NotFound, "workspace.not_found");
+
+        // R2: chỉ Owner được xoá workspace.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, w.Id, PermissionKeys.OrgManage, ct);
+        if (perm.IsFailure) return perm;
+
         _repo.Remove(w);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "workspace.deleted.success");
@@ -90,6 +101,10 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         Workspace? w = await _repo.GetWithMembersAsync(id, ct);
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
+
+        // R2: invite member — Owner và Admin đều được.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, w.Id, PermissionKeys.OrgInviteMember, ct);
+        if (perm.IsFailure) return Result.Failure<WorkspaceDetailDto>(perm);
 
         if (w.Members.Any(m => m.UserId == request.UserId))
         {
@@ -125,6 +140,10 @@ public sealed class WorkspaceService : IWorkspaceService
         var w = await _repo.GetWithMembersAsync(id, ct);
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
 
+        // R2: chỉ Owner được kick member khỏi workspace.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, w.Id, PermissionKeys.OrgManage, ct);
+        if (perm.IsFailure) return Result.Failure<WorkspaceDetailDto>(perm);
+
         w.RemoveMember(userId);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.member.removed");
@@ -134,6 +153,10 @@ public sealed class WorkspaceService : IWorkspaceService
     {
         var w = await _repo.GetWithMembersAsync(id, ct);
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
+
+        // R2: thay đổi role org-level chỉ dành cho Owner.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, w.Id, PermissionKeys.OrgManage, ct);
+        if (perm.IsFailure) return Result.Failure<WorkspaceDetailDto>(perm);
 
         w.ChangeMemberRole(userId, (WorkspaceRole)request.Role);
         await _uow.SaveChangesAsync(ct);

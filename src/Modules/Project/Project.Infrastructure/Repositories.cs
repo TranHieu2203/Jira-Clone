@@ -102,6 +102,16 @@ public sealed class ProjectRepository : Repository<Domain.Project>, IProjectRepo
             .OrderBy(p => p.Name)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<Guid>> ListProjectIdsByMemberAsync(Guid userId, CancellationToken ct = default) =>
+        await _ctx.Projects.AsNoTracking()
+            .Where(p => p.Members.Any(m => m.UserId == userId))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+
+    public Task<bool> IsUserMemberOfProjectAsync(Guid userId, Guid projectId, CancellationToken ct = default) =>
+        _ctx.Projects.AsNoTracking()
+            .AnyAsync(p => p.Id == projectId && p.Members.Any(m => m.UserId == userId), ct);
+
     public Task<IssueType?> GetIssueTypeByIdAsync(Guid issueTypeId, CancellationToken ct = default) =>
         _ctx.IssueTypes.AsNoTracking().FirstOrDefaultAsync(t => t.Id == issueTypeId, ct);
 }

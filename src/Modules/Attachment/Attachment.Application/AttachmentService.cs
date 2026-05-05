@@ -3,7 +3,7 @@ using Attachment.Domain;
 using BB.Common;
 using BB.Security;
 using BB.Storage;
-using Issue.Application.Repositories;
+using Issue.Application;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +13,8 @@ public sealed class AttachmentService : IAttachmentService
 {
     private readonly IAttachmentRepository _repo;
     private readonly IAttachmentUnitOfWork _uow;
-    private readonly IIssueRepository _issues;
+    private readonly IIssueAccessGuard _accessGuard;
+    private readonly IPermissionChecker _permissions;
     private readonly IFileStorage _storage;
     private readonly ICurrentUser _currentUser;
     private readonly StorageOptions _storageOpts;
@@ -22,7 +23,8 @@ public sealed class AttachmentService : IAttachmentService
     public AttachmentService(
         IAttachmentRepository repo,
         IAttachmentUnitOfWork uow,
-        IIssueRepository issues,
+        IIssueAccessGuard accessGuard,
+        IPermissionChecker permissions,
         IFileStorage storage,
         ICurrentUser currentUser,
         IOptions<StorageOptions> storageOpts,
@@ -30,7 +32,8 @@ public sealed class AttachmentService : IAttachmentService
     {
         _repo = repo;
         _uow = uow;
-        _issues = issues;
+        _accessGuard = accessGuard;
+        _permissions = permissions;
         _storage = storage;
         _currentUser = currentUser;
         _storageOpts = storageOpts.Value;
@@ -43,7 +46,12 @@ public sealed class AttachmentService : IAttachmentService
         int pageSize = 50,
         CancellationToken ct = default)
     {
-        if (await _issues.GetByIdAsync(issueId, ct) is null)
+        if (_currentUser.UserId is null)
+            return Result.Failure<PagedList<AttachmentDto>>(ErrorType.Unauthorized, "auth.required");
+
+        // Cross-project guard: trả `IssueMissing` thống nhất khi issue không tồn tại HOẶC user không là member project.
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, issueId, ct);
+        if (access is null)
             return Result.Failure<PagedList<AttachmentDto>>(ErrorType.NotFound, AttachmentErrors.IssueMissing);
 
         PagedList<IssueAttachment> page = await _repo.ListByIssueAsync(issueId, pageIndex, pageSize, ct);
@@ -62,8 +70,13 @@ public sealed class AttachmentService : IAttachmentService
         if (_currentUser.UserId is null)
             return Result.Failure<AttachmentDto>(ErrorType.Unauthorized, "auth.required");
 
-        if (await _issues.GetByIdAsync(issueId, ct) is null)
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, issueId, ct);
+        if (access is null)
             return Result.Failure<AttachmentDto>(ErrorType.NotFound, AttachmentErrors.IssueMissing);
+
+        // R2: upload attachment = edit issue. Viewer không được upload.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, access.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return Result.Failure<AttachmentDto>(perm);
 
         if (sizeBytes > _storageOpts.MaxUploadBytes)
             return Result.Failure<AttachmentDto>(ErrorType.Validation, AttachmentErrors.TooLarge);
@@ -106,7 +119,11 @@ public sealed class AttachmentService : IAttachmentService
         Guid attachmentId,
         CancellationToken ct = default)
     {
-        if (await _issues.GetByIdAsync(issueId, ct) is null)
+        if (_currentUser.UserId is null)
+            return Result.Failure<AttachmentDownload>(ErrorType.Unauthorized, "auth.required");
+
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, issueId, ct);
+        if (access is null)
             return Result.Failure<AttachmentDownload>(ErrorType.NotFound, AttachmentErrors.IssueMissing);
 
         IssueAttachment? a = await _repo.GetByIdAndIssueAsync(issueId, attachmentId, ct);
@@ -124,6 +141,14 @@ public sealed class AttachmentService : IAttachmentService
     {
         if (_currentUser.UserId is null)
             return Result.Failure(ErrorType.Unauthorized, "auth.required");
+
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, issueId, ct);
+        if (access is null)
+            return Result.Failure(ErrorType.NotFound, AttachmentErrors.IssueMissing);
+
+        // R2: delete attachment = edit issue (Viewer không được dù là người upload trước đó).
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, access.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return perm;
 
         IssueAttachment? a = await _repo.GetByIdAndIssueAsync(issueId, attachmentId, ct);
         if (a is null)

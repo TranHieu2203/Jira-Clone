@@ -41,6 +41,19 @@ public class Result
 
     public static Result<T> Failure<T>(ErrorType type, string messageKey, IReadOnlyList<ResultError>? errors = null, object? messageArgs = null) =>
         Result<T>.Fail(type, messageKey, errors, messageArgs);
+
+    /// <summary>
+    /// Propagate failure từ một <see cref="Result"/> non-generic sang generic. Dùng khi một helper trả
+    /// <c>Result</c> và caller muốn return cùng failure đó dưới dạng <c>Result&lt;T&gt;</c>.
+    /// </summary>
+    public static Result<T> Failure<T>(Result source)
+    {
+        if (source.IsSuccess)
+            throw new InvalidOperationException("Cannot propagate failure from a successful Result.");
+        return Result<T>.Fail(source.ErrorType, source.MessageKey ?? string.Empty, source.Errors, source.MessageArgs);
+    }
+
+    public bool IsFailure => !IsSuccess;
 }
 
 public sealed class Result<T> : Result

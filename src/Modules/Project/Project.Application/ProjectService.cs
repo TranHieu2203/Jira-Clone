@@ -11,13 +11,15 @@ public sealed class ProjectService : IProjectService
     private readonly IProjectRepository _repo;
     private readonly IProjectUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
+    private readonly IPermissionChecker _permissions;
     private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(IProjectRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, ILogger<ProjectService> logger)
+    public ProjectService(IProjectRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<ProjectService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
+        _permissions = permissions;
         _logger = logger;
     }
 
@@ -69,6 +71,10 @@ public sealed class ProjectService : IProjectService
 
     public async Task<Result<ProjectDetailDto>> CreateAsync(CreateProjectRequest request, CancellationToken ct = default)
     {
+        // R2: tạo project = quản lý workspace. Owner + Admin được, Member không.
+        var perm = await _permissions.RequireOrgAsync(_currentUser.UserId, request.WorkspaceId, PermissionKeys.OrgInviteMember, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         if (await _repo.KeyExistsAsync(request.WorkspaceId, request.Key.ToUpperInvariant(), null, ct))
             return Result.Failure<ProjectDetailDto>(
                 ErrorType.Conflict, ProjectErrors.MsgProjectKeyDup,
@@ -86,6 +92,11 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        // R2: chỉ Project Admin được cập nhật metadata project.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.Rename(request.Name);
         p.UpdateDescription(request.Description);
         p.UpdateAvatar(request.AvatarUrl);
@@ -98,6 +109,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetByIdAsync(id, ct);
         if (p is null) return Result.Failure(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return perm;
+
         p.Archive(); _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "project.archived");
     }
@@ -106,6 +121,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetByIdAsync(id, ct);
         if (p is null) return Result.Failure(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return perm;
+
         p.Unarchive(); _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "project.unarchived");
     }
@@ -114,6 +133,11 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetByIdAsync(id, ct);
         if (p is null) return Result.Failure(ErrorType.NotFound, "project.not_found");
+
+        // R2: delete project — workspace Owner/Admin (workspace override) hoặc Project Admin.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return perm;
+
         _repo.Remove(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "project.deleted");
     }
@@ -122,6 +146,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.AddMember(request.UserId, (ProjectRole)request.Role);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.added");
@@ -131,6 +159,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.RemoveMember(userId);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.removed");
@@ -140,6 +172,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectManage, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.ChangeMemberRole(userId, (ProjectRole)request.Role);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.role_changed");
@@ -149,6 +185,11 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        // R2: quản lý issue type = field admin.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectAdminField, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.AddIssueType(request.Name, request.Key, request.Icon, request.Color, request.IsSubtask);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "issue_type.added");
@@ -158,6 +199,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectAdminField, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.UpdateIssueType(issueTypeId, request.Name, request.Icon, request.Color, request.Order);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "issue_type.updated");
@@ -167,6 +212,10 @@ public sealed class ProjectService : IProjectService
     {
         var p = await _repo.GetWithDetailsAsync(id, ct);
         if (p is null) return Result.Failure<ProjectDetailDto>(ErrorType.NotFound, "project.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, p.Id, PermissionKeys.ProjectAdminField, ct);
+        if (perm.IsFailure) return Result.Failure<ProjectDetailDto>(perm);
+
         p.RemoveIssueType(issueTypeId);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(p), "issue_type.removed");

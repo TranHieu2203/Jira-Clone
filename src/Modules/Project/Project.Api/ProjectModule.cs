@@ -26,6 +26,7 @@ public static class ProjectModule
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IIssueTypeReader, IssueTypeReader>();
         services.AddScoped<IIssueNumberAllocator, IssueNumberAllocator>();
+        services.AddScoped<IIssueProjectAccess, IssueProjectAccess>();
 
         // Permission checker — module Project nắm dữ liệu role nên đăng ký impl tại đây.
         // Các module khác (Workflow, Issue) inject IPermissionChecker không phụ thuộc Project.Infrastructure.

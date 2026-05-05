@@ -49,7 +49,8 @@
         "status_requires_guid": "status hiện phải là GUID trong dấu ngoặc kép",
         "unrecognized_clause": "Mệnh đề JQL không được hỗ trợ"
       },
-      "conflicting_assignee_filters": "Không kết hợp được lọc assignee với chỉ issue chưa giao"
+      "conflicting_assignee_filters": "Không kết hợp được lọc assignee với chỉ issue chưa giao",
+      "project_access_denied": "Bạn không có quyền truy cập dự án này."
     }
   },
   "notification": {

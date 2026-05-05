@@ -23,6 +23,8 @@ public interface IProjectRepository : IRepository<Domain.Project>
     Task<bool> KeyExistsAsync(Guid workspaceId, string key, Guid? excludeId = null, CancellationToken ct = default);
     Task<IReadOnlyList<Domain.Project>> ListByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default);
     Task<IReadOnlyList<Domain.Project>> ListByMemberAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> ListProjectIdsByMemberAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> IsUserMemberOfProjectAsync(Guid userId, Guid projectId, CancellationToken ct = default);
     Task<IssueType?> GetIssueTypeByIdAsync(Guid issueTypeId, CancellationToken ct = default);
 }
 

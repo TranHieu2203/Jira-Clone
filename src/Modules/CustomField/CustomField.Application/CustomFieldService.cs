@@ -1,4 +1,5 @@
 using BB.Common;
+using BB.Security;
 using CustomField.Application.Repositories;
 using CustomField.Domain;
 using Microsoft.Extensions.Logging;
@@ -9,13 +10,33 @@ public sealed class CustomFieldService : ICustomFieldService
 {
     private readonly ICustomFieldRepository _repo;
     private readonly ICustomFieldUnitOfWork _uow;
+    private readonly ICurrentUser _currentUser;
+    private readonly IPermissionChecker _permissions;
     private readonly ILogger<CustomFieldService> _logger;
 
-    public CustomFieldService(ICustomFieldRepository repo, ICustomFieldUnitOfWork uow, ILogger<CustomFieldService> logger)
+    public CustomFieldService(ICustomFieldRepository repo, ICustomFieldUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<CustomFieldService> logger)
     {
         _repo = repo;
         _uow = uow;
+        _currentUser = currentUser;
+        _permissions = permissions;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// AddContext có thể bind nhiều project — yêu cầu user có ProjectAdminField trên TẤT CẢ project được bind
+    /// (tránh leak field vào project user không quản lý). Global context (IsGlobal=true) hoặc context không
+    /// có ProjectIds → bỏ qua check (admin-only path).
+    /// </summary>
+    private async Task<Result> EnsureCanBindContextAsync(IReadOnlyList<Guid>? projectIds, CancellationToken ct)
+    {
+        if (projectIds is null || projectIds.Count == 0) return Result.Success();
+        foreach (var pid in projectIds)
+        {
+            var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, pid, PermissionKeys.ProjectAdminField, ct);
+            if (perm.IsFailure) return perm;
+        }
+        return Result.Success();
     }
 
     public async Task<Result<CustomFieldDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -117,6 +138,11 @@ public sealed class CustomFieldService : ICustomFieldService
     {
         var f = await _repo.GetWithDetailsAsync(id, ct);
         if (f is null) return Result.Failure<CustomFieldDto>(ErrorType.NotFound, "field.not_found");
+
+        // R2: chỉ Project Admin (field) được bind field vào project.
+        var perm = await EnsureCanBindContextAsync(request.ProjectIds, ct);
+        if (perm.IsFailure) return Result.Failure<CustomFieldDto>(perm);
+
         f.AddContext(request.Name, request.IsGlobal, request.IsRequired, request.DefaultValueJson,
             request.ProjectIds, request.IssueTypeIds, request.DisplayOrder ?? 0);
         _repo.Update(f); await _uow.SaveChangesAsync(ct);
@@ -127,6 +153,15 @@ public sealed class CustomFieldService : ICustomFieldService
     {
         var f = await _repo.GetWithDetailsAsync(id, ct);
         if (f is null) return Result.Failure<CustomFieldDto>(ErrorType.NotFound, "field.not_found");
+
+        // R2: tìm context đang bị remove → check permission cho project bị bind.
+        var ctxToRemove = f.Contexts.FirstOrDefault(c => c.Id == contextId);
+        if (ctxToRemove is not null)
+        {
+            var perm = await EnsureCanBindContextAsync(ctxToRemove.ProjectIds, ct);
+            if (perm.IsFailure) return Result.Failure<CustomFieldDto>(perm);
+        }
+
         f.RemoveContext(contextId);
         _repo.Update(f); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(f), "field.context.removed");

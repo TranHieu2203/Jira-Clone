@@ -31,6 +31,8 @@ public sealed class IssueService : IIssueService
     private readonly ICustomFieldRepository _customFieldRepository;
     private readonly IIssueRealtimeNotifier _realtime;
     private readonly IEventBus _eventBus;
+    private readonly IIssueProjectAccess _projectAccess;
+    private readonly IPermissionChecker _permissions;
     private readonly ILogger<IssueService> _logger;
 
     public IssueService(
@@ -48,6 +50,8 @@ public sealed class IssueService : IIssueService
         ICustomFieldRepository customFieldRepository,
         IIssueRealtimeNotifier realtime,
         IEventBus eventBus,
+        IIssueProjectAccess projectAccess,
+        IPermissionChecker permissions,
         ILogger<IssueService> logger)
     {
         _repo = repo;
@@ -64,27 +68,64 @@ public sealed class IssueService : IIssueService
         _customFieldRepository = customFieldRepository;
         _realtime = realtime;
         _eventBus = eventBus;
+        _projectAccess = projectAccess;
+        _permissions = permissions;
         _logger = logger;
     }
 
     public async Task<Result<IssueDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var i = await _repo.GetWithWatchersAsync(id, ct);
-        return i is null
-            ? Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found")
-            : Result.Success(Mappers.ToDto(i));
+        if (i is null)
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, i.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        return Result.Success(Mappers.ToDto(i));
     }
 
     public async Task<Result<IssueDto>> GetByKeyAsync(string issueKey, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var i = await _repo.GetByKeyAsync(issueKey.ToUpperInvariant(), ct);
-        return i is null
-            ? Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found")
-            : Result.Success(Mappers.ToDto(i));
+        if (i is null)
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, i.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        return Result.Success(Mappers.ToDto(i));
     }
 
     public async Task<Result<PagedList<IssueSummaryDto>>> SearchAsync(SearchIssuesRequest request, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+        {
+            return Result.Failure<PagedList<IssueSummaryDto>>(
+                ErrorType.Unauthorized,
+                "auth.required");
+        }
+
+        Guid userId = _currentUser.UserId.Value;
+        IReadOnlySet<Guid> accessible = await _projectAccess.ListAccessibleProjectIdsAsync(userId, ct);
+        if (accessible.Count == 0)
+        {
+            int pe = Math.Max(request.PageIndex, 1);
+            int se = Math.Max(request.PageSize, 1);
+            return Result.Success(new PagedList<IssueSummaryDto>(new List<IssueSummaryDto>(), 0, pe, se));
+        }
+
+        if (request.ProjectId.HasValue && !accessible.Contains(request.ProjectId.Value))
+        {
+            return Result.Failure<PagedList<IssueSummaryDto>>(
+                ErrorType.Forbidden,
+                "issue.search.project_access_denied");
+        }
+
         Result<JqlLiteResult> jql = JqlLiteParser.Parse(request.Jql, _currentUser.UserId);
         if (!jql.IsSuccess || jql.Data is null)
         {
@@ -230,7 +271,8 @@ public sealed class IssueService : IIssueService
             assigneeUnassigned,
             restrict,
             exclude,
-            currentStatusIds);
+            currentStatusIds,
+            accessible);
 
         var page = await _repo.SearchAsync(criteria, ct);
         var dtos = page.Items.Select(Mappers.ToSummary).ToList();
@@ -239,6 +281,15 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<IReadOnlyList<IssueSummaryDto>>> ListChildrenAsync(Guid parentIssueId, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IReadOnlyList<IssueSummaryDto>>(ErrorType.Unauthorized, "auth.required");
+
+        Domain.Issue? parent = await _repo.GetByIdAsync(parentIssueId, ct);
+        if (parent is null)
+            return Result.Failure<IReadOnlyList<IssueSummaryDto>>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, parent.ProjectId, ct))
+            return Result.Failure<IReadOnlyList<IssueSummaryDto>>(ErrorType.NotFound, "issue.not_found");
+
         var list = await _repo.ListByParentAsync(parentIssueId, ct);
         return Result.Success<IReadOnlyList<IssueSummaryDto>>(list.Select(Mappers.ToSummary).ToList());
     }
@@ -247,6 +298,13 @@ public sealed class IssueService : IIssueService
     {
         if (_currentUser.UserId is null)
             return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, request.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.Forbidden, "issue.search.project_access_denied");
+
+        // R2: Per-action permission — Viewer chỉ đọc, không tạo issue.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, request.ProjectId, PermissionKeys.IssueCreate, ct);
+        if (perm.IsFailure) return Result.Failure<IssueDto>(perm);
 
         // 1. Validate issueType belongs to project
         if (!await _issueTypeReader.ExistsInProjectAsync(request.ProjectId, request.IssueTypeId, ct))
@@ -326,8 +384,17 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<IssueDto>> UpdateAsync(Guid id, UpdateIssueRequest request, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        // R2: Viewer chỉ đọc, không edit.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return Result.Failure<IssueDto>(perm);
 
         Guid? prevAssignee = issue.AssigneeId;
 
@@ -353,8 +420,18 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetByIdAsync(id, ct);
         if (issue is null) return Result.Failure(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure(ErrorType.NotFound, "issue.not_found");
+
+        // R2: chỉ Project Admin được delete (mặc định).
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueDelete, ct);
+        if (perm.IsFailure) return perm;
+
         _repo.Remove(issue);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "issue.deleted.success");
@@ -362,8 +439,18 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result> ArchiveAsync(Guid id, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetByIdAsync(id, ct);
         if (issue is null) return Result.Failure(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure(ErrorType.NotFound, "issue.not_found");
+
+        // R2: archive là edit operation.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return perm;
+
         issue.Archive();
         _repo.Update(issue); await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "issue.archived");
@@ -371,8 +458,18 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result> UnarchiveAsync(Guid id, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetByIdAsync(id, ct);
         if (issue is null) return Result.Failure(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure(ErrorType.NotFound, "issue.not_found");
+
+        // R2: unarchive là edit operation.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return perm;
+
         issue.Unarchive();
         _repo.Update(issue); await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "issue.unarchived");
@@ -380,8 +477,17 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<IssueDto>> TransitionAsync(Guid id, TransitionIssueRequest request, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        // R2: chỉ Member trở lên mới transition (Viewer không được).
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueTransition, ct);
+        if (perm.IsFailure) return Result.Failure<IssueDto>(perm);
 
         Guid fromStatus = issue.CurrentStatusId;
         Guid? prevAssignee = issue.AssigneeId;
@@ -452,8 +558,18 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<IssueDto>> AddWatcherAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        // R2: thêm/xoá watcher = edit issue. Self-watch (user thêm chính mình) cũng cần edit role để consistency.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return Result.Failure<IssueDto>(perm);
+
         issue.AddWatcher(userId);
         _repo.Update(issue); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(issue), "issue.watcher.added");
@@ -461,8 +577,17 @@ public sealed class IssueService : IIssueService
 
     public async Task<Result<IssueDto>> RemoveWatcherAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<IssueDto>(ErrorType.Unauthorized, "auth.required");
+
         var issue = await _repo.GetWithWatchersAsync(id, ct);
         if (issue is null) return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+        if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            return Result.Failure<IssueDto>(ErrorType.NotFound, "issue.not_found");
+
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+        if (perm.IsFailure) return Result.Failure<IssueDto>(perm);
+
         issue.RemoveWatcher(userId);
         _repo.Update(issue); await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(issue), "issue.watcher.removed");

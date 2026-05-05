@@ -19,6 +19,7 @@ public static class IssueModule
         services.AddScoped<IIssueRepository, IssueRepository>();
         services.AddScoped<IIssueNotificationSnapshotReader, IssueNotificationSnapshotReader>();
         services.AddScoped<IIssueRealtimeNotifier, NoOpIssueRealtimeNotifier>();
+        services.AddScoped<IIssueAccessGuard, IssueAccessGuard>();
         services.AddScoped<IIssueService, IssueService>();
 
         return services;

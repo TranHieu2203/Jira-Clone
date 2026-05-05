@@ -45,6 +45,14 @@ internal static class IssueSpecifications
             Add(new Specification<Domain.Issue>(i => !ex.Contains(i.Id)));
         }
 
+        if (criteria.AccessibleProjectIds is { Count: > 0 })
+        {
+            IReadOnlySet<Guid> ap = criteria.AccessibleProjectIds;
+            Add(new Specification<Domain.Issue>(i => ap.Contains(i.ProjectId)));
+        }
+        else if (criteria.AccessibleProjectIds is not null && criteria.AccessibleProjectIds.Count == 0)
+            Add(new Specification<Domain.Issue>(_ => false));
+
         if (!string.IsNullOrWhiteSpace(criteria.TextSearch))
         {
             string s = criteria.TextSearch.Trim().ToLower();

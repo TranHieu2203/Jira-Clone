@@ -49,7 +49,8 @@
         "status_requires_guid": "status must be a GUID in quotes for now",
         "unrecognized_clause": "Unrecognized JQL clause"
       },
-      "conflicting_assignee_filters": "Cannot combine assignee filter with unassigned-only filter"
+      "conflicting_assignee_filters": "Cannot combine assignee filter with unassigned-only filter",
+      "project_access_denied": "You do not have access to this project."
     }
   },
   "notification": {

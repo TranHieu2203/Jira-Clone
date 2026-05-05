@@ -191,7 +191,8 @@
         "duplicate_cf": "Mỗi custom field chỉ được xuất hiện một lần trong JQL.",
         "cf_key_invalid": "Key custom field trong JQL không hợp lệ.",
         "cf_number_invalid": "Số trong điều kiện custom field không hợp lệ."
-      }
+      },
+      "project_access_denied": "Bạn không có quyền truy cập dự án này."
     },
     "empty": "Không có issue nào khớp tiêu chí.",
     "assignee_save": "Lưu người xử lý",

@@ -1,4 +1,5 @@
 using BB.Common;
+using BB.Security;
 using Microsoft.Extensions.Logging;
 using Workflow.Application.Repositories;
 using Workflow.Domain;
@@ -9,13 +10,27 @@ public sealed class WorkflowService : IWorkflowService
 {
     private readonly IWorkflowRepository _repo;
     private readonly IWorkflowUnitOfWork _uow;
+    private readonly ICurrentUser _currentUser;
+    private readonly IPermissionChecker _permissions;
     private readonly ILogger<WorkflowService> _logger;
 
-    public WorkflowService(IWorkflowRepository repo, IWorkflowUnitOfWork uow, ILogger<WorkflowService> logger)
+    public WorkflowService(IWorkflowRepository repo, IWorkflowUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<WorkflowService> logger)
     {
         _repo = repo;
         _uow = uow;
+        _currentUser = currentUser;
+        _permissions = permissions;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Check workflow admin permission cho project-scoped workflow.
+    /// Workflow template (ProjectId=null) bỏ qua check (chỉ dev/admin truy cập).
+    /// </summary>
+    private async Task<Result> EnsureWorkflowAdminAsync(Domain.Workflow w, CancellationToken ct)
+    {
+        if (w.ProjectId is null) return Result.Success(); // template — không có scope project
+        return await _permissions.RequireProjectAsync(_currentUser.UserId, w.ProjectId.Value, PermissionKeys.ProjectAdminWorkflow, ct);
     }
 
     public async Task<Result<WorkflowDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
@@ -40,6 +55,13 @@ public sealed class WorkflowService : IWorkflowService
 
     public async Task<Result<WorkflowDto>> CreateAsync(CreateWorkflowRequest request, CancellationToken ct = default)
     {
+        // R2: tạo workflow cho project = workflow admin trên project đó.
+        if (!request.IsTemplate && request.ProjectId is { } pid)
+        {
+            var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, pid, PermissionKeys.ProjectAdminWorkflow, ct);
+            if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
+        }
+
         if (await _repo.KeyExistsAsync(request.ProjectId, request.Key, null, ct))
         {
             return Result.Failure<WorkflowDto>(
@@ -66,6 +88,9 @@ public sealed class WorkflowService : IWorkflowService
         var w = await _repo.GetWithDetailsAsync(id, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
 
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
+
         w.Rename(request.Name);
         w.UpdateDescription(request.Description);
         if (request.IsActive) w.Activate(); else w.Deactivate();
@@ -78,6 +103,10 @@ public sealed class WorkflowService : IWorkflowService
     {
         var w = await _repo.GetByIdAsync(id, ct);
         if (w is null) return Result.Failure(ErrorType.NotFound, "workflow.not_found");
+
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return perm;
+
         _repo.Remove(w);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(messageKey: "workflow.deleted.success");
@@ -87,6 +116,9 @@ public sealed class WorkflowService : IWorkflowService
     {
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
+
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
 
         w.AddStatus(request.Name, request.Key, (StatusCategory)request.Category, request.Color, request.Order);
         _repo.Update(w);
@@ -99,6 +131,9 @@ public sealed class WorkflowService : IWorkflowService
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
 
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
+
         w.RemoveStatus(statusId);
         _repo.Update(w);
         await _uow.SaveChangesAsync(ct);
@@ -109,6 +144,9 @@ public sealed class WorkflowService : IWorkflowService
     {
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
+
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
 
         w.SetInitialStatus(statusId);
         _repo.Update(w);
@@ -121,6 +159,9 @@ public sealed class WorkflowService : IWorkflowService
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
 
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
+
         w.AddTransition(request.FromStatusId, request.ToStatusId, request.Name, request.ScreenId, request.IsAutomatic);
         _repo.Update(w);
         await _uow.SaveChangesAsync(ct);
@@ -131,6 +172,9 @@ public sealed class WorkflowService : IWorkflowService
     {
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
+
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
 
         w.RemoveTransition(transitionId);
         _repo.Update(w);
@@ -152,6 +196,9 @@ public sealed class WorkflowService : IWorkflowService
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
 
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
+
         var t = w.FindTransition(transitionId);
         if (t is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, WorkflowErrors.MsgTransitionNotFound);
 
@@ -165,6 +212,9 @@ public sealed class WorkflowService : IWorkflowService
     {
         var w = await _repo.GetWithDetailsAsync(workflowId, ct);
         if (w is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, "workflow.not_found");
+
+        var perm = await EnsureWorkflowAdminAsync(w, ct);
+        if (perm.IsFailure) return Result.Failure<WorkflowDto>(perm);
 
         var t = w.FindTransition(transitionId);
         if (t is null) return Result.Failure<WorkflowDto>(ErrorType.NotFound, WorkflowErrors.MsgTransitionNotFound);

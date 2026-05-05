@@ -1,4 +1,4 @@
-# Regenerate Init*_Oracle for one module (destructive to Migrations folder during run — backup first).
+# Regenerate Init*_Oracle for one module (destructive to Migrations folder during run -- backup first).
 # Usage: .\regenerate-oracle-migrations.ps1 -ModuleName Workflow -ContextName WorkflowDbContext
 param(
   [Parameter(Mandatory = $true)][string]$ModuleName,
@@ -23,4 +23,4 @@ Get-ChildItem "$infra/Migrations" -Filter "*_Oracle*.cs" | ForEach-Object { Move
 Remove-Item "$infra/Migrations/*ModelSnapshot.cs" -Force -ErrorAction SilentlyContinue
 Copy-Item "$backup\*" "$infra/Migrations" -Force
 
-Write-Host "Done $ModuleName — verify build: dotnet build"
+Write-Host "Done $ModuleName -- verify build: dotnet build"

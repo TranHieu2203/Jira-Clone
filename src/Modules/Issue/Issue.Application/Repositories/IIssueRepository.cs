@@ -28,6 +28,8 @@ public sealed record IssueSearchCriteria(
     bool AssigneeUnassignedOnly = false,
     IReadOnlySet<Guid>? RestrictToIssueIds = null,
     IReadOnlySet<Guid>? ExcludeIssueIds = null,
-    IReadOnlySet<Guid>? CurrentStatusIds = null);
+    IReadOnlySet<Guid>? CurrentStatusIds = null,
+    /// <summary>Khi có: chỉ issue thuộc các project này (membership). Null = không lọc (chỉ test/đặc biệt).</summary>
+    IReadOnlySet<Guid>? AccessibleProjectIds = null);
 
 public interface IIssueUnitOfWork : IUnitOfWork { }

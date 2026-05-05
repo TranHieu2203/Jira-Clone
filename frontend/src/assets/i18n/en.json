@@ -191,7 +191,8 @@
         "duplicate_cf": "Each custom field can appear only once in JQL.",
         "cf_key_invalid": "Invalid custom field key in JQL.",
         "cf_number_invalid": "Invalid number in custom field clause."
-      }
+      },
+      "project_access_denied": "You do not have access to this project."
     },
     "empty": "No issues match the criteria.",
     "assignee_save": "Save assignee",

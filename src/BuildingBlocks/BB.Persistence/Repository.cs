@@ -69,4 +69,6 @@ public class UnitOfWork<TContext> : IUnitOfWork where TContext : DbContext
             }
         });
     }
+
+    public void DiscardChanges() => _ctx.ChangeTracker.Clear();
 }

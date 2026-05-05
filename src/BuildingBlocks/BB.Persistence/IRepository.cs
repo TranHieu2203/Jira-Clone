@@ -18,4 +18,10 @@ public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken ct = default);
     Task ExecuteInTransactionAsync(Func<CancellationToken, Task> work, CancellationToken ct = default);
+
+    /// <summary>
+    /// Bỏ tracker — đặt tất cả tracked entity về Detached. Dùng cho retry loop khi gặp
+    /// concurrency conflict: lần lặp tiếp sẽ load lại snapshot mới.
+    /// </summary>
+    void DiscardChanges();
 }

@@ -10,7 +10,7 @@
 **Stack**: .NET 8 (Layered, no CQRS) + Angular 18+ PrimeNG v18 + PostgreSQL **hoặc** Oracle (config-switch)
 **Theme**: Monochrome trắng/đen
 **i18n**: vi (default) / en
-**Cập nhật lần cuối**: 2026-05-02 (BB#4 Outbox + BB#8 Specification)
+**Cập nhật lần cuối**: 2026-05-04 (My Issues JQL default + E2E email + workspace member insert + notification email slice)
 
 ---
 
@@ -29,7 +29,7 @@
 | P6 | Board Kanban (drag-drop, signal-based) | `[x]` CDK + filters + transition dialog + polling 30s + **swimlanes theo assignee**. SignalR → P11 |
 | P7 | Comment + Attachment + Activity Log | `[x]` Comment ✅; ActivityLog ✅; **Attachment** ✅ (`BB.Storage` Local/S3, module Attachment, FE upload/list/download/delete). |
 | P8 | Sprint + Backlog | `[x]` Module Sprint + API + Postgres migration + FE backlog drag + board scope active sprint + Reports burndown (activity-based). Oracle migration Sprint defer |
-| P9 | Search + Filter (incl. custom field) + Notification | `[~]` slice: JQL-lite + CFV indexed filter + Notification module + FE bell |
+| P9 | Search + Filter (incl. custom field) + Notification | `[~]` slice: JQL-lite + CFV indexed filter + in-app bell + **email** (Resend, templates, `email_logs`, admin UI, event-driven send assign/status/comment + **mention trong comment**) + FE **My Issues** (`/issues`) default `assignee = currentUser()` |
 | P10 | Workflow Editor UI + Field Editor UI | `[~]` **partial**: layout `display_order` + context/project + FE nhập nhiều kiểu field — chưa có admin Screen designer |
 | P11 | Identity hoàn thiện (RBAC + Permission scheme) | `[ ]` |
 | P12 | Docker Compose + CI + Docs | `[~]` Docker compose dev OK + **GitHub Actions dotnet build/test** ✅. Còn prod docker + README deploy đầy đủ |
@@ -58,7 +58,7 @@
   - [ ] Scrum: backlog + sprint, burndown
 - [ ] **Backlog**: list issue chưa vào sprint, drag vào sprint
 - [ ] **Search & JQL-lite**: filter cơ bản (assignee, status, type, label, text), lưu filter
-- [~] **Notification**: in-app ✅ + email (Resend + template + log + admin test send ✅; auto-send theo event defer)
+- [~] **Notification**: in-app ✅ + email ✅ (Resend + `email_templates` / `email_logs`, admin pages, **`IUserEmailLookup`** + handlers: assignee/status/comment; mention qua comment handler). Còn polish: deliverability/spam, template editor WYSIWYG
 - [ ] **Dashboard**: widget cơ bản (my issues, recent activity, sprint progress)
 
 ### 1.2. Nâng cao (sau MVP)
@@ -76,7 +76,7 @@
 
 ### 1.3. Cross-cutting
 
-- [ ] Realtime (SignalR) cho board drag-drop & comment
+- [~] Realtime (SignalR): BE `WorkspaceHub` + notifier board; FE dev cần proxy `/hubs/*` hoặc nginx — không thì negotiate 404 (board vẫn polling)
 - [ ] File storage (S3-compat / local filesystem)
 - [ ] Audit log (qua domain events + outbox)
 - [x] i18n vi/en (BB.Localization đã có)
@@ -563,7 +563,7 @@ tests/
 - [x] API services cho 5 module BE: Workspace, Project, Issue, Workflow, CustomField
 - [x] Feature pages: Workspaces (list+create), Workspace detail, Projects, Project detail, Issues (search), Issue detail (with transition buttons)
 - [~] `shared/ui/` 25 base components — chỉ có `app-page-header` cho MVP, các component khác dùng PrimeNG trực tiếp (defer P10)
-- [x] Router structure: `/workspaces`, `/workspaces/:slug`, `/projects/:projectKey`, `/issues`, `/issues/:issueKey`
+- [x] Router structure: `/workspaces`, `/workspaces/:slug`, `/projects/:projectKey`, `/issues` (**My issues** — default JQL `assignee = currentUser()`), `/issues/:issueKey`
 - [x] Route guard `AuthGuard` (đã có)
 - [ ] Dark mode toggle UI — CSS đã sẵn `[data-theme="dark"]`, chưa có nút toggle (defer)
 
@@ -619,3 +619,4 @@ tests/
 | 2026-05-02 | cursor | BB#12 Oracle + BB.Storage + Attachment + swimlanes + workspace Add member: `ProviderAwareMigrationsAssembly`, migration `*_Oracle` (7 module), `BB.Storage` (`LocalFileStorage`, `S3FileStorage`), `Attachment` module + `AttachmentsController`, MinIO service trong `docker-compose.dev.yml`, FE `AttachmentPanelComponent`, board swimlane assignee, workspace dialog + `UserPicker`, `Microsoft.EntityFrameworkCore.Design` trên Api.Host, script `tools/scripts/regenerate-oracle-migrations.ps1`. |
 | 2026-05-02 | cursor | E2E Jira headed (`e2e/run.js`): login ErrorDialog, workspaces→board→issue→comment→attachment→UserPicker→products validation→i18n→logout. FE: redirect login→`/workspaces`, `AppShell` context project cho Create Issue, board `setProject`, 401 login không `logout()`, create-issue dialog sync + `canSubmitForm`, `allowSignalWrites` effects. Polish: **`ThemeService`** + topbar toggle dark/light; **CommentsThread** xóa comment qua **PrimeNG ConfirmDialog** + i18n `theme.*`, `comment.delete_confirm_*`. `.gitignore` `e2e/screenshots/*.png`. |
 | 2026-05-02 | cursor | CustomField Jira-like slice — `CustomFieldContext.DisplayOrder` + migrations Postgres/Oracle (global context cũ order 1000); seed 5 field không global; `IDemoCustomFieldProjectBinder` + `ProjectCreated` handler + `CustomFieldDemoProjectBinderBackfill` (mọi project); resolve sort; FE form: Text, Number, Date, Select, Multi-select. `docs/BACKLOG.md` + `PROGRESS.md` cập nhật; P10 đánh dấu partial. |
+| 2026-05-04 | cursor | **Notification email (slice)**: domain `EmailTemplate` / `EmailLog`, migration Postgres; `IEmailService` + Resend `IEmailSender`; `IUserEmailLookup` (Identity); handlers integration events (assignee, status, comment + mention parsing); admin API email-templates / email-logs; FE admin routes + `adminRoleGuard`. **Project workspace member**: `AddWorkspaceMemberInsertOnlyAsync` (Npgsql raw INSERT) tránh `DbUpdateConcurrencyException` khi add member; Oracle fallback graph update. **FE My Issues**: route `data.issueListVariant = 'my'`, default JQL `assignee = currentUser()` — fix list `/issues` hiện toàn bộ issue khi JQL trống (không phải do role Admin). **E2E** (`e2e/run.js`): resolve API `:5000`, thêm admin2 qua API, bước 8 assignee/transition/comment `@admin`; assert 3 template sent + `docker exec` query `notification.email_logs`; selector PrimeNG 18 `.p-autocomplete-option`. |

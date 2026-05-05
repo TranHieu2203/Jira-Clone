@@ -17,6 +17,8 @@ public sealed class CommentService : ICommentService
     private readonly ICommentRepository _repo;
     private readonly ICommentUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
+    private readonly IIssueAccessGuard _accessGuard;
+    private readonly IPermissionChecker _permissions;
     private readonly IIssueNotificationSnapshotReader _issueSnapshot;
     private readonly IUserNameLookup _userNames;
     private readonly IIssueRealtimeNotifier _realtime;
@@ -27,6 +29,8 @@ public sealed class CommentService : ICommentService
         ICommentRepository repo,
         ICommentUnitOfWork uow,
         ICurrentUser currentUser,
+        IIssueAccessGuard accessGuard,
+        IPermissionChecker permissions,
         IIssueNotificationSnapshotReader issueSnapshot,
         IUserNameLookup userNames,
         IIssueRealtimeNotifier realtime,
@@ -36,6 +40,8 @@ public sealed class CommentService : ICommentService
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
+        _accessGuard = accessGuard;
+        _permissions = permissions;
         _issueSnapshot = issueSnapshot;
         _userNames = userNames;
         _realtime = realtime;
@@ -45,6 +51,14 @@ public sealed class CommentService : ICommentService
 
     public async Task<Result<PagedList<CommentDto>>> ListByIssueAsync(Guid issueId, int pageIndex = 1, int pageSize = 50, CancellationToken ct = default)
     {
+        if (_currentUser.UserId is null)
+            return Result.Failure<PagedList<CommentDto>>(ErrorType.Unauthorized, "auth.required");
+
+        // Bảo vệ cross-project: trả 404 thống nhất nếu issue không tồn tại HOẶC user không là member project.
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, issueId, ct);
+        if (access is null)
+            return Result.Failure<PagedList<CommentDto>>(ErrorType.NotFound, "issue.not_found");
+
         var page = await _repo.ListByIssueAsync(issueId, pageIndex, pageSize, ct);
         var dtos = page.Items.Select(Mappers.ToDto).ToList();
         return Result.Success(new PagedList<CommentDto>(dtos, page.TotalCount, page.PageIndex, page.PageSize));
@@ -54,6 +68,14 @@ public sealed class CommentService : ICommentService
     {
         if (_currentUser.UserId is null)
             return Result.Failure<CommentDto>(ErrorType.Unauthorized, "auth.required");
+
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, request.IssueId, ct);
+        if (access is null)
+            return Result.Failure<CommentDto>(ErrorType.NotFound, "issue.not_found");
+
+        // R2: tất cả role (Admin/Member/Viewer) đều được comment.
+        var perm = await _permissions.RequireProjectAsync(_currentUser.UserId, access.ProjectId, PermissionKeys.IssueComment, ct);
+        if (perm.IsFailure) return Result.Failure<CommentDto>(perm);
 
         var c = new Comment.Domain.Comment(request.IssueId, _currentUser.UserId.Value, request.Body);
         await _repo.AddAsync(c, ct);
@@ -73,6 +95,11 @@ public sealed class CommentService : ICommentService
 
         var c = await _repo.GetByIdAsync(id, ct);
         if (c is null) return Result.Failure<CommentDto>(ErrorType.NotFound, CommentErrors.MsgNotFound);
+
+        // Chặn cross-project: dù biết commentId, nếu user không là member project sở hữu issue → 404 (giấu existence).
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, c.IssueId, ct);
+        if (access is null)
+            return Result.Failure<CommentDto>(ErrorType.NotFound, CommentErrors.MsgNotFound);
 
         try { c.Edit(_currentUser.UserId.Value, request.Body); }
         catch (DomainException dex) when (dex.Code == CommentErrors.NotAuthor)
@@ -106,6 +133,11 @@ public sealed class CommentService : ICommentService
 
         var c = await _repo.GetByIdAsync(id, ct);
         if (c is null) return Result.Failure(ErrorType.NotFound, CommentErrors.MsgNotFound);
+
+        // Cross-project guard: kiểm tra trước khi check authorship để không leak existence.
+        IssueAccessSnapshot? access = await _accessGuard.ResolveAccessAsync(_currentUser.UserId.Value, c.IssueId, ct);
+        if (access is null)
+            return Result.Failure(ErrorType.NotFound, CommentErrors.MsgNotFound);
 
         try { c.EnsureCanDelete(_currentUser.UserId.Value); }
         catch (DomainException dex) when (dex.Code == CommentErrors.NotAuthor)
