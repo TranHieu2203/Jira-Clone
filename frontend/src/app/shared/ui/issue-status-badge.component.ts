@@ -45,9 +45,13 @@ export class IssueStatusBadgeComponent {
   readonly size = input<'sm' | 'lg'>('sm');
 
   readonly name = computed(() => {
+    this.cache.version(); // subscribe → re-eval khi cache fill
     const id = this.statusId();
     return this.cache.nameOf(id) ?? id.slice(0, 8) + '…';
   });
 
-  readonly cat = computed(() => this.cache.categoryOf(this.statusId()) ?? 1);
+  readonly cat = computed(() => {
+    this.cache.version();
+    return this.cache.categoryOf(this.statusId()) ?? 1;
+  });
 }

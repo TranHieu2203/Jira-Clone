@@ -42,9 +42,16 @@ export class IssueTypePillComponent {
   readonly typeId = input.required<string>();
   readonly size = input<'sm' | 'lg'>('sm');
 
-  readonly name = computed(() => this.cache.nameOf(this.typeId()) ?? '');
-  readonly color = computed(() => this.cache.colorOf(this.typeId()) ?? '#6b7280');
+  readonly name = computed(() => {
+    this.cache.version();
+    return this.cache.nameOf(this.typeId()) ?? '';
+  });
+  readonly color = computed(() => {
+    this.cache.version();
+    return this.cache.colorOf(this.typeId()) ?? '#6b7280';
+  });
   readonly initial = computed(() => {
+    this.cache.version();
     const t = this.cache.get(this.typeId());
     if (!t) return '?';
     if (t.key === 'EPIC') return 'E';

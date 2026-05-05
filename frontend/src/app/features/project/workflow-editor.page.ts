@@ -70,7 +70,7 @@ const CATEGORY_OPTIONS = [
       <div class="toolbar">
         <label class="lbl">{{ 'workflow_editor.select_workflow' | translate }}</label>
         <p-select [options]="workflowOptions()"
-                  [(ngModel)]="selectedWorkflowId"
+                  [ngModel]="selectedWorkflowId()"
                   (ngModelChange)="onWorkflowSelected($event)"
                   optionLabel="label"
                   optionValue="value"
@@ -273,10 +273,11 @@ export class WorkflowEditorPageComponent implements OnInit {
 
   readonly workflows = signal<Workflow[]>([]);
   readonly loadingList = signal(true);
-  selectedWorkflowId: string | null = null;
+  /** Signal để computed `selectedWorkflow` reactive khi đổi workflow. */
+  readonly selectedWorkflowId = signal<string | null>(null);
 
   readonly selectedWorkflow = computed(() => {
-    const id = this.selectedWorkflowId;
+    const id = this.selectedWorkflowId();
     if (!id) return null;
     return this.workflows().find((w) => w.id === id) ?? null;
   });
@@ -357,7 +358,7 @@ export class WorkflowEditorPageComponent implements OnInit {
   }
 
   onWorkflowSelected(id: string | null): void {
-    this.selectedWorkflowId = id;
+    this.selectedWorkflowId.set(id);
     this.cdr.markForCheck();
   }
 
@@ -366,14 +367,12 @@ export class WorkflowEditorPageComponent implements OnInit {
     this.wfApi.listByProject(this.projectId()).subscribe({
       next: (list) => {
         this.workflows.set(list);
-        if (!this.selectedWorkflowId && list.length > 0) {
+        const cur = this.selectedWorkflowId();
+        if (!cur && list.length > 0) {
           const active = list.find((w) => w.isActive);
-          this.selectedWorkflowId = (active ?? list[0]).id;
-        } else if (
-          this.selectedWorkflowId &&
-          !list.some((w) => w.id === this.selectedWorkflowId)
-        ) {
-          this.selectedWorkflowId = list.length > 0 ? list[0].id : null;
+          this.selectedWorkflowId.set((active ?? list[0]).id);
+        } else if (cur && !list.some((w) => w.id === cur)) {
+          this.selectedWorkflowId.set(list.length > 0 ? list[0].id : null);
         }
         this.loadingList.set(false);
         this.cdr.markForCheck();
@@ -406,7 +405,7 @@ export class WorkflowEditorPageComponent implements OnInit {
     this.wfApi.create(req).subscribe({
       next: (created) => {
         this.createWfOpen = false;
-        this.selectedWorkflowId = created.id;
+        this.selectedWorkflowId.set(created.id);
         this.reloadWorkflows();
       },
       error: () => {}

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, SecurityContext, computed, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, SecurityContext, computed, inject, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -261,6 +261,7 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
   private readonly userCache = inject(UserCacheService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly hub = inject(WorkspaceHubService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /**
    * F12: handler được lưu ref để hub.removeIssueListener khớp khi destroy.
@@ -331,16 +332,21 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
   }
 
   private load(issueKey: string): void {
-    this.api.getByKey(issueKey).subscribe((i) => {
+    this.api.getByKey(issueKey).subscribe(async (i) => {
       this.issue.set(i);
       this.assigneeDraft.set(i.assigneeId ?? null);
       this.descriptionDraft = i.description ?? '';
       this.editingDescription.set(false);
-      this.statusCache.ensureProjectLoaded(i.projectId);
-      this.typeCache.ensureProjectLoaded(i.projectId);
+      // Warm caches THEN trigger CD so type pill / status badge / reporter
+      // hiển thị tên thật ngay khi caches resolve (thay vì "?" / GUID slice).
       const userIds: string[] = [i.reporterId];
       if (i.assigneeId) userIds.push(i.assigneeId);
-      void this.userCache.ensureLoaded(userIds);
+      await Promise.all([
+        this.statusCache.ensureProjectLoaded(i.projectId),
+        this.typeCache.ensureProjectLoaded(i.projectId),
+        this.userCache.ensureLoaded(userIds)
+      ]);
+      this.cdr.markForCheck();
       this.loadTransitions(i);
       // F12: join hub group cho issue này (re-join idempotent nếu đã join).
       if (this.joinedIssueId !== i.id) {

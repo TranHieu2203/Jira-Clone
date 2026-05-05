@@ -1,16 +1,20 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Signal, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { UserApiService, UserSummary } from './user.service';
 
 /**
  * Cache user lookup theo userId. Backlog/board hiển thị assignee name + initials
  * mà không phải gọi BE từng row. Dedupe các request inflight.
+ *
+ * Signal-reactive: `version()` increments mỗi khi có entry mới.
  */
 @Injectable({ providedIn: 'root' })
 export class UserCacheService {
   private readonly api = inject(UserApiService);
   private readonly cache = new Map<string, UserSummary>();
   private readonly inflight = new Map<string, Promise<UserSummary | null>>();
+  private readonly _version = signal(0);
+  readonly version: Signal<number> = this._version.asReadonly();
 
   get(userId: string): UserSummary | null {
     return this.cache.get(userId) ?? null;
@@ -49,7 +53,10 @@ export class UserCacheService {
     if (existing) return existing;
     const p = firstValueFrom(this.api.getById(userId))
       .then((u) => {
-        if (u && u.id) this.cache.set(u.id, u);
+        if (u && u.id) {
+          this.cache.set(u.id, u);
+          this._version.update((v) => v + 1);
+        }
         this.inflight.delete(userId);
         return u ?? null;
       })

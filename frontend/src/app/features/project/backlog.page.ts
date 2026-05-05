@@ -136,7 +136,7 @@ interface IssueGroup {
             cdkDropListConnectedTo="sprint-issues-list"
             [cdkDropListData]="backlogItems()"
             (cdkDropListDropped)="onDrop($event)">
-            @for (g of backlogGroups(); track g.epic?.id ?? '__none__') {
+            @for (g of backlogGroups(); track trackGroup($index, g)) {
               @if (groupByEpic() && (g.epic || g.items.length > 0)) {
                 <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
                   @if (g.epic; as ep) {
@@ -201,7 +201,7 @@ interface IssueGroup {
               cdkDropListConnectedTo="product-backlog-list"
               [cdkDropListData]="sprintItems()"
               (cdkDropListDropped)="onDrop($event)">
-              @for (g of sprintGroups(); track g.epic?.id ?? '__none__') {
+              @for (g of sprintGroups(); track trackGroup($index, g)) {
                 @if (groupByEpic() && (g.epic || g.items.length > 0)) {
                   <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
                     @if (g.epic; as ep) {
@@ -548,6 +548,15 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   /** Tooltip cho avatar khi assignee = null. Đọc từ TranslateService (sync). */
   unassignedTooltip(): string {
     return this.translate.instant('issue.unassigned');
+  }
+
+  /**
+   * Track-by cho @for group. Dùng method thay vì `g.epic?.id ?? 'X'` inline vì
+   * Angular 18 compiler có bug với optional-chain + nullish-coalescing ở track
+   * (sinh `tmp_94_0 is not defined` runtime error).
+   */
+  trackGroup(_idx: number, g: IssueGroup): string {
+    return g.epic ? g.epic.id : '__none__';
   }
 
   // ─── Bootstrap & reload ───────────────────────────────────────────────────

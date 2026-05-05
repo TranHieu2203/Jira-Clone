@@ -53,6 +53,12 @@ export class UserAvatarComponent {
   readonly size = input<'sm' | 'md' | 'lg'>('md');
   readonly emptyTooltip = input<string>('Unassigned');
 
-  readonly name = computed(() => this.cache.displayNameOf(this.userId()));
-  readonly initials = computed(() => this.cache.initialsOf(this.userId()));
+  readonly name = computed(() => {
+    this.cache.version();
+    return this.cache.displayNameOf(this.userId());
+  });
+  readonly initials = computed(() => {
+    this.cache.version();
+    return this.cache.initialsOf(this.userId());
+  });
 }

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Signal, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { IssueType, ProjectApiService } from './project.service';
 
@@ -6,8 +6,7 @@ import { IssueType, ProjectApiService } from './project.service';
  * Cache IssueType per typeId (load qua project detail). Issue list/board map
  * issueTypeId sang name + color + key cho type pill mà không phải gọi BE từng row.
  *
- * Single fetch per project — issue types thuộc project, ID cố định nên cache vô hạn
- * trong session là an toàn.
+ * Signal-reactive: `version()` increments mỗi khi có entry mới.
  */
 @Injectable({ providedIn: 'root' })
 export class IssueTypeCacheService {
@@ -16,6 +15,8 @@ export class IssueTypeCacheService {
   private readonly cache = new Map<string, IssueType>();
   private readonly loadedProjects = new Set<string>();
   private readonly inflight = new Map<string, Promise<void>>();
+  private readonly _version = signal(0);
+  readonly version: Signal<number> = this._version.asReadonly();
 
   ensureProjectLoaded(projectId: string): Promise<void> {
     if (this.loadedProjects.has(projectId)) return Promise.resolve();
@@ -24,7 +25,10 @@ export class IssueTypeCacheService {
 
     const promise = firstValueFrom(this.api.getById(projectId))
       .then((detail) => {
-        for (const t of detail.issueTypes) this.cache.set(t.id, t);
+        if (detail.issueTypes.length > 0) {
+          for (const t of detail.issueTypes) this.cache.set(t.id, t);
+          this._version.update((v) => v + 1);
+        }
         this.loadedProjects.add(projectId);
         this.inflight.delete(projectId);
       })
@@ -36,7 +40,9 @@ export class IssueTypeCacheService {
   }
 
   putMany(types: readonly IssueType[]): void {
+    if (types.length === 0) return;
     for (const t of types) this.cache.set(t.id, t);
+    this._version.update((v) => v + 1);
   }
 
   get(typeId: string): IssueType | null {
