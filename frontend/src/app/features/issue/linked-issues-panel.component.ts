@@ -187,11 +187,15 @@ export class LinkedIssuesPanelComponent implements OnInit, OnDestroy {
   ];
 
   constructor() {
-    // Auto-load mỗi lần issueId đổi.
-    effect(() => {
-      const id = this.issueId();
-      if (id) this.load(id);
-    });
+    // Auto-load mỗi lần issueId đổi. `load()` set nhiều signal (loading, rows…)
+    // qua subscribe callback → cần `allowSignalWrites: true` để tránh NG0600.
+    effect(
+      () => {
+        const id = this.issueId();
+        if (id) this.load(id);
+      },
+      { allowSignalWrites: true }
+    );
   }
 
   ngOnInit(): void {
