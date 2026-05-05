@@ -7,7 +7,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonGroupModule } from 'primeng/buttongroup';
-import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { PopoverModule } from 'primeng/popover';
 import { TooltipModule } from 'primeng/tooltip';
 import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
 import { Issue, IssueApiService, IssueSummary, UpdateIssueRequest } from '@core/api/issue.service';
@@ -36,7 +36,7 @@ import { switchMap } from 'rxjs/operators';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
-    ButtonModule, ButtonGroupModule, InputTextModule, OverlayPanelModule, TooltipModule, AutoCompleteModule, RichTextEditorComponent,
+    ButtonModule, ButtonGroupModule, InputTextModule, PopoverModule, TooltipModule, AutoCompleteModule, RichTextEditorComponent,
     CommentsThreadComponent,
     AttachmentPanelComponent,
     LinkedIssuesPanelComponent,
@@ -75,7 +75,7 @@ import { switchMap } from 'rxjs/operators';
             <app-issue-status-badge [statusId]="i.currentStatusId" size="lg" />
             <i class="pi pi-chevron-down chev"></i>
           </button>
-          <p-overlayPanel #statusMenu styleClass="status-menu-panel">
+          <p-popover #statusMenu styleClass="status-menu-panel">
             <ng-template pTemplate>
               <div class="trans-menu">
                 <div class="trans-menu-head">{{ 'issue.transition_menu_title' | translate }}</div>
@@ -93,7 +93,7 @@ import { switchMap } from 'rxjs/operators';
                 }
               </div>
             </ng-template>
-          </p-overlayPanel>
+          </p-popover>
 
           <span class="action-divider"></span>
 
@@ -297,6 +297,7 @@ import { switchMap } from 'rxjs/operators';
 
     /* Status transition dropdown panel */
     ::ng-deep .status-menu-panel { border: 1px solid var(--c-border); border-radius: var(--radius); }
+    ::ng-deep .status-menu-panel .p-popover-content,
     ::ng-deep .status-menu-panel .p-overlaypanel-content { padding: 6px 0; }
     .trans-menu { min-width: 240px; display: flex; flex-direction: column; }
     .trans-menu-head {

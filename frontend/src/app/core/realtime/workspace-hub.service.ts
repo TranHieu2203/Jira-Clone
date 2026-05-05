@@ -1,10 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import {
   HubConnection,
   HubConnectionBuilder,
   HubConnectionState,
   LogLevel
 } from '@microsoft/signalr';
+import { APP_CONFIG } from '@core/config/app-config';
 
 /** Payload từ hub — khớp camelCase từ server. */
 export interface BoardRealtimePayload {
@@ -20,15 +21,26 @@ export interface IssueThreadRealtimePayload {
 
 @Injectable({ providedIn: 'root' })
 export class WorkspaceHubService {
+  private readonly cfg = inject(APP_CONFIG);
+
   private connection: HubConnection | null = null;
   private startPromise: Promise<void> | null = null;
 
   private readonly boardHandlers = new Set<(payload: BoardRealtimePayload) => void>();
   private readonly issueHandlers = new Set<(payload: IssueThreadRealtimePayload) => void>();
 
+  /**
+   * Derive hub URL từ APP_CONFIG.apiBaseUrl thay vì `window.location.origin`.
+   * - Prod: `apiBaseUrl = '/api'` → strip `/api` → `''` → `/hubs/workspace` (cùng origin với SPA)
+   * - Dev (ng serve): `apiBaseUrl = 'http://localhost:5000/api'` → strip `/api` → `http://localhost:5000`
+   *   → `http://localhost:5000/hubs/workspace`. Trước đó dùng `window.origin` = `:4200`
+   *   gây 404 vì ng serve không proxy /hubs/* sang BE.
+   */
   private hubUrl(): string {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${origin}/hubs/workspace`;
+    const base = this.cfg.apiBaseUrl;
+    // Strip trailing /api (or any /api/) to get the API origin/host root.
+    const root = base.replace(/\/api\/?$/, '');
+    return `${root}/hubs/workspace`;
   }
 
   private accessToken(): string {
