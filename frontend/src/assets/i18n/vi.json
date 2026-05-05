@@ -177,6 +177,9 @@
     "created_at": "Tạo lúc",
     "search_placeholder": "Tìm theo summary hoặc key...",
     "jql_placeholder": "JQL (vd: status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "export": {
+      "button": "Xuất CSV"
+    },
     "bulk": {
       "selected_count": "Đã chọn {{count}}",
       "edit": "Sửa hàng loạt",

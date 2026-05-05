@@ -626,6 +626,79 @@ public sealed class IssueService : IIssueService
     }
 
     /// <summary>
+    /// F8: export search results as CSV. Reuses SearchAsync (cùng access/permission/JQL semantics)
+    /// rồi enrich type name + status name per-project. Hard cap 5000 rows để tránh OOM —
+    /// power user cần lớn hơn → dùng filter chia nhỏ + multi export.
+    /// </summary>
+    public async Task<Result<string>> ExportSearchAsCsvAsync(SearchIssuesRequest request, CancellationToken ct = default)
+    {
+        const int MaxExport = 5000;
+
+        // Force page 1 + max page size để fetch tối đa trong 1 lần. Giữ nguyên các filter khác.
+        var exportRequest = request with { PageIndex = 1, PageSize = MaxExport };
+        Result<PagedList<IssueSummaryDto>> searchResult = await SearchAsync(exportRequest, ct);
+        if (!searchResult.IsSuccess || searchResult.Data is null)
+            return Result.Failure<string>(searchResult);
+
+        IReadOnlyList<IssueSummaryDto> rows = searchResult.Data.Items;
+
+        // Resolve type name + status name. Per-project caching để tránh N+1 query.
+        var typeNameByProject = new Dictionary<Guid, Dictionary<Guid, string>>();
+        var statusNameByProject = new Dictionary<Guid, Dictionary<Guid, string>>();
+
+        foreach (Guid projectId in rows.Select(r => r.ProjectId).Distinct())
+        {
+            // Issue types từ Project module.
+            IReadOnlyList<global::Project.Application.IssueTypeDto> types =
+                await _issueTypeReader.ListByProjectAsync(projectId, ct);
+            typeNameByProject[projectId] = types.ToDictionary(t => t.Id, t => t.Name);
+
+            // Workflow statuses từ Workflow module — gộp tên status từ tất cả workflow của project.
+            IReadOnlyList<global::Workflow.Domain.Workflow> workflows =
+                await _workflowRepository.ListByProjectAsync(projectId, ct);
+            var statusMap = new Dictionary<Guid, string>();
+            foreach (var wf in workflows)
+                foreach (var st in wf.Statuses)
+                    statusMap[st.Id] = st.Name;
+            statusNameByProject[projectId] = statusMap;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        // BOM để Excel mở file UTF-8 không lỗi tiếng Việt.
+        sb.Append('﻿');
+        sb.AppendLine("Key,Summary,Type,Status,Priority,AssigneeId,CreatedAt");
+
+        foreach (IssueSummaryDto r in rows)
+        {
+            string typeName = typeNameByProject.TryGetValue(r.ProjectId, out var typeMap)
+                && typeMap.TryGetValue(r.IssueTypeId, out var tn) ? tn : r.IssueTypeId.ToString();
+            string statusName = statusNameByProject.TryGetValue(r.ProjectId, out var statusMap)
+                && statusMap.TryGetValue(r.CurrentStatusId, out var sn) ? sn : r.CurrentStatusId.ToString();
+            string priorityName = ((Priority)r.Priority).ToString();
+
+            sb.Append(CsvEscape(r.Key)).Append(',');
+            sb.Append(CsvEscape(r.Summary)).Append(',');
+            sb.Append(CsvEscape(typeName)).Append(',');
+            sb.Append(CsvEscape(statusName)).Append(',');
+            sb.Append(CsvEscape(priorityName)).Append(',');
+            sb.Append(r.AssigneeId?.ToString() ?? string.Empty).Append(',');
+            sb.Append(r.CreatedAt.ToString("o")).AppendLine();
+        }
+
+        _logger.LogInformation("Issue export CSV generated: {Rows} rows", rows.Count);
+        return Result.Success<string>(sb.ToString());
+    }
+
+    /// <summary>RFC 4180-style escape: quote nếu chứa "," | "\"" | newline; double-up dấu ".</summary>
+    private static string CsvEscape(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        bool needQuote = value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
+        if (!needQuote) return value;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }
+
+    /// <summary>
     /// F5: bulk update — apply same operations cho list issueId. Partial-success aware:
     /// trả `Succeeded` (id đã apply) và `Failed` (id + lý do). Không rollback toàn bộ
     /// nếu 1 issue fail — caller hiển thị tổng kết, user có thể retry các id failed.

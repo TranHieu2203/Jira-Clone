@@ -182,4 +182,12 @@ export class IssueApiService {
   bulkUpdate(req: BulkUpdateRequest): Observable<BulkUpdateResultDto> {
     return this.http.post<BulkUpdateResultDto>(`${this.base}/bulk-update`, req);
   }
+
+  /**
+   * F8: Export search results as CSV. Trả Blob; UI tạo URL.createObjectURL để download.
+   * Server cap 5000 rows — narrow filter nếu vượt.
+   */
+  exportCsv(req: SearchIssuesRequest): Observable<Blob> {
+    return this.http.post(`${this.base}/export.csv`, req, { responseType: 'blob' });
+  }
 }

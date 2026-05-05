@@ -65,4 +65,17 @@ public sealed class IssuesController : BaseController
     [HttpPost("bulk-update")]
     public async Task<IActionResult> BulkUpdate([FromBody] BulkUpdateRequest request, CancellationToken ct) =>
         ToResponse(await _service.BulkUpdateAsync(request, ct));
+
+    /// <summary>F8: Export search results as CSV. Capped at 5000 rows. UTF-8 with BOM for Excel.</summary>
+    [HttpPost("export.csv")]
+    public async Task<IActionResult> ExportCsv([FromBody] SearchIssuesRequest request, CancellationToken ct)
+    {
+        BB.Common.Result<string> result = await _service.ExportSearchAsCsvAsync(request, ct);
+        if (!result.IsSuccess || result.Data is null)
+            return ToResponse(result);
+
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(result.Data);
+        string filename = $"issues-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.csv";
+        return File(bytes, "text/csv; charset=utf-8", filename);
+    }
 }

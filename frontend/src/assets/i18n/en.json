@@ -177,6 +177,9 @@
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
     "jql_placeholder": "JQL (e.g. status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "export": {
+      "button": "Export CSV"
+    },
     "bulk": {
       "selected_count": "{{count}} selected",
       "edit": "Bulk edit",

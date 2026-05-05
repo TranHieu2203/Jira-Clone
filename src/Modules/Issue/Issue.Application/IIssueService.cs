@@ -22,4 +22,11 @@ public interface IIssueService
 
     /// <summary>F5: bulk update — applies same operations to many issues, partial-success aware.</summary>
     Task<Result<BulkUpdateResultDto>> BulkUpdateAsync(BulkUpdateRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// F8: export search results as CSV (capped at 5000 rows). Output: UTF-8 with BOM.
+    /// Resolves Type Name + Status Name per-project so file is usable in Excel without
+    /// manual ID joining. Reuses access/permission rules from SearchAsync.
+    /// </summary>
+    Task<Result<string>> ExportSearchAsCsvAsync(SearchIssuesRequest request, CancellationToken ct = default);
 }

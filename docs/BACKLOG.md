@@ -267,7 +267,8 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F5** | Bulk edit (multi-select issues + batch update) | M | ✅ | Done — `IssueService.BulkUpdateAsync(BulkUpdateRequest)` partial-success: applies assignee (set/clear), priority, labels add/remove, archive/unarchive cho ≤100 issue per batch. Per-issue check `IIssueProjectAccess` + `IPermissionChecker.IssueEdit` (cached per project). Trả `{succeeded, failed[{id, messageKey}]}`. Endpoint `POST /api/v1/issues/bulk-update`. FE: checkbox column + select-all + selection signal trong `IssuesPage`; sticky `BulkEditToolbarComponent` hiện khi ≥1 issue selected → mở dialog (UserPicker assignee + clear flag, priority Select, add/remove labels comma-separated, archive yes/no/noop) → ConfirmDialog → BE call → toast partial nếu có lỗi. i18n vi/en đầy đủ (`issue.bulk.*`). Status transition cố tình defer vì cần per-issue workflow validation. Build BE 0/0, ng build OK, 94 test PASS. |
 | **F6** | Roadmap (Epic timeline Gantt) | L | ⬜ | View timeline epic theo `dueDate`. |
 | **F7** | Velocity report | S | ✅ | Done — `SprintService.GetVelocityAsync(projectId, count)` + `VelocityReportDto` + endpoint `GET /projects/{projectId}/sprints/velocity?count=6`. Per-sprint: committed = sum `SprintCommitLine.BurndownPoints`; completed = sum points của issue reach Done category trước EndDate (qua `IActivityEntryRepository.ListIssueStatusChangesForIssuesAsync` + workflow status category). Average = mean completed across sprints có data. FE: `SprintApiService.velocity()` + bar chart SVG (overlay committed mờ + completed đậm) trong `project-reports.page` cạnh Burndown, scale chart width theo số sprint. i18n vi/en (`reports.velocity_*`). Build BE 0/0, ng build OK. |
-| **F8** | CSV/JSON Import/Export | M | ⬜ | Import từ Jira/Excel, export filter. |
+| **F8a** | CSV Export | S | ✅ | Done — `IssueService.ExportSearchAsCsvAsync(SearchIssuesRequest)` reuses SearchAsync với `pageSize=5000` (cap), enrich type name + status name per-project (1 lookup mỗi project, no N+1). RFC 4180 quote escape, UTF-8 BOM cho Excel. Endpoint `POST /issues/export.csv` trả `text/csv` file. FE: nút "Export CSV" trên IssuesPage → blob download via `URL.createObjectURL`. Cùng filter (textSearch, jql) với search hiện tại. i18n vi/en (`issue.export.button`). |
+| **F8b** | CSV Import | M | ⬜ | Defer — phức tạp hơn (validate type key, summary required, parent key resolution, idempotency). Cần dialog upload + preview rows + per-row error report. |
 
 ### Phase D — Enterprise (3–4 tuần) 🟢
 
@@ -300,13 +301,19 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 > ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F5 + F7** xong (6/8).
+> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F5 + F7 + F8a** xong (7/9, vì F8 split → F8a done + F8b defer).
 >
 > Tiếp theo:
-> - **F8** CSV/JSON Import/Export — export filter results, import từ Jira/Excel. Effort M, leverage F1 search.
-> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic theo dueDate. Effort L.
+> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic theo dueDate, group by epic. Effort L.
+> - **F8b** CSV Import — upload, parse, validate, partial-success. Effort M.
 >
-> Đề xuất **F8 (Export trước, Import sau)** — Export trước vì đơn giản (stream filter results sang CSV), Import phức tạp hơn (validate, idempotency, parent key resolution). Hoặc **F6 Roadmap** nếu muốn UX-heavy work.
+> Đề xuất chuyển sang **Phase D ops/enterprise** vì Phase C đã xong các Jira-feature core nhất:
+> - **F12** SignalR realtime (board + comment) — đã có hub stub, chỉ cần wire client. Effort M, UX win lớn.
+> - **F15** Audit log admin — admin actions (delete project, change role…). Effort M.
+> - **O1** Production Dockerfile multi-stage. Effort M.
+> - **R6** (Phase B) Email pipeline polish (dedupe + opt-out + DLQ). Effort M.
+>
+> Đề xuất **F12 (SignalR realtime)** — backend đã có `IIssueRealtimeNotifier` + WorkspaceHub hooks; chỉ cần FE connect và update list/board live. UX win lớn.
 
 ---
 

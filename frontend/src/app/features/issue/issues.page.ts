@@ -69,6 +69,9 @@ import { CheckboxModule } from 'primeng/checkbox';
         (keyup.enter)="reload()"
         [placeholder]="'issue.jql_placeholder' | translate" />
       <button pButton (click)="reload()" [label]="'common.search' | translate"></button>
+      <button pButton [text]="true" [loading]="exporting()"
+              (click)="exportCsv()"
+              [label]="'issue.export.button' | translate"></button>
     </div>
 
     <app-bulk-edit-toolbar
@@ -162,6 +165,9 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   readonly fixedProjectId = signal<string | null>(null);
   readonly listTitleKey = signal('issue.title');
 
+  // F8a: export state.
+  readonly exporting = signal(false);
+
   // F5: bulk selection state.
   readonly selectedIdsSet = signal<ReadonlySet<string>>(new Set());
   readonly selectedIds = computed(() => Array.from(this.selectedIdsSet()));
@@ -232,6 +238,46 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
 
   onIssueCreated(): void {
     this.reload();
+  }
+
+  /** F8a: Export current search as CSV. Cùng filter với reload(); BE cap 5000 rows. */
+  exportCsv(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.api
+      .exportCsv({
+        projectId: this.fixedProjectId(),
+        textSearch: this.textFilter || null,
+        jql: this.jqlFilter.trim() || null,
+        pageIndex: 1,
+        pageSize: 5000,
+        sort: 'key'
+      })
+      .subscribe({
+        next: (blob) => {
+          this.exporting.set(false);
+          this.triggerDownload(blob, `issues-${this.formatTimestamp()}.csv`);
+        },
+        error: () => this.exporting.set(false)
+      });
+  }
+
+  /** Tạo URL.createObjectURL → click ẩn anchor → revoke. */
+  private triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  private formatTimestamp(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   }
 
   /** F2: SavedFilterPicker emit JQL → set vào ô input + reload luôn. */
