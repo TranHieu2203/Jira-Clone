@@ -13,6 +13,7 @@ public sealed class IssueDbContext : BaseDbContext
 
     public DbSet<Domain.Issue> Issues => Set<Domain.Issue>();
     public DbSet<IssueWatcher> Watchers => Set<IssueWatcher>();
+    public DbSet<SavedFilter> SavedFilters => Set<SavedFilter>();
 
     public IssueDbContext(
         DbContextOptions<IssueDbContext> options,
@@ -79,6 +80,25 @@ public sealed class IssueDbContext : BaseDbContext
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.IssueId, x.UserId }).IsUnique();
             e.HasIndex(x => x.UserId);
+        });
+
+        // F2: saved filter — JQL search lưu lại theo user.
+        b.Entity<SavedFilter>(e =>
+        {
+            e.ToTable("saved_filters");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(SavedFilter.NameMaxLength).IsRequired();
+            e.Property(x => x.Jql).HasMaxLength(SavedFilter.JqlMaxLength).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(SavedFilter.DescriptionMaxLength);
+            e.Property(x => x.CreatedBy).HasMaxLength(64);
+            e.Property(x => x.UpdatedBy).HasMaxLength(64);
+            e.Property(x => x.CreatedTraceId).HasMaxLength(64);
+
+            // Lookup: filter của 1 user + filter shared cho mọi user.
+            e.HasIndex(x => x.OwnerUserId);
+            e.HasIndex(x => x.IsShared);
+
+            e.Ignore(x => x.DomainEvents);
         });
 
         base.OnModelCreating(b);

@@ -21,6 +21,8 @@ public static class IssueModule
         services.AddScoped<IIssueRealtimeNotifier, NoOpIssueRealtimeNotifier>();
         services.AddScoped<IIssueAccessGuard, IssueAccessGuard>();
         services.AddScoped<IIssueService, IssueService>();
+        services.AddScoped<ISavedFilterRepository, SavedFilterRepository>();
+        services.AddScoped<ISavedFilterService, SavedFilterService>();
 
         return services;
     }

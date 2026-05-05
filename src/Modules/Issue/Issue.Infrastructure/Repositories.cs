@@ -59,3 +59,20 @@ public sealed class IssueUnitOfWork : UnitOfWork<IssueDbContext>, IIssueUnitOfWo
 {
     public IssueUnitOfWork(IssueDbContext ctx) : base(ctx) { }
 }
+
+public sealed class SavedFilterRepository : Repository<SavedFilter>, ISavedFilterRepository
+{
+    private readonly IssueDbContext _ctx;
+    public SavedFilterRepository(IssueDbContext ctx) : base(ctx) => _ctx = ctx;
+
+    public async Task<IReadOnlyList<SavedFilter>> ListVisibleToUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Visible = chính chủ HOẶC shared. Sắp xếp filter của user trước, sau đó filter shared.
+        var list = await _ctx.SavedFilters.AsNoTracking()
+            .Where(f => f.OwnerUserId == userId || f.IsShared)
+            .OrderByDescending(f => f.OwnerUserId == userId)
+            .ThenBy(f => f.Name)
+            .ToListAsync(ct);
+        return list;
+    }
+}

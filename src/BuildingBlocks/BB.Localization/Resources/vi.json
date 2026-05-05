@@ -132,6 +132,16 @@
       }
     }
   },
+  "saved_filter": {
+    "created": "Đã lưu filter",
+    "updated": "Đã cập nhật filter",
+    "deleted": "Đã xoá filter",
+    "not_found": "Không tìm thấy filter",
+    "not_owner": "Chỉ chủ filter mới được sửa",
+    "name": { "required": "Tên là bắt buộc", "too_long": "Tên quá dài" },
+    "jql": { "required": "JQL là bắt buộc", "too_long": "JQL quá dài" },
+    "description": { "too_long": "Mô tả quá dài" }
+  },
   "issue_link": {
     "added": "Đã thêm liên kết",
     "removed": "Đã gỡ liên kết",

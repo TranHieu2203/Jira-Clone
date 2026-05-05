@@ -406,6 +406,26 @@
     "empty": "No attachments yet.",
     "download": "Download"
   },
+  "saved_filter": {
+    "pick": "Saved filters…",
+    "shared": "Shared",
+    "save_current": "Save current",
+    "save_title": "Save filter",
+    "edit_title": "Edit filter",
+    "name_label": "Name",
+    "description_label": "Description",
+    "jql_label": "JQL",
+    "is_shared": "Share with everyone",
+    "confirm_delete": "Delete this saved filter?",
+    "created": "Filter saved",
+    "updated": "Filter updated",
+    "deleted": "Filter deleted",
+    "not_owner": "Only the owner can modify this filter",
+    "not_found": "Filter not found",
+    "name": { "required": "Name is required", "too_long": "Name is too long" },
+    "jql": { "required": "JQL is required", "too_long": "JQL is too long" },
+    "description": { "too_long": "Description is too long" }
+  },
   "issue_link": {
     "title": "Linked issues",
     "empty": "No linked issues yet.",

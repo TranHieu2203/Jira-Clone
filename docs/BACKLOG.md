@@ -261,7 +261,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | ID | Task | Effort | Status | Ghi chú |
 |---|---|---|---|---|
 | **F1** | JQL-lite mở rộng | M | ✅ | Done — extended `JqlLiteParser` thêm 3 clause: `priority = High` (hoặc số 1-5), `type = "BUG"` (key, resolve sang IssueTypeId qua `IIssueTypeReader.ListByProjectAsync`), `label = "x"` + `label in ("a","b","c")` (AND across labels). `IssueSearchCriteria.RequiredLabels` mới + `IssueSpecifications` filter `i.Labels.Contains(lbl)` (Postgres jsonb-array translate; Oracle CLOB chưa support — known limit). 15 new test PASS (40/40 Issue tests). i18n keys vi/en cho 5 error mới (`duplicate_priority`, `duplicate_type`, `type_requires_project`, `label_in_empty`, `unrecognized_clause`). Status name → workflow resolve đã có sẵn từ trước. |
-| **F2** | Saved filter | S | ⬜ | `saved_filters` table + admin/user filter management. |
+| **F2** | Saved filter | S | ✅ | Done — `SavedFilter` aggregate trong `Issue.Domain` (đặt cùng module Issue vì gắn JQL). Bảng `saved_filters` schema `issue` (Postgres incremental migration) + Oracle migration consolidated. CRUD API `/saved-filters/{mine,id}` với owner-only modify (404 cho non-owner non-shared để chống enumeration); shared filter cho phép user khác xem + apply. FE: `SavedFilterApiService` + `SavedFilterPickerComponent` (Select dropdown + Dialog "Save current/Edit" + ConfirmDialog xoá) mounted trong `IssuesPage` trên ô JQL. i18n vi/en đầy đủ (`saved_filter.*`). Build BE + FE PASS, 94 test PASS. |
 | **F3** | **Issue Link module** (relates/blocks/duplicates/clones) | M | ✅ | Done — `Modules/IssueLink/` 4 layer (Domain/Application/Infrastructure/Api). 5 link type: RelatesTo (đối xứng), Blocks, Duplicates, Clones, Causes (asymmetric pairs với inverse label). Domain events `IssueLinkAdded/Removed`. Wire `IIssueAccessGuard` (cả source + target) + `IPermissionChecker.IssueEdit`. Idempotent unique index `(source, target, type)`. Postgres + Oracle migration. FE: `IssueLinkApiService` + `LinkedIssuesPanelComponent` (PrimeNG AutoComplete search issue + Select link type, list outgoing/incoming với forward/inverse label). Mount trong issue-detail.page. i18n vi/en đầy đủ. Build BE + FE PASS, 79 test PASS. |
 | **F4** | Rich text description (Quill editor + mention) | M | ✅ | Already done — `RichTextEditorComponent` (Quill, monochrome theme override) wired vào: `create-issue.dialog`, `issue-detail.page` (edit mode), `comments-thread`. Hỗ trợ `@user` mention với `UserApiService` autocomplete. BE lưu HTML, FE render qua `[innerHTML]` + `isRichHtml()` detector. |
 | **F5** | Bulk edit (multi-select issues + batch update) | M | ⬜ | Issue search có checkbox + toolbar batch action (status/assignee/label). |
@@ -298,18 +298,17 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 ### Next action (ưu tiên #1)
 
-> ✅ **Phase A đóng** (7 task). **Phase B test (T1-T5) tạm bỏ theo yêu cầu user**.
+> ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C tiến độ: **F3 (Issue Link)** + **F4 (Rich text — đã có sẵn)** + **F1 (JQL extended)** xong.
+> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4** xong (4/8).
 >
 > Tiếp theo:
-> - **F2** Saved filter — table `saved_filters` (id, ownerUserId, name, jql, isShared) + CRUD API + FE picker. Dễ làm sau F1 vì JQL đã ổn.
-> - **F5** Bulk edit — multi-select trên issue search + toolbar batch action (status/assignee/label).
-> - **F7** Velocity report — sum story points completed per sprint (có Sprint module sẵn).
-> - **F6** Roadmap (Epic timeline Gantt) — view timeline.
-> - **F8** CSV/JSON Import/Export.
+> - **F7** Velocity report — sum SP completed/sprint. Sprint module đã sẵn → effort S, dễ làm.
+> - **F5** Bulk edit — multi-select issues + batch action (status/assignee/label). Effort M.
+> - **F8** CSV/JSON Import/Export — export filter results, import từ Jira/Excel. Effort M.
+> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic. Effort L.
 >
-> Đề xuất **F2 (Saved filter)** vì leverage F1 + dễ implement + power user feature thực dụng.
+> Đề xuất **F7 (Velocity)** trước — leverage Sprint module + Issue StoryPoints sẵn có, low risk + visible win.
 
 ---
 

@@ -406,6 +406,26 @@
     "empty": "Chưa có file đính kèm.",
     "download": "Tải xuống"
   },
+  "saved_filter": {
+    "pick": "Filter đã lưu…",
+    "shared": "Chia sẻ",
+    "save_current": "Lưu filter hiện tại",
+    "save_title": "Lưu filter",
+    "edit_title": "Sửa filter",
+    "name_label": "Tên",
+    "description_label": "Mô tả",
+    "jql_label": "JQL",
+    "is_shared": "Chia sẻ với mọi người",
+    "confirm_delete": "Xoá filter này?",
+    "created": "Đã lưu filter",
+    "updated": "Đã cập nhật filter",
+    "deleted": "Đã xoá filter",
+    "not_owner": "Chỉ chủ filter mới sửa được",
+    "not_found": "Không tìm thấy filter",
+    "name": { "required": "Tên là bắt buộc", "too_long": "Tên quá dài" },
+    "jql": { "required": "JQL là bắt buộc", "too_long": "JQL quá dài" },
+    "description": { "too_long": "Mô tả quá dài" }
+  },
   "issue_link": {
     "title": "Issue liên quan",
     "empty": "Chưa có liên kết.",

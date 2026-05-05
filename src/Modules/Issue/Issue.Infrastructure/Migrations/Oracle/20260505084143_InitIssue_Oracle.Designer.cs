@@ -12,7 +12,7 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Issue.Infrastructure.Migrations
 {
     [DbContext(typeof(IssueDbContext))]
-    [Migration("20260502034827_InitIssue_Oracle")]
+    [Migration("20260505084143_InitIssue_Oracle")]
     partial class InitIssue_Oracle
     {
         /// <inheritdoc />
@@ -208,6 +208,73 @@ namespace Issue.Infrastructure.Migrations
                         .HasDatabaseName("ix_issue_watchers_issue_id_user_id");
 
                     b.ToTable("issue_watchers", (string)null);
+                });
+
+            modelBuilder.Entity("Issue.Domain.SavedFilter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("RAW(16)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CreatedTraceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("created_trace_id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("NVARCHAR2(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("IsShared")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("is_shared");
+
+                    b.Property<string>("Jql")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("NVARCHAR2(2000)")
+                        .HasColumnName("jql");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("NVARCHAR2(120)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("RAW(16)")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_saved_filters");
+
+                    b.HasIndex("IsShared")
+                        .HasDatabaseName("ix_saved_filters_is_shared");
+
+                    b.HasIndex("OwnerUserId")
+                        .HasDatabaseName("ix_saved_filters_owner_user_id");
+
+                    b.ToTable("saved_filters", (string)null);
                 });
 
             modelBuilder.Entity("Issue.Domain.IssueWatcher", b =>

@@ -132,6 +132,16 @@
       }
     }
   },
+  "saved_filter": {
+    "created": "Filter saved",
+    "updated": "Filter updated",
+    "deleted": "Filter deleted",
+    "not_found": "Filter not found",
+    "not_owner": "Only the owner can modify this filter",
+    "name": { "required": "Name is required", "too_long": "Name is too long" },
+    "jql": { "required": "JQL is required", "too_long": "JQL is too long" },
+    "description": { "too_long": "Description is too long" }
+  },
   "issue_link": {
     "added": "Link added",
     "removed": "Link removed",

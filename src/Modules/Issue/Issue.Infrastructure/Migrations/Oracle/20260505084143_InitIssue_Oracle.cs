@@ -50,6 +50,27 @@ namespace Issue.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "saved_filters",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "RAW(16)", nullable: false),
+                    owner_user_id = table.Column<Guid>(type: "RAW(16)", nullable: false),
+                    name = table.Column<string>(type: "NVARCHAR2(120)", maxLength: 120, nullable: false),
+                    jql = table.Column<string>(type: "NVARCHAR2(2000)", maxLength: 2000, nullable: false),
+                    description = table.Column<string>(type: "NVARCHAR2(1000)", maxLength: 1000, nullable: true),
+                    is_shared = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TIMESTAMP(7)", nullable: false),
+                    created_by = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(7)", nullable: true),
+                    updated_by = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true),
+                    created_trace_id = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_saved_filters", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "issue_watchers",
                 columns: table => new
                 {
@@ -115,6 +136,16 @@ namespace Issue.Infrastructure.Migrations
                 name: "ix_issues_reporter_id",
                 table: "issues",
                 column: "reporter_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_saved_filters_is_shared",
+                table: "saved_filters",
+                column: "is_shared");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_saved_filters_owner_user_id",
+                table: "saved_filters",
+                column: "owner_user_id");
         }
 
         /// <inheritdoc />
@@ -122,6 +153,9 @@ namespace Issue.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "issue_watchers");
+
+            migrationBuilder.DropTable(
+                name: "saved_filters");
 
             migrationBuilder.DropTable(
                 name: "issues");

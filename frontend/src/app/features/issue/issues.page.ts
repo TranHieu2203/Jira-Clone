@@ -22,6 +22,7 @@ import {
 } from '@core/api/project.service';
 import { PagedList } from '@shared/models/api-response';
 import { CreateIssueDialogComponent } from './create-issue.dialog';
+import { SavedFilterPickerComponent } from './saved-filter-picker.component';
 import { StatusCacheService } from '@core/api/status-cache.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 
@@ -37,13 +38,18 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
     TableModule,
     InputTextModule,
     AppPageHeaderComponent,
-    CreateIssueDialogComponent
+    CreateIssueDialogComponent,
+    SavedFilterPickerComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header [title]="listTitleKey() | translate">
       <button pButton (click)="dialogVisible.set(true)" [label]="'issue.create' | translate"></button>
     </app-page-header>
+
+    <app-saved-filter-picker
+      [currentJql]="jqlFilter"
+      (applied)="onSavedFilterApplied($event)" />
 
     <div class="filters">
       <input
@@ -196,6 +202,12 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   }
 
   onIssueCreated(): void {
+    this.reload();
+  }
+
+  /** F2: SavedFilterPicker emit JQL → set vào ô input + reload luôn. */
+  onSavedFilterApplied(jql: string): void {
+    this.jqlFilter = jql;
     this.reload();
   }
 
