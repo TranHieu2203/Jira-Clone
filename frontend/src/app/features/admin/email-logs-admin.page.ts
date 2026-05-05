@@ -52,6 +52,7 @@ import { EmailAdminApiService, EmailLogRow } from '@core/api/email-admin-api.ser
             <th>{{ 'admin.email.col_to' | translate }}</th>
             <th>{{ 'admin.email.col_status' | translate }}</th>
             <th>{{ 'admin.email.col_error' | translate }}</th>
+            <th class="w-action">{{ 'admin.email.col_action' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,6 +63,14 @@ import { EmailAdminApiService, EmailLogRow } from '@core/api/email-admin-api.ser
               <td>{{ r.toEmail }}</td>
               <td>{{ statusLabelKey(r.status) | translate }}</td>
               <td class="err">{{ r.error ?? '—' }}</td>
+              <td>
+                @if (r.status === 2) {
+                  <button pButton type="button" size="small" [text]="true"
+                          [loading]="retryingId() === r.id"
+                          (click)="retry(r)"
+                          [label]="'admin.email.retry' | translate"></button>
+                }
+              </td>
             </tr>
           }
         </tbody>
@@ -91,6 +100,7 @@ export class EmailLogsAdminPageComponent implements OnInit {
 
   readonly loading = signal(false);
   readonly items = signal<EmailLogRow[]>([]);
+  readonly retryingId = signal<string | null>(null);
 
   filterTemplateKey = '';
   filterTo = '';
@@ -127,6 +137,21 @@ export class EmailLogsAdminPageComponent implements OnInit {
       },
       error: () => {
         this.loading.set(false);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  /** R6 DLQ: retry log Failed → BE re-render từ ArgsJson + insert log mới. Reload list để thấy result. */
+  retry(row: EmailLogRow): void {
+    this.retryingId.set(row.id);
+    this.api.retry(row.id).subscribe({
+      next: () => {
+        this.retryingId.set(null);
+        this.reload();
+      },
+      error: () => {
+        this.retryingId.set(null);
         this.cdr.markForCheck();
       }
     });

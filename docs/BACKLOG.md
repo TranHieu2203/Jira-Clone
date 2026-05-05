@@ -201,7 +201,7 @@ cd frontend && npx ng build --configuration=development
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |
 | L9 | ~~Attachment chưa có~~ | ✅ Đã có BB.Storage + module Attachment (MinIO optional) |
-| L10 | ~~Email auto-send~~ | ✅ Đã có lookup email + gửi theo event (assign/status/comment + mention). Cần polish: prefs người dùng, retry DLQ, template versioning |
+| L10 | ~~Email pipeline~~ | ✅ **R6 done**: dedupe + user opt-out (NoAssignee/NoStatus/NoComment/NoMention) + throttle 5min + DLQ retry. Settings page có panel toggle, admin email-logs có nút Retry. Template versioning vẫn defer (low priority). |
 | L11 | ~~Sample module (Product)~~ | ✅ Đã gỡ |
 | L12 | ~~Dark mode toggle không có UI~~ | ✅ Topbar nút ☾/☀ + `ThemeService` + localStorage |
 | L13 | i18n message keys vi/en có thể chưa cover hết error từ BE | Audit cần thiết — BE trả `messageKey` mà FE chưa có sẽ fallback show key thô |
@@ -253,7 +253,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **T4** | Unit test Notification module (10 test) | M | ⬜ | Handler dispatch đúng template + email body interpolation. |
 | **T5** | Integration test (Testcontainers Postgres) cho Issue + Workflow flow | L | ⬜ | Cover migration apply + transition end-to-end với DB thật. |
 | **R3** | Refactor `board.page.ts` (668 dòng → 4 file) | M | ⬜ | Tách `BoardPollingService`, `BoardFiltersComponent`, `BoardSwimlaneLayout`. |
-| **R6** | Email pipeline: dedupe + opt-out + DLQ admin page | M | ⬜ | `EmailUserPreferences` table; throttle 5min sliding window cùng issue+user; admin page xem failed emails. |
+| **R6** | Email pipeline: dedupe + opt-out + throttle + DLQ retry | M | ✅ | Done — `EventEmailDispatcher` thêm 3 lớp lọc: (1) **Dedupe** recipientUserIds qua HashSet trước khi resolve email; (2) **User opt-out** — bulk-load `EmailUserPreference` (4 flag NoAssignee/NoStatus/NoComment/NoMention) + `IsOptedOut(templateKey)` map mỗi user → log `email.user_opted_out`; (3) **Throttle 5 phút** sliding window — `EmailLogRepository.ExistsRecentSentAsync(template, toEmail, since)` skip log `email.throttled`. Domain `EmailUserPreference` (1 row/user, unique index). Service `EmailPreferenceService` GET/PUT auto-create default. Postgres + Oracle migration. **DLQ retry**: `EmailService.RetryAsync(logId)` chỉ chấp nhận status=Failed, re-build args từ `ArgsJson`, gọi lại `SendAsync` (log mới được tạo, log cũ giữ nguyên cho audit). FE: Settings page email panel với 4 toggle + Save; admin email-logs có cột "Action" với nút Retry hiện trên row Failed. i18n vi/en đầy đủ. **L10 đóng hoàn toàn.** Build BE 0/0, ng build OK, 94 test PASS. |
 | **R9** | Domain dispatcher → outbox (idempotent handlers) | L | ⬜ | `OutboxingDomainEventDispatcher`; ActivityLog handlers idempotent. Fix L4. |
 
 ### Phase C — Jira feature parity (2–3 tuần) 🟢
@@ -303,16 +303,16 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 >
 > ✅ Phase C: F1 + F2 + F3 + F4 + F5 + F7 + F8a xong (7/9).
 >
-> ✅ Phase D: **F12 + F15** xong (2/12).
+> ✅ Phase D: **F12 + F15** xong (2/12). **R6** (Phase B polish) đóng — L10 đã closed hoàn toàn.
 >
 > Tiếp theo theo độ ưu tiên:
-> - **R6** Phase B Email pipeline polish (M) — dedupe + opt-out + DLQ admin page. Đóng L10 còn lại.
 > - **O1** Production Dockerfile multi-stage (M) — chuẩn bị deploy.
-> - **F14** Webhook + Public REST API + API token (L).
+> - **F14** Webhook + Public REST API + API token (L) — public consumer.
 > - **F11** Permission scheme custom (L) — replace 4-role fixed.
-> - **F13** 2FA + Password reset + SSO/OAuth (L).
+> - **F13** 2FA + Password reset + SSO/OAuth (L) — identity hoàn thiện.
+> - **R9** Domain dispatcher → outbox (L) — fix L4 (event loss).
 >
-> Đề xuất **R6** trước — leverage Notification module + AuditLog mới làm. Effort M, đóng L10. Hoặc **O1** nếu user muốn hướng deploy.
+> Đề xuất **O1 (Production Dockerfile)** — task cuối cùng cần để deploy được production. Effort M.
 
 ---
 

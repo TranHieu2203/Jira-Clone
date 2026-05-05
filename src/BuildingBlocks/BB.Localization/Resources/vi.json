@@ -92,8 +92,13 @@
     "sending": {
       "disabled": "Email sending đang tắt"
     },
-    "from_missing": "Thiếu cấu hình email người gửi"
+    "from_missing": "Thiếu cấu hình email người gửi",
+    "user_opted_out": "Người nhận đã tắt loại email này",
+    "throttled": "Cùng email vừa gửi gần đây — bỏ qua để tránh spam",
+    "log": { "not_found": "Không tìm thấy log email" },
+    "retry": { "only_failed": "Chỉ retry được email Failed" }
   },
+  "email_preference": { "updated": "Đã cập nhật tùy chọn email" },
   "sprint": {
     "not_found": "Không tìm thấy sprint",
     "name_required": "Tên sprint là bắt buộc",

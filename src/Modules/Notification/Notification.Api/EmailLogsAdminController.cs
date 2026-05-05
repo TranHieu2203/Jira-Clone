@@ -28,5 +28,10 @@ public sealed class EmailLogsAdminController : BaseController
     [HttpPost("send")]
     public async Task<IActionResult> Send([FromBody] SendEmailRequest req, CancellationToken ct = default) =>
         ToResponse(await _service.SendAsync(req, ct));
+
+    /// <summary>R6 DLQ retry — chỉ cho phép log đang Failed.</summary>
+    [HttpPost("{id:guid}/retry")]
+    public async Task<IActionResult> Retry(Guid id, CancellationToken ct = default) =>
+        ToResponse(await _service.RetryAsync(id, ct));
 }
 

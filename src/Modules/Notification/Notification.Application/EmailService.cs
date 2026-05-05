@@ -167,6 +167,23 @@ public sealed class EmailService : IEmailService
         return Result.Success(new PagedList<EmailLogDto>(items, page.TotalCount, page.PageIndex, page.PageSize));
     }
 
+    public async Task<Result<EmailLogDto>> RetryAsync(Guid logId, CancellationToken ct = default)
+    {
+        EmailLog? original = await _logs.GetByIdAsync(logId, ct);
+        if (original is null)
+            return Result.Failure<EmailLogDto>(ErrorType.NotFound, "email.log.not_found");
+        if (original.Status != EmailLogStatus.Failed)
+            return Result.Failure<EmailLogDto>(ErrorType.Validation, "email.retry.only_failed");
+
+        // Re-build args từ ArgsJson đã lưu trong log gốc.
+        Dictionary<string, string> args = string.IsNullOrWhiteSpace(original.ArgsJson)
+            ? new Dictionary<string, string>()
+            : (JsonSerializer.Deserialize<Dictionary<string, string>>(original.ArgsJson) ?? new Dictionary<string, string>());
+
+        // Reuse SendAsync — sẽ tạo log mới + mark Sent/Failed; log gốc giữ nguyên.
+        return await SendAsync(new SendEmailRequest(original.TemplateKey, original.ToEmail, args), ct);
+    }
+
     private static string BuildPreview(string content)
     {
         string raw = content.Replace("\r", string.Empty);

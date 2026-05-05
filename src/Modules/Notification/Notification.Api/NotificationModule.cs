@@ -26,7 +26,9 @@ public static class NotificationModule
 
         services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
         services.AddScoped<IEmailLogRepository, EmailLogRepository>();
+        services.AddScoped<IEmailUserPreferenceRepository, EmailUserPreferenceRepository>();
         services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IEmailPreferenceService, EmailPreferenceService>();
         services.AddScoped<IEventEmailDispatcher, EventEmailDispatcher>();
         services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
 

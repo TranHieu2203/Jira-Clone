@@ -12,7 +12,7 @@ using Oracle.EntityFrameworkCore.Metadata;
 namespace Notification.Infrastructure.Migrations
 {
     [DbContext(typeof(NotificationDbContext))]
-    [Migration("20260505073830_InitNotification_Oracle")]
+    [Migration("20260505101304_InitNotification_Oracle")]
     partial class InitNotification_Oracle
     {
         /// <inheritdoc />
@@ -118,6 +118,9 @@ namespace Notification.Infrastructure.Migrations
                     b.HasIndex("ToEmail", "CreatedAt")
                         .HasDatabaseName("ix_email_logs_to_email_created_at");
 
+                    b.HasIndex("TemplateKey", "ToEmail", "Status", "SentAt")
+                        .HasDatabaseName("ix_email_logs_template_key_to_email_status_sent_at");
+
                     b.ToTable("email_logs", (string)null);
                 });
 
@@ -190,6 +193,66 @@ namespace Notification.Infrastructure.Migrations
                         .HasDatabaseName("ix_email_templates_key");
 
                     b.ToTable("email_templates", (string)null);
+                });
+
+            modelBuilder.Entity("Notification.Domain.EmailUserPreference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("RAW(16)")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("CreatedTraceId")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("created_trace_id");
+
+                    b.Property<int>("NoAssignee")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("no_assignee");
+
+                    b.Property<int>("NoComment")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("no_comment");
+
+                    b.Property<int>("NoMention")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("no_mention");
+
+                    b.Property<int>("NoStatus")
+                        .HasColumnType("NUMBER(10)")
+                        .HasColumnName("no_status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TIMESTAMP(7)")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("NVARCHAR2(64)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("RAW(16)")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_user_preferences");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_user_preferences_user_id");
+
+                    b.ToTable("email_user_preferences", (string)null);
                 });
 
             modelBuilder.Entity("Notification.Domain.InAppNotification", b =>

@@ -24,6 +24,15 @@ public interface IEmailTemplateRepository : IRepository<EmailTemplate>
 public interface IEmailLogRepository : IRepository<EmailLog>
 {
     Task<PagedList<EmailLog>> ListAsync(int pageIndex, int pageSize, string? templateKey, string? toEmail, EmailLogStatus? status, CancellationToken ct = default);
+
+    /// <summary>R6 throttle: có bản gửi thành công cho cùng (template, email) sau mốc <paramref name="since"/> không?</summary>
+    Task<bool> ExistsRecentSentAsync(string templateKey, string toEmail, DateTimeOffset since, CancellationToken ct = default);
+}
+
+public interface IEmailUserPreferenceRepository : IRepository<EmailUserPreference>
+{
+    Task<EmailUserPreference?> FindByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, EmailUserPreference>> ListByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
 public interface INotificationUnitOfWork : IUnitOfWork { }

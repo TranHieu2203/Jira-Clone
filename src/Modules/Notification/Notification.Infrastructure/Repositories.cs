@@ -118,6 +118,37 @@ public sealed class EmailLogRepository : Repository<EmailLog>, IEmailLogReposito
 
         return new PagedList<EmailLog>(items, total, page, size);
     }
+
+    public Task<bool> ExistsRecentSentAsync(string templateKey, string toEmail, DateTimeOffset since, CancellationToken ct = default) =>
+        _ctx.EmailLogs.AsNoTracking()
+            .AnyAsync(x =>
+                x.TemplateKey == templateKey
+                && x.ToEmail == toEmail
+                && x.Status == EmailLogStatus.Sent
+                && x.SentAt != null
+                && x.SentAt >= since, ct);
+}
+
+public sealed class EmailUserPreferenceRepository : Repository<EmailUserPreference>, IEmailUserPreferenceRepository
+{
+    private readonly NotificationDbContext _ctx;
+    public EmailUserPreferenceRepository(NotificationDbContext ctx) : base(ctx) => _ctx = ctx;
+
+    public Task<EmailUserPreference?> FindByUserIdAsync(Guid userId, CancellationToken ct = default) =>
+        _ctx.EmailUserPreferences.FirstOrDefaultAsync(x => x.UserId == userId, ct);
+
+    public async Task<IReadOnlyDictionary<Guid, EmailUserPreference>> ListByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, EmailUserPreference>();
+
+        // Materialize HashSet để Contains translate ổn định trên cả Postgres + Oracle.
+        var ids = userIds.ToHashSet();
+        List<EmailUserPreference> list = await _ctx.EmailUserPreferences.AsNoTracking()
+            .Where(x => ids.Contains(x.UserId))
+            .ToListAsync(ct);
+        return list.ToDictionary(x => x.UserId);
+    }
 }
 
 public sealed class NotificationUnitOfWork : UnitOfWork<NotificationDbContext>, INotificationUnitOfWork

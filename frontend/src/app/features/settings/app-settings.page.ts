@@ -1,15 +1,19 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { CheckboxModule } from 'primeng/checkbox';
+import { ButtonModule } from 'primeng/button';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
 import { LanguageService } from '@core/i18n/language.service';
 import { ThemeService } from '@core/theme/theme.service';
+import { EmailPreferenceApiService, EmailPreferenceDto } from '@core/api/email-preference-api.service';
 
 @Component({
   selector: 'app-app-settings-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, TranslateModule, AppPageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, TranslateModule, CheckboxModule, ButtonModule, AppPageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-page-header [title]="'app_settings.title' | translate"></app-page-header>
@@ -29,6 +33,37 @@ import { ThemeService } from '@core/theme/theme.service';
       <button type="button" class="theme-btn" (click)="theme.toggle()">
         {{ theme.isDark() ? ('app_settings.theme_light' | translate) : ('app_settings.theme_dark' | translate) }}
       </button>
+    </section>
+
+    <!-- R6: per-user email opt-out preferences. -->
+    <section class="block">
+      <h3>{{ 'app_settings.email_title' | translate }}</h3>
+      <p class="email-intro">{{ 'app_settings.email_intro' | translate }}</p>
+
+      @if (loadingPrefs()) {
+        <p class="hint">{{ 'common.loading' | translate }}</p>
+      } @else if (draftPrefs) {
+        <div class="prefs">
+          <label class="row">
+            <p-checkbox [(ngModel)]="draftPrefs.noAssignee" name="noAssignee" [binary]="true" inputId="noAssignee" />
+            <span class="lbl"><strong>{{ 'app_settings.email_no_assignee' | translate }}</strong></span>
+          </label>
+          <label class="row">
+            <p-checkbox [(ngModel)]="draftPrefs.noStatus" name="noStatus" [binary]="true" inputId="noStatus" />
+            <span class="lbl"><strong>{{ 'app_settings.email_no_status' | translate }}</strong></span>
+          </label>
+          <label class="row">
+            <p-checkbox [(ngModel)]="draftPrefs.noComment" name="noComment" [binary]="true" inputId="noComment" />
+            <span class="lbl"><strong>{{ 'app_settings.email_no_comment' | translate }}</strong></span>
+          </label>
+          <label class="row">
+            <p-checkbox [(ngModel)]="draftPrefs.noMention" name="noMention" [binary]="true" inputId="noMention" />
+            <span class="lbl"><strong>{{ 'app_settings.email_no_mention' | translate }}</strong></span>
+          </label>
+        </div>
+        <button pButton size="small" [loading]="savingPrefs()" (click)="saveEmailPrefs()"
+                [label]="'common.save' | translate"></button>
+      }
     </section>
 
     <p class="hint">{{ 'app_settings.project_hint' | translate }}</p>
@@ -56,17 +91,70 @@ import { ThemeService } from '@core/theme/theme.service';
     }
     .theme-btn:hover { background: var(--c-surface-2); }
     .hint { font-size: 13px; color: var(--c-text-muted); max-width: 560px; line-height: 1.45; }
+    .email-intro { font-size: 13px; color: var(--c-text-muted); max-width: 640px; line-height: 1.45; margin: 0 0 12px; }
+    .prefs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; max-width: 480px; }
+    .row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .lbl { font-size: 13px; }
     .back { margin-top: 24px; font-size: 13px; }
     .back a { color: var(--c-primary); }
   `]
 })
-export class AppSettingsPageComponent {
+export class AppSettingsPageComponent implements OnInit {
   readonly lang = inject(LanguageService);
   readonly theme = inject(ThemeService);
+  private readonly emailApi = inject(EmailPreferenceApiService);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  // R6: email preferences. Dùng plain field cho ngModel two-way (signal alias không
+  // mutate được trong @if scope).
+  readonly loadingPrefs = signal(false);
+  readonly savingPrefs = signal(false);
+  /** Mutable copy cho ngModel — sync về BE khi user bấm Save. */
+  draftPrefs: EmailPreferenceDto | null = null;
+
+  ngOnInit(): void {
+    this.loadPrefs();
+  }
 
   setLang(code: 'vi' | 'en'): void {
     this.lang.use(code);
     this.cdr.markForCheck();
+  }
+
+  private loadPrefs(): void {
+    this.loadingPrefs.set(true);
+    this.emailApi.getMine().subscribe({
+      next: (p) => {
+        this.draftPrefs = p;
+        this.loadingPrefs.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadingPrefs.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  saveEmailPrefs(): void {
+    const p = this.draftPrefs;
+    if (!p) return;
+    this.savingPrefs.set(true);
+    this.emailApi.updateMine({
+      noAssignee: p.noAssignee,
+      noStatus: p.noStatus,
+      noComment: p.noComment,
+      noMention: p.noMention,
+    }).subscribe({
+      next: (r) => {
+        this.draftPrefs = r;
+        this.savingPrefs.set(false);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.savingPrefs.set(false);
+        this.cdr.markForCheck();
+      },
+    });
   }
 }

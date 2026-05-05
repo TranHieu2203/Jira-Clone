@@ -60,6 +60,27 @@ namespace Notification.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "email_user_preferences",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "RAW(16)", nullable: false),
+                    user_id = table.Column<Guid>(type: "RAW(16)", nullable: false),
+                    no_assignee = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    no_status = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    no_comment = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    no_mention = table.Column<int>(type: "NUMBER(10)", nullable: false),
+                    created_at = table.Column<DateTime>(type: "TIMESTAMP(7)", nullable: false),
+                    created_by = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true),
+                    updated_at = table.Column<DateTime>(type: "TIMESTAMP(7)", nullable: true),
+                    updated_by = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true),
+                    created_trace_id = table.Column<string>(type: "NVARCHAR2(64)", maxLength: 64, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_email_user_preferences", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "in_app_notifications",
                 columns: table => new
                 {
@@ -90,6 +111,11 @@ namespace Notification.Infrastructure.Migrations
                 columns: new[] { "template_key", "created_at" });
 
             migrationBuilder.CreateIndex(
+                name: "ix_email_logs_template_key_to_email_status_sent_at",
+                table: "email_logs",
+                columns: new[] { "template_key", "to_email", "status", "sent_at" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_email_logs_to_email_created_at",
                 table: "email_logs",
                 columns: new[] { "to_email", "created_at" });
@@ -98,6 +124,12 @@ namespace Notification.Infrastructure.Migrations
                 name: "ix_email_templates_key",
                 table: "email_templates",
                 column: "key",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_email_user_preferences_user_id",
+                table: "email_user_preferences",
+                column: "user_id",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -119,6 +151,9 @@ namespace Notification.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "email_templates");
+
+            migrationBuilder.DropTable(
+                name: "email_user_preferences");
 
             migrationBuilder.DropTable(
                 name: "in_app_notifications");

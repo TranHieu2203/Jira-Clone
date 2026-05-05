@@ -13,6 +13,7 @@ public sealed class NotificationDbContext : BaseDbContext
     public DbSet<InAppNotification> InAppNotifications => Set<InAppNotification>();
     public DbSet<EmailTemplate> EmailTemplates => Set<EmailTemplate>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
+    public DbSet<EmailUserPreference> EmailUserPreferences => Set<EmailUserPreference>();
 
     public NotificationDbContext(
         DbContextOptions<NotificationDbContext> options,
@@ -77,6 +78,24 @@ public sealed class NotificationDbContext : BaseDbContext
             e.HasIndex(x => new { x.TemplateKey, x.CreatedAt });
             e.HasIndex(x => new { x.ToEmail, x.CreatedAt });
             e.HasIndex(x => new { x.Status, x.CreatedAt });
+            // R6: throttle query (template+toEmail trong window) + DLQ filter (status=Failed).
+            e.HasIndex(x => new { x.TemplateKey, x.ToEmail, x.Status, x.SentAt });
+        });
+
+        // R6: per-user opt-out preferences cho email notification.
+        b.Entity<EmailUserPreference>(e =>
+        {
+            e.ToTable("email_user_preferences");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.UserId).IsRequired();
+            e.Property(x => x.NoAssignee).IsRequired();
+            e.Property(x => x.NoStatus).IsRequired();
+            e.Property(x => x.NoComment).IsRequired();
+            e.Property(x => x.NoMention).IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(64);
+            e.Property(x => x.UpdatedBy).HasMaxLength(64);
+            e.Property(x => x.CreatedTraceId).HasMaxLength(64);
+            e.HasIndex(x => x.UserId).IsUnique();
         });
 
         base.OnModelCreating(b);

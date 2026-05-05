@@ -74,4 +74,9 @@ export class EmailAdminApiService {
     if (status?.trim()) params = params.set('status', status.trim());
     return this.http.get<PagedList<EmailLogRow>>(this.logsBase, { params });
   }
+
+  /** R6 DLQ retry — chỉ áp dụng cho log status=Failed. */
+  retry(logId: string): Observable<EmailLogRow> {
+    return this.http.post<EmailLogRow>(`${this.logsBase}/${logId}/retry`, {});
+  }
 }

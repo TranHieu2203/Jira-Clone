@@ -92,8 +92,13 @@
     "sending": {
       "disabled": "Email sending is disabled"
     },
-    "from_missing": "From email is not configured"
+    "from_missing": "From email is not configured",
+    "user_opted_out": "Recipient has opted out of this email type",
+    "throttled": "Same email recently sent — throttled to avoid spam",
+    "log": { "not_found": "Email log not found" },
+    "retry": { "only_failed": "Only failed emails can be retried" }
   },
+  "email_preference": { "updated": "Email preferences updated" },
   "sprint": {
     "not_found": "Sprint not found",
     "name_required": "Sprint name is required",

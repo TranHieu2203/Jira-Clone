@@ -81,7 +81,9 @@
       "log_status_sent": "Sent",
       "log_status_failed": "Failed",
       "log_status_skipped": "Skipped",
-      "log_status_unknown": "Unknown"
+      "log_status_unknown": "Unknown",
+      "col_action": "Action",
+      "retry": "Retry"
     }
   },
   "profile": {
@@ -99,6 +101,12 @@
     "theme": "Theme",
     "theme_light": "Switch to light theme",
     "theme_dark": "Switch to dark theme",
+    "email_title": "Email notifications",
+    "email_intro": "Stop receiving these emails. Other users still get them — this only affects your own inbox.",
+    "email_no_assignee": "Don't email me when I'm assigned to an issue",
+    "email_no_status": "Don't email me when status changes on an issue I watch",
+    "email_no_comment": "Don't email me when someone comments on an issue I watch",
+    "email_no_mention": "Don't email me when I'm @mentioned",
     "project_hint": "Workflow and custom field definitions for a project are under that project (Overview → Settings)."
   },
   "workspace": {

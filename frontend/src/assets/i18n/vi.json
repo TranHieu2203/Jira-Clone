@@ -81,7 +81,9 @@
       "log_status_sent": "Đã gửi",
       "log_status_failed": "Lỗi",
       "log_status_skipped": "Bỏ qua",
-      "log_status_unknown": "Không rõ"
+      "log_status_unknown": "Không rõ",
+      "col_action": "Hành động",
+      "retry": "Thử lại"
     }
   },
   "profile": {
@@ -99,6 +101,12 @@
     "theme": "Giao diện",
     "theme_light": "Chuyển giao diện sáng",
     "theme_dark": "Chuyển giao diện tối",
+    "email_title": "Thông báo qua email",
+    "email_intro": "Tắt nhận các loại email dưới. Các user khác vẫn nhận — chỉ ảnh hưởng inbox của bạn.",
+    "email_no_assignee": "Đừng email khi tôi được giao issue",
+    "email_no_status": "Đừng email khi status đổi ở issue tôi watch",
+    "email_no_comment": "Đừng email khi có comment trong issue tôi watch",
+    "email_no_mention": "Đừng email khi tôi được @mention",
     "project_hint": "Workflow và trường tùy chỉnh theo từng dự án nằm trong dự án đó (Tổng quan → Cấu hình)."
   },
   "workspace": {
