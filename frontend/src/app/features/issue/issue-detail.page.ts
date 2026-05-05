@@ -7,6 +7,8 @@ import { TranslateModule } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonGroupModule } from 'primeng/buttongroup';
+import { OverlayPanelModule } from 'primeng/overlaypanel';
+import { TooltipModule } from 'primeng/tooltip';
 import { Issue, IssueApiService, UpdateIssueRequest } from '@core/api/issue.service';
 import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
@@ -32,7 +34,7 @@ import { switchMap } from 'rxjs/operators';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
-    ButtonModule, ButtonGroupModule, InputTextModule, RichTextEditorComponent,
+    ButtonModule, ButtonGroupModule, InputTextModule, OverlayPanelModule, TooltipModule, RichTextEditorComponent,
     CommentsThreadComponent,
     AttachmentPanelComponent,
     LinkedIssuesPanelComponent,
@@ -53,6 +55,8 @@ import { switchMap } from 'rxjs/operators';
           <span class="bc-sep">/</span>
           <a [routerLink]="['/projects', projectKeyOf(i.key)]" class="bc-link"><code>{{ projectKeyOf(i.key) }}</code></a>
           <span class="bc-sep">/</span>
+          <a [routerLink]="['/projects', projectKeyOf(i.key), 'backlog']" class="bc-link">Backlog</a>
+          <span class="bc-sep">/</span>
           <span class="bc-key"><code>{{ i.key }}</code></span>
         </div>
         <div class="title-row">
@@ -60,6 +64,50 @@ import { switchMap } from 'rxjs/operators';
           <a [routerLink]="['/issues', i.key]" class="title-key"><code>{{ i.key }}</code></a>
         </div>
         <h1>{{ i.summary }}</h1>
+
+        <!-- Jira-style action toolbar: status dropdown · priority · assignee inline. -->
+        <div class="action-bar">
+          <button type="button" class="status-btn"
+                  (click)="statusMenu.toggle($event)"
+                  [pTooltip]="'issue.transition' | translate">
+            <app-issue-status-badge [statusId]="i.currentStatusId" size="lg" />
+            <i class="pi pi-chevron-down chev"></i>
+          </button>
+          <p-overlayPanel #statusMenu styleClass="status-menu-panel">
+            <ng-template pTemplate>
+              <div class="trans-menu">
+                <div class="trans-menu-head">{{ 'issue.transition_menu_title' | translate }}</div>
+                @if (transitions().length === 0) {
+                  <div class="trans-empty">{{ 'issue.transition_empty' | translate }}</div>
+                }
+                @for (t of transitions(); track t.id) {
+                  <button type="button" class="trans-item"
+                          [disabled]="transitioning() === t.id"
+                          (click)="doTransition(t); statusMenu.hide()">
+                    <span class="trans-name">{{ t.name }}</span>
+                    <i class="pi pi-arrow-right trans-arrow"></i>
+                    <app-issue-status-badge [statusId]="t.toStatusId" />
+                  </button>
+                }
+              </div>
+            </ng-template>
+          </p-overlayPanel>
+
+          <span class="action-divider"></span>
+
+          <span class="action-meta" [pTooltip]="priorityLabel(i.priority)">
+            <span class="meta-label">{{ 'issue.priority' | translate }}</span>
+            <app-issue-priority-icon [priority]="i.priority" />
+            <span class="meta-value">{{ priorityLabel(i.priority) }}</span>
+          </span>
+
+          @if (i.assigneeId) {
+            <span class="action-meta">
+              <span class="meta-label">{{ 'issue.assignee' | translate }}</span>
+              <app-user-avatar [userId]="i.assigneeId" size="sm" />
+            </span>
+          }
+        </div>
       </div>
 
       <div class="layout">
@@ -105,19 +153,6 @@ import { switchMap } from 'rxjs/operators';
             [showSaveButton]="true"
           />
 
-          @if (transitions().length > 0) {
-            <section>
-              <h3>{{ 'issue.transition' | translate }}</h3>
-              <div class="transitions">
-                @for (t of transitions(); track t.id) {
-                  <button pButton size="small" (click)="doTransition(t)"
-                          [loading]="transitioning() === t.id"
-                          [label]="t.name + ' → ' + t.toStatusName"></button>
-                }
-              </div>
-            </section>
-          }
-
           <app-linked-issues-panel [issueId]="i.id" />
           <app-comments-thread [issueId]="i.id" />
           <app-attachment-panel [issueId]="i.id" />
@@ -125,19 +160,7 @@ import { switchMap } from 'rxjs/operators';
         </main>
 
         <aside class="side">
-          <div class="side-section">
-            <div class="kv">
-              <span>{{ 'issue.status' | translate }}</span>
-              <app-issue-status-badge [statusId]="i.currentStatusId" size="lg" />
-            </div>
-            <div class="kv">
-              <span>{{ 'issue.priority' | translate }}</span>
-              <span class="pri-with-label">
-                <app-issue-priority-icon [priority]="i.priority" />
-                <span class="pri-label">{{ priorityLabel(i.priority) }}</span>
-              </span>
-            </div>
-          </div>
+          <div class="side-head">{{ 'issue.details' | translate }}</div>
           <div class="side-section">
             <div class="kv assignee-row">
               <span>{{ 'issue.assignee' | translate }}</span>
@@ -192,6 +215,54 @@ import { switchMap } from 'rxjs/operators';
     .title-key code { font-family: monospace; font-size: 14px; color: var(--c-text-muted); font-weight: 500; }
     .title-key:hover code { color: var(--c-text); }
     h1 { margin: 4px 0 0; font-size: 22px; font-weight: 600; line-height: 1.3; }
+
+    /* Jira-style action bar — sits below title, replaces giant transition buttons. */
+    .action-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-top: 14px; padding-top: 12px;
+      border-top: 1px solid var(--c-border);
+    }
+    .status-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px 4px 8px;
+      background: transparent; border: 1px solid transparent;
+      border-radius: var(--radius);
+      cursor: pointer; transition: background 0.1s, border-color 0.1s;
+    }
+    .status-btn:hover { background: var(--c-surface-2); border-color: var(--c-border); }
+    .status-btn .chev { font-size: 10px; color: var(--c-text-muted); }
+    .action-divider { width: 1px; height: 20px; background: var(--c-border); }
+    .action-meta {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--c-text-muted);
+    }
+    .action-meta .meta-label {
+      text-transform: uppercase; font-weight: 600; letter-spacing: 0.4px;
+      font-size: 10px;
+    }
+    .action-meta .meta-value { color: var(--c-text); }
+
+    /* Status transition dropdown panel */
+    ::ng-deep .status-menu-panel { border: 1px solid var(--c-border); border-radius: var(--radius); }
+    ::ng-deep .status-menu-panel .p-overlaypanel-content { padding: 6px 0; }
+    .trans-menu { min-width: 240px; display: flex; flex-direction: column; }
+    .trans-menu-head {
+      padding: 6px 14px 4px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--c-text-muted);
+    }
+    .trans-empty { padding: 12px 14px; font-size: 12px; color: var(--c-text-muted); }
+    .trans-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: transparent; border: none; cursor: pointer; text-align: left;
+      transition: background 0.08s;
+    }
+    .trans-item:hover:not(:disabled) { background: var(--c-surface-2); }
+    .trans-item:disabled { opacity: 0.5; cursor: wait; }
+    .trans-name { flex: 1; font-size: 13px; color: var(--c-text); }
+    .trans-arrow { font-size: 11px; color: var(--c-text-subtle); }
+
     .layout { display: grid; grid-template-columns: 1fr 280px; gap: 24px; }
     @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
     .main section { margin-bottom: 24px; }
@@ -224,6 +295,13 @@ import { switchMap } from 'rxjs/operators';
       border-radius: var(--radius); display: flex; flex-direction: column;
       align-self: start; position: sticky; top: 64px;
       overflow: hidden;
+    }
+    .side-head {
+      padding: 12px 16px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--c-text-muted);
+      border-bottom: 1px solid var(--c-border);
+      background: var(--c-surface-2);
     }
     .side-section {
       padding: 14px 16px;

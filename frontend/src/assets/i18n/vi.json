@@ -248,7 +248,10 @@
     "custom_fields_save": "Lưu trường tùy chỉnh",
     "no_custom_fields": "Không có trường tùy chỉnh cho ngữ cảnh này.",
     "custom_field_unsupported": "Kiểu field chưa hỗ trợ trên giao diện.",
-    "unassigned": "Chưa giao"
+    "unassigned": "Chưa giao",
+    "details": "Chi tiết",
+    "transition_menu_title": "Chuyển sang",
+    "transition_empty": "Không có transition khả dụng từ trạng thái này"
   },
   "comment": {
     "title": "Bình luận",

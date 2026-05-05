@@ -248,7 +248,10 @@
     "custom_fields_save": "Save custom fields",
     "no_custom_fields": "No custom fields for this context.",
     "custom_field_unsupported": "Field type not supported in UI yet.",
-    "unassigned": "Unassigned"
+    "unassigned": "Unassigned",
+    "details": "Details",
+    "transition_menu_title": "Move to",
+    "transition_empty": "No available transition from current status"
   },
   "comment": {
     "title": "Comments",
