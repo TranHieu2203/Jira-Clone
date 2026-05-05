@@ -15,4 +15,7 @@ public interface ISprintService
     Task<Result<SprintDto>> StartAsync(Guid projectId, Guid sprintId, CancellationToken ct = default);
     Task<Result<SprintDto>> CompleteAsync(Guid projectId, Guid sprintId, CancellationToken ct = default);
     Task<Result<SprintBurndownDto>> GetBurndownAsync(Guid projectId, Guid sprintId, CancellationToken ct = default);
+
+    /// <summary>F7: lịch sử velocity của project — last <paramref name="count"/> sprint Completed (return EndDate asc).</summary>
+    Task<Result<VelocityReportDto>> GetVelocityAsync(Guid projectId, int count, CancellationToken ct = default);
 }

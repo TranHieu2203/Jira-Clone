@@ -398,7 +398,12 @@
     "burndown_ideal": "Ideal",
     "burndown_actual": "Actual",
     "burndown_total_points": "Committed scope",
-    "burndown_need_active": "Burndown appears once you start a sprint, or after at least one sprint has completed."
+    "burndown_need_active": "Burndown appears once you start a sprint, or after at least one sprint has completed.",
+    "velocity_title": "Velocity (last sprints)",
+    "velocity_committed": "Committed",
+    "velocity_completed": "Completed",
+    "velocity_average": "Average completed",
+    "velocity_sprints_label": "sprints"
   },
   "attachment": {
     "title": "Attachments",

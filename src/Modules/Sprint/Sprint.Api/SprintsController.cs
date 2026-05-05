@@ -29,6 +29,11 @@ public sealed class SprintsController : BaseController
     public async Task<IActionResult> Burndown(Guid projectId, Guid sprintId, CancellationToken ct) =>
         ToResponse(await _service.GetBurndownAsync(projectId, sprintId, ct));
 
+    /// <summary>F7: lịch sử velocity (committed vs completed SP) cho N sprint completed gần nhất.</summary>
+    [HttpGet("velocity")]
+    public async Task<IActionResult> Velocity(Guid projectId, [FromQuery] int count = 6, CancellationToken ct = default) =>
+        ToResponse(await _service.GetVelocityAsync(projectId, count, ct));
+
     [HttpPost]
     public async Task<IActionResult> Create(Guid projectId, [FromBody] CreateSprintRequest request, CancellationToken ct) =>
         Created(await _service.CreateAsync(projectId, request, ct));

@@ -44,6 +44,22 @@ export interface SprintBurndownDto {
   days: BurndownDayDto[];
 }
 
+/** F7: 1 entry trong velocity chart. */
+export interface SprintVelocityEntryDto {
+  sprintId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  committed: number;
+  completed: number;
+}
+
+export interface VelocityReportDto {
+  projectId: string;
+  sprints: SprintVelocityEntryDto[];
+  averageCompleted: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SprintApiService {
   private readonly http = inject(HttpClient);
@@ -67,6 +83,11 @@ export class SprintApiService {
 
   burndown(projectId: string, sprintId: string): Observable<SprintBurndownDto> {
     return this.http.get<SprintBurndownDto>(`${this.base(projectId)}/${sprintId}/burndown`);
+  }
+
+  /** F7: lịch sử velocity của project — last N completed sprint. */
+  velocity(projectId: string, count = 6): Observable<VelocityReportDto> {
+    return this.http.get<VelocityReportDto>(`${this.base(projectId)}/velocity?count=${count}`);
   }
 
   create(projectId: string, body: CreateSprintRequest): Observable<SprintDto> {

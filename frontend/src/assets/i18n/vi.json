@@ -398,7 +398,12 @@
     "burndown_ideal": "Lý tưởng",
     "burndown_actual": "Thực tế",
     "burndown_total_points": "Scope đã commit",
-    "burndown_need_active": "Burndown hiện sau khi có sprint Active hoặc đã hoàn thành ít nhất một sprint."
+    "burndown_need_active": "Burndown hiện sau khi có sprint Active hoặc đã hoàn thành ít nhất một sprint.",
+    "velocity_title": "Velocity (sprint gần đây)",
+    "velocity_committed": "Đã commit",
+    "velocity_completed": "Đã hoàn thành",
+    "velocity_average": "Trung bình hoàn thành",
+    "velocity_sprints_label": "sprint"
   },
   "attachment": {
     "title": "Đính kèm",

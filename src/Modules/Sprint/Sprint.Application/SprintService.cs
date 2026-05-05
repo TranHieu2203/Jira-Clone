@@ -391,6 +391,88 @@ public sealed class SprintService : ISprintService
         return Result.Success(new SprintBurndownDto(sprintId, Math.Round(total, 2), days));
     }
 
+    public async Task<Result<VelocityReportDto>> GetVelocityAsync(Guid projectId, int count, CancellationToken ct = default)
+    {
+        if (_currentUser.UserId is null)
+            return Result.Failure<VelocityReportDto>(ErrorType.Unauthorized, "auth.required");
+        if (!await _permissions.HasProjectPermissionAsync(_currentUser.UserId.Value, projectId, PermissionKeys.ProjectView, ct))
+            return Result.Failure<VelocityReportDto>(ErrorType.Forbidden, "project.access_denied");
+
+        // Clamp count vào range hợp lý — tránh user query 1 phát toàn bộ history.
+        int take = Math.Clamp(count <= 0 ? 6 : count, 1, 50);
+
+        IReadOnlyList<SprintEntity> all = await _sprints.ListByProjectAsync(projectId, ct);
+        List<SprintEntity> completed = all
+            .Where(s => s.Status == SprintStatus.Completed)
+            .OrderByDescending(s => s.EndDate)
+            .Take(take)
+            .ToList();
+
+        if (completed.Count == 0)
+            return Result.Success(new VelocityReportDto(projectId, Array.Empty<SprintVelocityEntryDto>(), 0));
+
+        // Sort tăng dần để chart vẽ trái → phải theo thời gian.
+        completed.Reverse();
+
+        // Build per-sprint: committed = sum SprintCommitLine.BurndownPoints,
+        //                   completed = sum points của issue có status reach Done category trước EndDate sprint.
+        Dictionary<Guid, Workflow.Domain.Workflow?> wfCache = new();
+        var entries = new List<SprintVelocityEntryDto>(completed.Count);
+        decimal sumCompletedForAvg = 0;
+        int countedForAvg = 0;
+
+        foreach (SprintEntity sp in completed)
+        {
+            IReadOnlyList<SprintCommitLine> lines = await _sprints.ListCommitLinesAsync(sp.Id, ct);
+            decimal committed = lines.Sum(x => x.BurndownPoints);
+
+            decimal completedPoints = 0;
+            if (committed > 0)
+            {
+                List<Guid> issueIds = lines.Where(l => l.BurndownPoints > 0).Select(l => l.IssueId).Distinct().ToList();
+                Dictionary<Guid, decimal> issuePoints = lines.ToDictionary(x => x.IssueId, x => x.BurndownPoints);
+
+                IReadOnlyList<ActivityEntry> acts = await _activities.ListIssueStatusChangesForIssuesAsync(
+                    issueIds, sp.StartDate, sp.EndDate, ct);
+
+                IReadOnlyList<Issue.Domain.Issue> issueEntities =
+                    await _issues.ListAsync(i => issueIds.Contains(i.Id), ct);
+                Dictionary<Guid, Issue.Domain.Issue> issueMap = issueEntities.ToDictionary(i => i.Id);
+
+                HashSet<Guid> doneIssues = new();
+                foreach (ActivityEntry a in acts.OrderBy(x => x.OccurredAt))
+                {
+                    if (doneIssues.Contains(a.IssueId)) continue;
+                    Guid? toId = TryParseToStatusId(a.PayloadJson);
+                    if (!toId.HasValue) continue;
+                    if (!issueMap.TryGetValue(a.IssueId, out Issue.Domain.Issue? issue)) continue;
+                    if (!wfCache.TryGetValue(issue.WorkflowId, out Workflow.Domain.Workflow? wf))
+                    {
+                        wf = await _workflows.GetWithDetailsAsync(issue.WorkflowId, ct);
+                        wfCache[issue.WorkflowId] = wf;
+                    }
+                    Workflow.Domain.WorkflowStatus? st = wf?.Statuses.FirstOrDefault(s => s.Id == toId.Value);
+                    if (st?.Category != StatusCategory.Done) continue;
+                    if (a.OccurredAt > sp.EndDate) continue;
+                    doneIssues.Add(a.IssueId);
+                }
+
+                completedPoints = doneIssues.Sum(id => issuePoints.TryGetValue(id, out decimal p) ? p : 0);
+
+                sumCompletedForAvg += completedPoints;
+                countedForAvg++;
+            }
+
+            entries.Add(new SprintVelocityEntryDto(
+                sp.Id, sp.Name, sp.StartDate, sp.EndDate,
+                Math.Round(committed, 2),
+                Math.Round(completedPoints, 2)));
+        }
+
+        decimal avg = countedForAvg == 0 ? 0 : Math.Round(sumCompletedForAvg / countedForAvg, 2);
+        return Result.Success(new VelocityReportDto(projectId, entries, avg));
+    }
+
     private static Guid? TryParseToStatusId(string? payloadJson)
     {
         if (string.IsNullOrWhiteSpace(payloadJson))

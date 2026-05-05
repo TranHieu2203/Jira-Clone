@@ -266,7 +266,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F4** | Rich text description (Quill editor + mention) | M | ✅ | Already done — `RichTextEditorComponent` (Quill, monochrome theme override) wired vào: `create-issue.dialog`, `issue-detail.page` (edit mode), `comments-thread`. Hỗ trợ `@user` mention với `UserApiService` autocomplete. BE lưu HTML, FE render qua `[innerHTML]` + `isRichHtml()` detector. |
 | **F5** | Bulk edit (multi-select issues + batch update) | M | ⬜ | Issue search có checkbox + toolbar batch action (status/assignee/label). |
 | **F6** | Roadmap (Epic timeline Gantt) | L | ⬜ | View timeline epic theo `dueDate`. |
-| **F7** | Velocity report | S | ⬜ | Sum story points completed per sprint. |
+| **F7** | Velocity report | S | ✅ | Done — `SprintService.GetVelocityAsync(projectId, count)` + `VelocityReportDto` + endpoint `GET /projects/{projectId}/sprints/velocity?count=6`. Per-sprint: committed = sum `SprintCommitLine.BurndownPoints`; completed = sum points của issue reach Done category trước EndDate (qua `IActivityEntryRepository.ListIssueStatusChangesForIssuesAsync` + workflow status category). Average = mean completed across sprints có data. FE: `SprintApiService.velocity()` + bar chart SVG (overlay committed mờ + completed đậm) trong `project-reports.page` cạnh Burndown, scale chart width theo số sprint. i18n vi/en (`reports.velocity_*`). Build BE 0/0, ng build OK. |
 | **F8** | CSV/JSON Import/Export | M | ⬜ | Import từ Jira/Excel, export filter. |
 
 ### Phase D — Enterprise (3–4 tuần) 🟢
@@ -300,15 +300,14 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 > ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4** xong (4/8).
+> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F7** xong (5/8).
 >
 > Tiếp theo:
-> - **F7** Velocity report — sum SP completed/sprint. Sprint module đã sẵn → effort S, dễ làm.
-> - **F5** Bulk edit — multi-select issues + batch action (status/assignee/label). Effort M.
+> - **F5** Bulk edit — multi-select issues + batch action (status/assignee/label). Effort M, power-user feature.
 > - **F8** CSV/JSON Import/Export — export filter results, import từ Jira/Excel. Effort M.
-> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic. Effort L.
+> - **F6** Roadmap (Epic timeline Gantt) — view timeline epic theo dueDate. Effort L.
 >
-> Đề xuất **F7 (Velocity)** trước — leverage Sprint module + Issue StoryPoints sẵn có, low risk + visible win.
+> Đề xuất **F5 (Bulk edit)** — power user dùng nhiều, khả năng leverage F1+F2 (chọn theo filter rồi batch action). Effort M.
 
 ---
 
