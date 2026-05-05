@@ -13,6 +13,25 @@ public sealed class WorkspaceRepository : Repository<Workspace>, IWorkspaceRepos
     public Task<Workspace?> GetWithMembersAsync(Guid id, CancellationToken ct = default) =>
         _ctx.Workspaces.Include(w => w.Members).FirstOrDefaultAsync(w => w.Id == id, ct);
 
+    public async Task AddWorkspaceMemberInsertOnlyAsync(Guid workspaceId, Guid userId, int role, CancellationToken ct = default)
+    {
+        string prov = _ctx.Database.ProviderName ?? string.Empty;
+        Guid newId = Guid.NewGuid();
+        DateTimeOffset joinedAt = DateTimeOffset.UtcNow;
+        if (prov.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+        {
+            await _ctx.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO project.workspace_members (id, workspace_id, user_id, role, joined_at)
+                VALUES ({newId}, {workspaceId}, {userId}, {role}, {joinedAt})
+                """,
+                ct);
+            return;
+        }
+
+        throw new NotSupportedException($"AddWorkspaceMemberInsertOnlyAsync: provider '{prov}' — use domain AddMember path.");
+    }
+
     public Task<Workspace?> GetBySlugAsync(string slug, CancellationToken ct = default) =>
         _ctx.Workspaces.Include(w => w.Members).FirstOrDefaultAsync(w => w.Slug == slug.ToLower(), ct);
 

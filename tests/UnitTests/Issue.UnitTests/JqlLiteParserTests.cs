@@ -45,6 +45,39 @@ public sealed class JqlLiteParserTests
         r.IsSuccess.Should().BeTrue();
         r.Data!.AssigneeId.Should().Be(User);
         r.Data.StatusId.Should().Be(sid);
+        r.Data.StatusName.Should().BeNull();
         r.Data.TextContains.Should().Be("hello");
+    }
+
+    [Fact]
+    public void Status_quoted_non_guid_is_name()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("status = \"In Progress\"", User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.HasStatusClause.Should().BeTrue();
+        r.Data.StatusId.Should().BeNull();
+        r.Data.StatusName.Should().Be("In Progress");
+    }
+
+    [Fact]
+    public void Cf_string_and_number_clauses()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse(
+            "cf[env] = \"prod\" AND cf[points] = 5",
+            User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.CustomFieldClauses.Should().HaveCount(2);
+        r.Data.CustomFieldClauses[0].FieldKey.Should().Be("env");
+        r.Data.CustomFieldClauses[0].StringEquals.Should().Be("prod");
+        r.Data.CustomFieldClauses[1].FieldKey.Should().Be("points");
+        r.Data.CustomFieldClauses[1].NumberEquals.Should().Be(5);
+    }
+
+    [Fact]
+    public void Duplicate_cf_key_fails()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("cf[x] = \"a\" AND cf[X] = \"b\"", User);
+        r.IsSuccess.Should().BeFalse();
+        r.MessageKey.Should().Be("issue.search.jql.duplicate_cf");
     }
 }

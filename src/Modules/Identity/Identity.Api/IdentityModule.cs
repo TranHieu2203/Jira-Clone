@@ -1,4 +1,5 @@
 using BB.Persistence;
+using BB.Security;
 using FluentValidation;
 using Identity.Application;
 using Identity.Infrastructure;
@@ -22,6 +23,7 @@ public static class IdentityModule
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserSearchService, UserSearchService>();
         services.AddScoped<IUserNameLookup, UserNameLookup>();
+        services.AddScoped<IUserEmailLookup, UserEmailLookup>();
         services.AddValidatorsFromAssemblyContaining<LoginValidator>();
         return services;
     }
@@ -31,6 +33,7 @@ public static class IdentityModule
         using var scope = sp.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-        await IdentitySeeder.SeedAsync(db, hasher, ct);
+        IConfiguration cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        await IdentitySeeder.SeedAsync(db, hasher, cfg, ct);
     }
 }

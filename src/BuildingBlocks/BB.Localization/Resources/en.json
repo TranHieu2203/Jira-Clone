@@ -57,6 +57,47 @@
     "marked_read": "Marked as read",
     "all_marked_read": "All notifications marked as read"
   },
+  "email": {
+    "template": {
+      "saved": "Email template saved",
+      "not_found": "Email template not found",
+      "disabled": "Email template is disabled"
+    },
+    "sent": {
+      "success": "Email sent",
+      "failed": "Email failed"
+    },
+    "send": {
+      "skipped": "Email sending skipped (disabled)"
+    },
+    "sending": {
+      "disabled": "Email sending is disabled"
+    },
+    "from_missing": "From email is not configured"
+  },
+  "sprint": {
+    "not_found": "Sprint not found",
+    "name_required": "Sprint name is required",
+    "invalid_dates": "End date must be after start date",
+    "completed_immutable": "Completed sprint cannot be changed",
+    "active_exists": "Another sprint is already active for this project",
+    "start_requires_planned": "Only a planned sprint can be started",
+    "complete_requires_active": "Only an active sprint can be completed",
+    "issue_wrong_project": "Issue does not belong to this project",
+    "issue_in_other_sprint": "Issue is already in another open sprint",
+    "issue_duplicate": "Issue is already in this sprint",
+    "burndown_bad_state": "Burndown is available for active or completed sprints only",
+    "start_requires_issues": "Add at least one issue before starting the sprint",
+    "reorder_invalid": "Issue order does not match sprint contents",
+    "issue_not_in_sprint": "Issue is not in this sprint",
+    "created": { "success": "Sprint created" },
+    "updated": { "success": "Sprint updated" },
+    "started": { "success": "Sprint started" },
+    "completed": { "success": "Sprint completed" },
+    "issue_added": { "success": "Issue added to sprint" },
+    "issue_removed": { "success": "Issue removed from sprint" },
+    "reordered": { "success": "Sprint order updated" }
+  },
   "attachment": {
     "uploaded": "File attached",
     "deleted": "Attachment removed",
@@ -72,5 +113,12 @@
     "deleted": { "success": "Product deleted successfully" },
     "not_found": "Product not found",
     "sku_duplicated": "SKU already exists"
+  },
+  "custom_field": {
+    "demo": {
+      "bind": {
+        "success": "Demo custom fields have been bound to the project."
+      }
+    }
   }
 }

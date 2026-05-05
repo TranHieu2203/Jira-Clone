@@ -1,25 +1,18 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { TranslateService } from '@ngx-translate/core';
 import { catchError, map, throwError } from 'rxjs';
 import { ApiException, ApiResponse } from '@shared/models/api-response';
 import { NotificationService } from '../notification/notification.service';
 import { AuthService } from '../auth/auth.service';
 
 const TRACE_HEADER = 'X-Trace-Id';
+const LANG_STORAGE_KEY = 'app.lang';
 
 export const traceIdInterceptor: HttpInterceptorFn = (req, next) => {
-  try {
-    const translate = inject(TranslateService);
-    const lang = translate.currentLang || translate.defaultLang || 'vi';
-    const cloned = req.clone({
-      setHeaders: { 'Accept-Language': lang }
-    });
-    return next(cloned);
-  } catch (e) {
-    console.error('[traceIdInterceptor] error:', e);
-    return next(req);
-  }
+  const lang = (localStorage.getItem(LANG_STORAGE_KEY) as 'vi' | 'en' | null)
+    ?? (document.documentElement.lang as 'vi' | 'en' | '')
+    ?? 'vi';
+  return next(req.clone({ setHeaders: { 'Accept-Language': lang || 'vi' } }));
 };
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

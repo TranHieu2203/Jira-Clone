@@ -129,11 +129,16 @@ cd frontend && npx ng build --configuration=development
 - ~~Module Notification~~ ✅ `in_app_notifications`, API list/unread/mark read + handlers integration events
 - ~~IssueAssigneeChanged / IssueStatusChanged / CommentAdded~~ ✅ publish qua `IEventBus` (outbox)
 - ~~FE bell~~ ✅ dropdown + badge + mark all read (polling 45s)
+- ✅ **Email (MVP)**: Resend provider + DB log (`email_logs`) + template config (`email_templates`) + admin API (send test)
+- **Chưa làm**: auto-send theo event (mention/assign/status) vì thiếu user email lookup cross-module
 
-### 🟡 P8 — Sprint + Backlog ⏳
-**Scope** (chưa làm trong session này — làm tiếp):
-- Module `Sprint` + `SprintIssue`; API create/start/complete/add/remove issue
-- FE backlog drag vào sprint; board theo active sprint; burndown
+### ✅ P8 — Sprint + Backlog (slice ✅)
+**Đã có**:
+- Module `Sprint` (schema `sprint`): `sprints`, `sprint_issues`, `sprint_commit_lines`; migration Postgres `InitSprint_Postgres`
+- API `GET/POST .../projects/{projectId}/sprints`, `active`, `burndown`, `start`, `complete`, add/remove issue, reorder
+- Issue search: `issueIds`, `excludeIssueIds`
+- FE: route backlog (`backlog.page`) kéo backlog ↔ sprint; board filter **Active sprint**; Reports burndown (SVG) — active sprint hoặc sprint completed gần nhất
+**Chưa làm / polish**: Oracle migration Sprint (dùng Migrate Postgres); velocity report; sprint permission riêng
 
 ### 🟢 BB#4 — Outbox processor ✅
 **Đã có**: `OutboxDbContext` (schema `outbox` / bảng `outbox_messages`), `EfOutboxStore`, `OutboxingEventBus` (`IEventBus` → enqueue), `OutboxProcessorHostedService` (~5s, batch, retry + dead-letter), đăng ký + `EnsureSchema` trong `Api.Host`.
@@ -191,7 +196,7 @@ cd frontend && npx ng build --configuration=development
 | L7 | FE template `@` ký tự cần escape `{{ '@' }}` | Angular 18 control flow conflict. Đã ghi nhớ |
 | L8 | Default workflow `SOFTWARE_SIMPLE` cứng | OK MVP. P10 cho user tự design workflow |
 | L9 | ~~Attachment chưa có~~ | ✅ Đã có BB.Storage + module Attachment (MinIO optional) |
-| L10 | Email notification chưa có | Cần SMTP config + template engine. Phase P11+ |
+| L10 | Email notification auto-send chưa có | ✅ Đã có Resend + template + email log + admin test send. Còn thiếu: mapping userId→email + rules theo event (mention/assign/status) |
 | L11 | ~~Sample module (Product)~~ | ✅ Đã gỡ |
 | L12 | ~~Dark mode toggle không có UI~~ | ✅ Topbar nút ☾/☀ + `ThemeService` + localStorage |
 | L13 | i18n message keys vi/en có thể chưa cover hết error từ BE | Audit cần thiết — BE trả `messageKey` mà FE chưa có sẽ fallback show key thô |
@@ -214,7 +219,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 ## 7. Recommended next session start
 
 **Open prompt**:
-> **P8 Sprint/Backlog**, **BB#4 Outbox processor**, hoặc **P9 search/notifications**.
+> **P9** JQL nâng cao / **P12** prod Docker & integration tests — hoặc polish Sprint (Oracle migration, velocity).
 
 Optional polish:
 > Attachment: preview ảnh/PDF; virus scan; giới hạn loại file. MinIO: tạo bucket `jira-clone` tự động (init container).

@@ -24,6 +24,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      E2E__NotifyUserEmail: ${E2E_NOTIFY_EMAIL:-}
       Database__Provider: Postgres
       Database__ConnectionString: Host=postgres;Port=5432;Database=jira_clone;Username=jira_clone;Password=jira_clone
       Database__AutoMigrate: "true"

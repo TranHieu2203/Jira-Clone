@@ -2,8 +2,11 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angu
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
-import { switchMap, tap } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { ActivityApiService, ActivityItem } from '@core/api/activity.service';
+import { CustomFieldApiService, CustomField } from '@core/api/custom-field.service';
+import { StatusCacheService } from '@core/api/status-cache.service';
+import { UserApiService, UserSummary } from '@core/api/user.service';
 
 @Component({
   selector: 'app-activity-timeline',
@@ -27,7 +30,7 @@ import { ActivityApiService, ActivityItem } from '@core/api/activity.service';
             <div class="body">
               <span class="msg">{{ a.kind | translate: interp(a.payload) }}</span>
               @if (a.actorUserId) {
-                <span class="actor">{{ a.actorUserId.slice(0, 8) }}…</span>
+                <span class="actor">{{ actorLabel(a.actorUserId) }}</span>
               }
             </div>
           </li>
@@ -55,17 +58,34 @@ import { ActivityApiService, ActivityItem } from '@core/api/activity.service';
 })
 export class ActivityTimelineComponent {
   private readonly api = inject(ActivityApiService);
+  private readonly users = inject(UserApiService);
+  private readonly cfApi = inject(CustomFieldApiService);
+  private readonly statusCache = inject(StatusCacheService);
 
   readonly issueId = input.required<string>();
 
   readonly items = signal<ActivityItem[]>([]);
   readonly loading = signal(false);
 
+  private readonly userCache = new Map<string, UserSummary>();
+  private readonly fieldNameById = signal<Record<string, string>>({});
+
   constructor() {
     toObservable(this.issueId)
       .pipe(
         tap(() => this.loading.set(true)),
-        switchMap((id) => this.api.listByIssue(id, 1, 100)),
+        switchMap((id) =>
+          this.api.listByIssue(id, 1, 100).pipe(
+            // Preload field definitions once so we can map GUIDs -> display names.
+            switchMap((page) =>
+              this.cfApi.list().pipe(
+                tap((fields) => this.setFieldNameMap(fields)),
+                map(() => page),
+                catchError(() => of(page))
+              )
+            )
+          )
+        ),
         takeUntilDestroyed()
       )
       .subscribe({
@@ -77,10 +97,24 @@ export class ActivityTimelineComponent {
       });
   }
 
+  actorLabel(userId: string): string {
+    const cached = this.userCache.get(userId);
+    if (cached) return `@${cached.userName}`;
+    // Best-effort async lookup; render fallback until loaded.
+    this.users.getById(userId).pipe(catchError(() => of(null))).subscribe((u) => {
+      if (!u) return;
+      this.userCache.set(userId, u);
+      // force signal write to trigger template refresh
+      this.items.set([...this.items()]);
+    });
+    return userId.slice(0, 8) + '…';
+  }
+
   /** ngx-translate interpolation object — primitives only (no nested objects). */
   interp(payload: Record<string, unknown> | null): Record<string, string | number> {
     if (!payload) return {};
     const out: Record<string, string | number> = {};
+    const fieldNameMap = this.fieldNameById();
     for (const [key, v] of Object.entries(payload)) {
       if (v === null || v === undefined) {
         out[key] = '';
@@ -89,9 +123,33 @@ export class ActivityTimelineComponent {
       } else if (typeof v === 'number') {
         out[key] = v;
       } else {
-        out[key] = String(v);
+        const s = String(v);
+        // Improve UX: map known GUID payload values to friendly labels.
+        if ((key === 'fromStatusId' || key === 'toStatusId') && this.isGuid(s)) {
+          out[key] = this.statusCache.nameOf(s) ?? s.slice(0, 8) + '…';
+        } else if ((key === 'oldAssigneeId' || key === 'newAssigneeId' || key === 'userId') && this.isGuid(s)) {
+          out[key] = this.actorLabel(s);
+        } else if (key === 'field' && this.isGuid(s)) {
+          out[key] = fieldNameMap[s] ?? s.slice(0, 8) + '…';
+        } else if (key === 'transitionId' && this.isGuid(s)) {
+          out[key] = s.slice(0, 8) + '…';
+        } else {
+          out[key] = s;
+        }
       }
     }
     return out;
+  }
+
+  private setFieldNameMap(fields: CustomField[]): void {
+    const map: Record<string, string> = {};
+    for (const f of fields) {
+      map[f.id] = f.name;
+    }
+    this.fieldNameById.set(map);
+  }
+
+  private isGuid(s: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
   }
 }

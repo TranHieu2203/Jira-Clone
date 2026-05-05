@@ -1,6 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnChanges, SimpleChanges, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnChanges,
+  SecurityContext,
+  SimpleChanges,
+  computed,
+  inject,
+  input,
+  signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer } from '@angular/platform-browser';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { TextareaModule } from 'primeng/textarea';
@@ -8,11 +21,16 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { Comment, CommentApiService } from '@core/api/comment.service';
 import { AuthService } from '@core/auth/auth.service';
+import {
+  IssueThreadRealtimePayload,
+  WorkspaceHubService
+} from '@core/realtime/workspace-hub.service';
+import { RichTextEditorComponent } from '@shared/ui/rich-text-editor.component';
 
 @Component({
   selector: 'app-comments-thread',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslateModule, ButtonModule, TextareaModule, ConfirmDialogModule],
+  imports: [CommonModule, FormsModule, TranslateModule, ButtonModule, TextareaModule, ConfirmDialogModule, RichTextEditorComponent],
   providers: [ConfirmationService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -44,7 +62,12 @@ import { AuthService } from '@core/auth/auth.service';
             </div>
 
             @if (editingId() === c.id) {
-              <textarea pTextarea rows="3" [(ngModel)]="editBody" name="editBody-{{c.id}}"></textarea>
+              <app-rich-text-editor
+                [(ngModel)]="editBody"
+                name="editBody-{{c.id}}"
+                [placeholderText]="'comment.placeholder' | translate"
+                [mentionEnabled]="true"
+              />
               <div class="form-actions">
                 <button pButton type="button" [text]="true" size="small"
                         (click)="cancelEdit()"
@@ -55,7 +78,11 @@ import { AuthService } from '@core/auth/auth.service';
                         [label]="'common.save' | translate"></button>
               </div>
             } @else {
-              <div class="body">{{ c.body }}</div>
+              @if (isRichHtml(c.body)) {
+                <div class="body html" [innerHTML]="safeHtmlWithMentions(c.body, c.mentions)"></div>
+              } @else {
+                <div class="body" [innerHTML]="plainTextWithMentions(c.body, c.mentions)"></div>
+              }
               @if (c.mentions.length > 0) {
                 <div class="mentions">
                   @for (m of c.mentions; track m) {
@@ -71,8 +98,13 @@ import { AuthService } from '@core/auth/auth.service';
       <div class="composer">
         <div class="avatar self">{{ initials(currentUserId() ?? '?') }}</div>
         <div class="input">
-          <textarea pTextarea rows="2" [(ngModel)]="newBody" name="newBody"
-                    [placeholder]="'comment.placeholder' | translate"></textarea>
+          <p class="mention-hint">{{ 'comment.mention_hint' | translate }}</p>
+          <app-rich-text-editor
+            [(ngModel)]="newBody"
+            name="newBody"
+            [placeholderText]="'comment.placeholder' | translate"
+            [mentionEnabled]="true"
+          />
           <div class="form-actions">
             <button pButton type="button" size="small"
                     [loading]="saving()"
@@ -127,6 +159,22 @@ import { AuthService } from '@core/auth/auth.service';
       border: 1px solid var(--c-border); border-radius: var(--radius);
       white-space: pre-wrap; font-size: 13px; margin-left: 38px;
     }
+    .body.html { white-space: normal; }
+    .body.html ::ng-deep p { margin: 0 0 0.5em; }
+    .body.html ::ng-deep p:last-child { margin-bottom: 0; }
+    .body ::ng-deep .mention-pill {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: var(--c-surface-3);
+      border: 1px solid var(--c-border);
+      color: var(--c-text);
+      font-weight: 600;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .body ::ng-deep .mention-pill[data-mention] { cursor: default; }
     .editing textarea {
       margin-left: 38px; width: calc(100% - 38px); min-height: 60px;
     }
@@ -140,6 +188,23 @@ import { AuthService } from '@core/auth/auth.service';
     }
     .composer .input { flex: 1; display: flex; flex-direction: column; gap: 8px; }
     .composer textarea { width: 100%; resize: vertical; }
+    .mention-hint {
+      font-size: 11px; color: var(--c-text-muted); margin: 0 0 4px;
+    }
+    .ta-wrap { position: relative; }
+    .mention-list {
+      position: absolute; z-index: 20; left: 0; right: 0; top: 100%; margin: 4px 0 0;
+      padding: 4px 0; list-style: none; max-height: 200px; overflow-y: auto;
+      background: var(--c-surface); border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+    }
+    .mention-item {
+      display: flex; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: transparent;
+      cursor: pointer; text-align: left; font-size: 13px; color: var(--c-text);
+    }
+    .mention-item:hover { background: var(--c-surface-2); }
+    .mention-item .mu { font-family: monospace; font-weight: 600; }
+    .mention-item .md { color: var(--c-text-muted); }
     .form-actions {
       display: flex; gap: 8px; justify-content: flex-end;
       margin-left: 38px;
@@ -152,8 +217,18 @@ export class CommentsThreadComponent implements OnChanges {
   private readonly auth = inject(AuthService);
   private readonly confirm = inject(ConfirmationService);
   private readonly translate = inject(TranslateService);
+  private readonly hub = inject(WorkspaceHubService);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly issueId = input.required<string>();
+
+  private wiredIssueId: string | null = null;
+  private issueRealtimeHandler: ((payload: IssueThreadRealtimePayload) => void) | null = null;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.teardownIssueHub());
+  }
 
   readonly comments = signal<Comment[]>([]);
   readonly loading = signal(false);
@@ -168,7 +243,135 @@ export class CommentsThreadComponent implements OnChanges {
   readonly canSubmit = () => this.newBody.trim().length > 0;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['issueId']) this.reload();
+    if (!changes['issueId']) return;
+    this.teardownIssueHub();
+    this.reload();
+    const id = this.issueId();
+    if (id) this.wireIssueHub(id);
+  }
+
+  isRichHtml(body: string): boolean {
+    const t = body?.trim() ?? '';
+    return t.startsWith('<') && t.includes('>');
+  }
+
+  safeHtmlWithMentions(body: string, mentions: string[]): string {
+    const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, body) ?? '';
+    if (!sanitized) return '';
+    if (!mentions || mentions.length === 0) return sanitized;
+
+    return this.highlightMentionsInHtml(sanitized, mentions);
+  }
+
+  plainTextWithMentions(body: string, mentions: string[]): string {
+    const raw = body ?? '';
+    const escaped = this.escapeHtml(raw);
+    if (!mentions || mentions.length === 0) return escaped;
+    return this.highlightMentionsInHtml(escaped, mentions);
+  }
+
+  private highlightMentionsInHtml(html: string, mentions: string[]): string {
+    const keys = mentions
+      .map((m) => (m ?? '').trim())
+      .filter((m) => m.length > 0);
+    if (keys.length === 0) return html;
+
+    const unique = Array.from(new Set(keys)).sort((a, b) => b.length - a.length);
+    const pattern = unique.map((m) => this.escapeRegex(m)).join('|');
+    const re = new RegExp(`(^|[^A-Za-z0-9_\\-])@(${pattern})(?![A-Za-z0-9_\\-])`, 'g');
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+      const wrap = doc.body.firstElementChild as HTMLElement | null;
+      if (!wrap) return html;
+
+      const walker = doc.createTreeWalker(wrap, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      let n = walker.nextNode();
+      while (n) {
+        nodes.push(n as Text);
+        n = walker.nextNode();
+      }
+
+      for (const textNode of nodes) {
+        const text = textNode.nodeValue ?? '';
+        if (!text.includes('@')) continue;
+        if (!re.test(text)) {
+          re.lastIndex = 0;
+          continue;
+        }
+        re.lastIndex = 0;
+
+        const frag = doc.createDocumentFragment();
+        let last = 0;
+        let match: RegExpExecArray | null;
+        while ((match = re.exec(text)) !== null) {
+          const prefix = match[1] ?? '';
+          const user = match[2] ?? '';
+          const start = match.index + prefix.length;
+          const end = match.index + match[0].length;
+
+          if (start > last) {
+            frag.appendChild(doc.createTextNode(text.slice(last, start)));
+          }
+
+          // keep the prefix char (space/newline/punctuation) as text, only wrap "@user"
+          if (prefix.length > 0) {
+            frag.appendChild(doc.createTextNode(prefix));
+          }
+
+          const span = doc.createElement('span');
+          span.className = 'mention-pill';
+          span.setAttribute('data-mention', user);
+          span.textContent = `@${user}`;
+          frag.appendChild(span);
+
+          last = end;
+        }
+
+        if (last < text.length) {
+          frag.appendChild(doc.createTextNode(text.slice(last)));
+        }
+
+        textNode.parentNode?.replaceChild(frag, textNode);
+      }
+
+      return wrap.innerHTML;
+    } catch {
+      return html;
+    }
+  }
+
+  private escapeRegex(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private teardownIssueHub(): void {
+    if (this.issueRealtimeHandler) {
+      this.hub.removeIssueListener(this.issueRealtimeHandler);
+      this.issueRealtimeHandler = null;
+    }
+    if (this.wiredIssueId) {
+      void this.hub.leaveIssue(this.wiredIssueId);
+      this.wiredIssueId = null;
+    }
+  }
+
+  private wireIssueHub(issueId: string): void {
+    this.wiredIssueId = issueId;
+    this.issueRealtimeHandler = (): void => this.reload();
+    this.hub.addIssueListener(this.issueRealtimeHandler);
+    void this.hub.joinIssue(issueId);
   }
 
   reload(): void {

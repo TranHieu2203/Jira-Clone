@@ -16,6 +16,7 @@ public static class CustomFieldSeeder
     public const string StoryPointsKey = "cf_story_points";
     public const string TargetDateKey = "cf_target_date";
     public const string ComponentsKey = "cf_components";
+    public const string MandaysKey = "mandays";
 
     public static async Task SeedDefaultsAsync(IServiceProvider sp, CancellationToken ct = default)
     {
@@ -67,6 +68,14 @@ public static class CustomFieldSeeder
             comp.AddOption("db", "Database");
             ctx.Fields.Add(comp);
             logger.LogInformation("Seeding custom field {Key}", ComponentsKey);
+        }
+
+        if (!await ctx.Fields.AnyAsync(f => f.Key == MandaysKey, ct))
+        {
+            var md = new CfDomain.CustomField(MandaysKey, "Mandays", CfDomain.CustomFieldType.Decimal,
+                description: "Effort in mandays (decimal)", isSearchable: true);
+            ctx.Fields.Add(md);
+            logger.LogInformation("Seeding custom field {Key}", MandaysKey);
         }
 
         await ctx.SaveChangesAsync(ct);

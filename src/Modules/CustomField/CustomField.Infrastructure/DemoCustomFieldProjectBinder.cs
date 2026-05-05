@@ -1,6 +1,7 @@
 using System.Linq;
 using CustomField.Application;
 using CustomField.Application.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace CustomField.Infrastructure;
@@ -25,21 +26,38 @@ public sealed class DemoCustomFieldProjectBinder : IDemoCustomFieldProjectBinder
     {
         foreach (var (key, order) in DemoCustomFieldLayout.FieldEntries)
         {
+            await EnsureOneAsync(projectId, key, order, ct);
+        }
+    }
+
+    private async Task EnsureOneAsync(Guid projectId, string key, int order, CancellationToken ct)
+    {
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
             var f = await _repo.GetByKeyAsync(key, ct);
             if (f is null)
             {
                 _logger.LogDebug("Demo custom field {Key} not found; skip binding project {ProjectId}", key, projectId);
-                continue;
+                return;
             }
 
             if (f.Contexts.Any(c => !c.IsGlobal && c.ProjectIds.Contains(projectId)))
-                continue;
+                return;
 
             f.AddContext("Project", isGlobal: false, isRequired: false, defaultValueJson: null,
                 projectIds: new[] { projectId }, issueTypeIds: null, displayOrder: order);
-            _repo.Update(f);
+
+            try
+            {
+                await _uow.SaveChangesAsync(ct);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                _logger.LogWarning(ex, "Concurrency when binding demo custom field {Key} for project {ProjectId}. Retrying...", key, projectId);
+            }
         }
 
-        await _uow.SaveChangesAsync(ct);
+        _logger.LogWarning("Skip binding demo custom field {Key} for project {ProjectId} after concurrency retries", key, projectId);
     }
 }

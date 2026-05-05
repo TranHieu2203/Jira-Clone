@@ -9,6 +9,9 @@ public interface IWorkspaceRepository : IRepository<Workspace>
     Task<Workspace?> GetBySlugAsync(string slug, CancellationToken ct = default);
     Task<bool> SlugExistsAsync(string slug, Guid? excludeId = null, CancellationToken ct = default);
     Task<IReadOnlyList<Workspace>> ListByMemberAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>INSERT thành viên (Postgres) — tránh DbUpdateConcurrencyException khi SaveChanges cùng graph Include(Members).</summary>
+    Task AddWorkspaceMemberInsertOnlyAsync(Guid workspaceId, Guid userId, int role, CancellationToken ct = default);
 }
 
 public interface IProjectRepository : IRepository<Domain.Project>

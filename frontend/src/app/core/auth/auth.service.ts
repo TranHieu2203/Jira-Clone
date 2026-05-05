@@ -3,6 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { APP_CONFIG } from '../config/app-config';
+import { WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 
 const TOKEN_KEY = 'app.access';
 const REFRESH_KEY = 'app.refresh';
@@ -31,6 +32,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly cfg = inject(APP_CONFIG);
+  private readonly workspaceHub = inject(WorkspaceHubService);
 
   private readonly accessTokenSig = signal<string | null>(localStorage.getItem(TOKEN_KEY));
   private readonly userSig = signal<CurrentUser | null>(this.readUser());
@@ -48,6 +50,7 @@ export class AuthService {
   }
 
   logout(): void {
+    void this.workspaceHub.disconnect();
     const refresh = localStorage.getItem(REFRESH_KEY);
     if (refresh) {
       this.http.post(`${this.cfg.apiBaseUrl}/v1/auth/logout`, { refreshToken: refresh })

@@ -57,6 +57,47 @@
     "marked_read": "Đã đánh dấu đã đọc",
     "all_marked_read": "Đã đánh dấu đọc hết thông báo"
   },
+  "email": {
+    "template": {
+      "saved": "Đã lưu mẫu email",
+      "not_found": "Không tìm thấy mẫu email",
+      "disabled": "Mẫu email đang bị tắt"
+    },
+    "sent": {
+      "success": "Đã gửi email",
+      "failed": "Gửi email thất bại"
+    },
+    "send": {
+      "skipped": "Bỏ qua gửi email (đang tắt)"
+    },
+    "sending": {
+      "disabled": "Email sending đang tắt"
+    },
+    "from_missing": "Thiếu cấu hình email người gửi"
+  },
+  "sprint": {
+    "not_found": "Không tìm thấy sprint",
+    "name_required": "Tên sprint là bắt buộc",
+    "invalid_dates": "Ngày kết thúc phải sau ngày bắt đầu",
+    "completed_immutable": "Sprint đã hoàn thành không được chỉnh sửa",
+    "active_exists": "Đã có sprint Active khác trong project",
+    "start_requires_planned": "Chỉ sprint Planned mới được start",
+    "complete_requires_active": "Chỉ sprint Active mới được complete",
+    "issue_wrong_project": "Issue không thuộc project này",
+    "issue_in_other_sprint": "Issue đã nằm trong sprint Planned/Active khác",
+    "issue_duplicate": "Issue đã có trong sprint này",
+    "burndown_bad_state": "Burndown chỉ cho sprint Active hoặc Completed",
+    "start_requires_issues": "Thêm ít nhất một issue trước khi start sprint",
+    "reorder_invalid": "Thứ tự issue không khớp nội dung sprint",
+    "issue_not_in_sprint": "Issue không nằm trong sprint này",
+    "created": { "success": "Đã tạo sprint" },
+    "updated": { "success": "Đã cập nhật sprint" },
+    "started": { "success": "Đã bắt đầu sprint" },
+    "completed": { "success": "Đã hoàn thành sprint" },
+    "issue_added": { "success": "Đã thêm issue vào sprint" },
+    "issue_removed": { "success": "Đã gỡ issue khỏi sprint" },
+    "reordered": { "success": "Đã cập nhật thứ tự sprint" }
+  },
   "attachment": {
     "uploaded": "Đã đính kèm file",
     "deleted": "Đã xóa đính kèm",
@@ -72,5 +113,12 @@
     "deleted": { "success": "Xóa sản phẩm thành công" },
     "not_found": "Không tìm thấy sản phẩm",
     "sku_duplicated": "Mã SKU đã tồn tại"
+  },
+  "custom_field": {
+    "demo": {
+      "bind": {
+        "success": "Đã gắn các custom field demo vào dự án."
+      }
+    }
   }
 }

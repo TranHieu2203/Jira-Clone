@@ -6,8 +6,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Notification.Application;
 using Notification.Application.Handlers;
+using Notification.Application.Infrastructure;
 using Notification.Application.Repositories;
 using Notification.Infrastructure;
+using Notification.Infrastructure.Email;
 
 namespace Notification.Api;
 
@@ -21,6 +23,17 @@ public static class NotificationModule
         services.AddScoped<INotificationUnitOfWork, NotificationUnitOfWork>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationService, NotificationService>();
+
+        services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
+        services.AddScoped<IEmailLogRepository, EmailLogRepository>();
+        services.AddScoped<IEmailService, EmailService>();
+        services.AddScoped<IEventEmailDispatcher, EventEmailDispatcher>();
+        services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
+
+        services.Configure<EmailOptions>(cfg.GetSection("Email"));
+        services.Configure<ResendOptions>(cfg.GetSection("Resend"));
+        services.AddHttpClient<ResendEmailSender>();
+        services.AddScoped<IEmailSender, ResendEmailSender>();
 
         services.AddScoped<IEventHandler<IssueAssigneeChangedIntegrationEvent>, IssueAssigneeChangedNotificationHandler>();
         services.AddScoped<IEventHandler<IssueStatusChangedIntegrationEvent>, IssueStatusChangedNotificationHandler>();

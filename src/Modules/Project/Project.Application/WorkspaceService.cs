@@ -72,7 +72,6 @@ public sealed class WorkspaceService : IWorkspaceService
         w.Rename(request.Name);
         w.UpdateDescription(request.Description);
         w.UpdateAvatar(request.AvatarUrl);
-        _repo.Update(w);
         await _uow.SaveChangesAsync(ct);
 
         return Result.Success(Mappers.ToDetailDto(w), "workspace.updated.success");
@@ -89,13 +88,36 @@ public sealed class WorkspaceService : IWorkspaceService
 
     public async Task<Result<WorkspaceDetailDto>> AddMemberAsync(Guid id, AddWorkspaceMemberRequest request, CancellationToken ct = default)
     {
-        var w = await _repo.GetWithMembersAsync(id, ct);
+        Workspace? w = await _repo.GetWithMembersAsync(id, ct);
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
 
-        w.AddMember(request.UserId, (WorkspaceRole)request.Role);
-        _repo.Update(w);
-        await _uow.SaveChangesAsync(ct);
-        return Result.Success(Mappers.ToDetailDto(w), "workspace.member.added");
+        if (w.Members.Any(m => m.UserId == request.UserId))
+        {
+            return Result.Success(Mappers.ToDetailDto(w), "workspace.member.added");
+        }
+
+        WorkspaceRole role = (WorkspaceRole)request.Role;
+        try
+        {
+            await _repo.AddWorkspaceMemberInsertOnlyAsync(w.Id, request.UserId, (int)role, ct);
+        }
+        catch (NotSupportedException)
+        {
+            w.AddMember(request.UserId, role);
+            _repo.Update(w);
+            await _uow.SaveChangesAsync(ct);
+            return Result.Success(Mappers.ToDetailDto(w), "workspace.member.added");
+        }
+        catch (Exception ex) when (ex.GetType().Name == "DbUpdateException")
+        {
+            // Unique (workspace_id, user_id) — idempotent under race.
+            _logger.LogDebug(ex, "AddMember insert conflict Workspace={WorkspaceId} User={UserId}", w.Id, request.UserId);
+        }
+
+        Workspace? reloaded = await _repo.GetWithMembersAsync(id, ct);
+        return reloaded is null
+            ? Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found")
+            : Result.Success(Mappers.ToDetailDto(reloaded), "workspace.member.added");
     }
 
     public async Task<Result<WorkspaceDetailDto>> RemoveMemberAsync(Guid id, Guid userId, CancellationToken ct = default)
@@ -104,7 +126,6 @@ public sealed class WorkspaceService : IWorkspaceService
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
 
         w.RemoveMember(userId);
-        _repo.Update(w);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.member.removed");
     }
@@ -115,7 +136,6 @@ public sealed class WorkspaceService : IWorkspaceService
         if (w is null) return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
 
         w.ChangeMemberRole(userId, (WorkspaceRole)request.Role);
-        _repo.Update(w);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.member.role_changed");
     }

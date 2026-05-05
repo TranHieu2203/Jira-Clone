@@ -1,5 +1,6 @@
 using CustomField.Application;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Project.Infrastructure;
 
 namespace Api.Host.Bootstrap;
@@ -19,6 +20,19 @@ public static class CustomFieldDemoProjectBinderBackfill
             .Select(p => p.Id)
             .ToListAsync(ct);
         foreach (Guid id in ids)
-            await binder.EnsureContextsForProjectAsync(id, ct);
+        {
+            try
+            {
+                await binder.EnsureContextsForProjectAsync(id, ct);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Backfill là best-effort; không được làm crash app khi DB đã có data cũ.
+                // Những project bị skip vẫn sẽ được gắn context khi có handler ProjectCreated chạy về sau.
+                var logger = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
+                    .CreateLogger("Bootstrap");
+                logger.LogWarning(ex, "Skip demo custom field backfill for project {ProjectId} due to concurrency", id);
+            }
+        }
     }
 }

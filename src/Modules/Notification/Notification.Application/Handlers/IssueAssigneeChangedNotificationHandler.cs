@@ -2,6 +2,7 @@ using System.Text.Json;
 using BB.EventBus;
 using BB.EventBus.IntegrationEvents;
 using Microsoft.Extensions.Logging;
+using Notification.Application.Infrastructure;
 using Notification.Application.Repositories;
 using Notification.Domain;
 
@@ -11,15 +12,18 @@ public sealed class IssueAssigneeChangedNotificationHandler : IEventHandler<Issu
 {
     private readonly INotificationRepository _repo;
     private readonly INotificationUnitOfWork _uow;
+    private readonly IEventEmailDispatcher _emails;
     private readonly ILogger<IssueAssigneeChangedNotificationHandler> _logger;
 
     public IssueAssigneeChangedNotificationHandler(
         INotificationRepository repo,
         INotificationUnitOfWork uow,
+        IEventEmailDispatcher emails,
         ILogger<IssueAssigneeChangedNotificationHandler> logger)
     {
         _repo = repo;
         _uow = uow;
+        _emails = emails;
         _logger = logger;
     }
 
@@ -41,5 +45,14 @@ public sealed class IssueAssigneeChangedNotificationHandler : IEventHandler<Issu
         await _repo.AddAsync(new InAppNotification(recipient, NotificationTypes.AssigneeChanged, payload), ct);
         await _uow.SaveChangesAsync(ct);
         _logger.LogInformation("Notify assignee {UserId} for issue {Key}", recipient, e.IssueKey);
+
+        await _emails.DispatchAsync(
+            templateKey: "issue.assignee_changed",
+            recipientUserIds: new[] { recipient },
+            args: new Dictionary<string, string>
+            {
+                ["issueKey"] = e.IssueKey
+            },
+            ct: ct);
     }
 }

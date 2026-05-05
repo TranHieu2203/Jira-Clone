@@ -21,7 +21,9 @@ internal static class IssueSpecifications
             Add(new Specification<Domain.Issue>(i => i.AssigneeId == criteria.AssigneeId.Value));
         if (criteria.ReporterId.HasValue)
             Add(new Specification<Domain.Issue>(i => i.ReporterId == criteria.ReporterId.Value));
-        if (criteria.CurrentStatusId.HasValue)
+        if (criteria.CurrentStatusIds is { Count: > 0 })
+            Add(new Specification<Domain.Issue>(i => criteria.CurrentStatusIds.Contains(i.CurrentStatusId)));
+        else if (criteria.CurrentStatusId.HasValue)
             Add(new Specification<Domain.Issue>(i => i.CurrentStatusId == criteria.CurrentStatusId.Value));
         if (criteria.Priority.HasValue)
             Add(new Specification<Domain.Issue>(i => (int)i.Priority == criteria.Priority.Value));
@@ -35,6 +37,12 @@ internal static class IssueSpecifications
         {
             IReadOnlySet<Guid> ids = criteria.RestrictToIssueIds;
             Add(new Specification<Domain.Issue>(i => ids.Contains(i.Id)));
+        }
+
+        if (criteria.ExcludeIssueIds is { Count: > 0 })
+        {
+            IReadOnlySet<Guid> ex = criteria.ExcludeIssueIds;
+            Add(new Specification<Domain.Issue>(i => !ex.Contains(i.Id)));
         }
 
         if (!string.IsNullOrWhiteSpace(criteria.TextSearch))

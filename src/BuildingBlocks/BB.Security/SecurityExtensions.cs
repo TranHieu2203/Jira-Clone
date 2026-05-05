@@ -33,6 +33,18 @@ public static class SecurityExtensions
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(opts.SigningKey)),
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        Microsoft.Extensions.Primitives.StringValues accessToken = context.Request.Query["access_token"];
+                        string path = context.HttpContext.Request.Path.Value ?? string.Empty;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWith("/hubs", StringComparison.OrdinalIgnoreCase))
+                            context.Token = accessToken;
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddAuthorization();

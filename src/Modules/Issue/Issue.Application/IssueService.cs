@@ -4,12 +4,14 @@ using BB.EventBus;
 using BB.EventBus.IntegrationEvents;
 using BB.Security;
 using CustomField.Application;
+using CustomField.Application.Repositories;
 using Issue.Application.Repositories;
 using Issue.Domain;
 using Microsoft.Extensions.Logging;
 using Project.Application;
 using Workflow.Application;
 using Workflow.Application.Engine;
+using Workflow.Application.Repositories;
 
 namespace Issue.Application;
 
@@ -25,6 +27,9 @@ public sealed class IssueService : IIssueService
     private readonly IWorkflowEngine _workflowEngine;
     private readonly IIssueFieldValueService _fieldValueService;
     private readonly IIssueFieldValueIssueFilter _fieldIssueFilter;
+    private readonly IWorkflowRepository _workflowRepository;
+    private readonly ICustomFieldRepository _customFieldRepository;
+    private readonly IIssueRealtimeNotifier _realtime;
     private readonly IEventBus _eventBus;
     private readonly ILogger<IssueService> _logger;
 
@@ -39,6 +44,9 @@ public sealed class IssueService : IIssueService
         IWorkflowEngine workflowEngine,
         IIssueFieldValueService fieldValueService,
         IIssueFieldValueIssueFilter fieldIssueFilter,
+        IWorkflowRepository workflowRepository,
+        ICustomFieldRepository customFieldRepository,
+        IIssueRealtimeNotifier realtime,
         IEventBus eventBus,
         ILogger<IssueService> logger)
     {
@@ -52,6 +60,9 @@ public sealed class IssueService : IIssueService
         _workflowEngine = workflowEngine;
         _fieldValueService = fieldValueService;
         _fieldIssueFilter = fieldIssueFilter;
+        _workflowRepository = workflowRepository;
+        _customFieldRepository = customFieldRepository;
+        _realtime = realtime;
         _eventBus = eventBus;
         _logger = logger;
     }
@@ -86,6 +97,7 @@ public sealed class IssueService : IIssueService
         Guid? assigneeId = request.AssigneeId;
         bool assigneeUnassigned = false;
         Guid? statusId = request.CurrentStatusId;
+        IReadOnlySet<Guid>? currentStatusIds = null;
         string? textSearch = request.TextSearch;
 
         if (jql.Data.HasAssigneeClause)
@@ -95,7 +107,38 @@ public sealed class IssueService : IIssueService
         }
 
         if (jql.Data.HasStatusClause)
-            statusId = jql.Data.StatusId;
+        {
+            if (jql.Data.StatusId.HasValue)
+            {
+                statusId = jql.Data.StatusId;
+                currentStatusIds = null;
+            }
+            else if (!string.IsNullOrWhiteSpace(jql.Data.StatusName))
+            {
+                if (!request.ProjectId.HasValue)
+                {
+                    return Result.Failure<PagedList<IssueSummaryDto>>(
+                        ErrorType.Validation,
+                        "issue.search.jql.status_name_requires_project");
+                }
+
+                HashSet<Guid> resolved = await ResolveStatusIdsByNameInProjectAsync(
+                    request.ProjectId.Value,
+                    jql.Data.StatusName,
+                    ct);
+
+                if (resolved.Count == 0)
+                {
+                    int pe = Math.Max(request.PageIndex, 1);
+                    int se = Math.Max(request.PageSize, 1);
+                    var emptyEarly = new PagedList<IssueSummaryDto>(new List<IssueSummaryDto>(), 0, pe, se);
+                    return Result.Success(emptyEarly);
+                }
+
+                statusId = null;
+                currentStatusIds = resolved;
+            }
+        }
 
         if (jql.Data.HasTextClause)
             textSearch = jql.Data.TextContains;
@@ -107,10 +150,45 @@ public sealed class IssueService : IIssueService
                 "issue.search.conflicting_assignee_filters");
         }
 
-        IReadOnlySet<Guid>? restrict = null;
+        List<IssueFieldFilterRequest>? mergedFieldFilters = null;
         if (request.FieldFilters is { Count: > 0 })
+            mergedFieldFilters = new List<IssueFieldFilterRequest>(request.FieldFilters);
+
+        if (jql.Data.CustomFieldClauses.Count > 0)
         {
-            List<IssueFieldIndexedCriterion> fc = request.FieldFilters
+            mergedFieldFilters ??= new List<IssueFieldFilterRequest>();
+            foreach (JqlCustomFieldFilterClause clause in jql.Data.CustomFieldClauses)
+            {
+                CustomField.Domain.CustomField? field = await _customFieldRepository.GetByKeyAsync(
+                    clause.FieldKey.Trim().ToLowerInvariant(),
+                    ct);
+                if (field is null)
+                {
+                    return Result.Failure<PagedList<IssueSummaryDto>>(
+                        ErrorType.Validation,
+                        "issue.search.jql.field_not_found",
+                        new[]
+                        {
+                            new ResultError(
+                                "JQL_CF_UNKNOWN",
+                                "issue.search.jql.field_not_found",
+                                Field: "jql",
+                                Args: new { key = clause.FieldKey })
+                        });
+                }
+
+                mergedFieldFilters.Add(new IssueFieldFilterRequest(
+                    field.Id,
+                    clause.StringEquals,
+                    clause.NumberEquals,
+                    clause.DateEquals));
+            }
+        }
+
+        IReadOnlySet<Guid>? restrict = null;
+        if (mergedFieldFilters is { Count: > 0 })
+        {
+            List<IssueFieldIndexedCriterion> fc = mergedFieldFilters
                 .Select(f => new IssueFieldIndexedCriterion(
                     f.CustomFieldId,
                     f.IndexedStringEquals,
@@ -128,12 +206,31 @@ public sealed class IssueService : IIssueService
             }
         }
 
+        if (request.IssueIds is { Count: > 0 })
+        {
+            HashSet<Guid> idSet = request.IssueIds.ToHashSet();
+            restrict = restrict is null ? idSet : restrict.Intersect(idSet).ToHashSet();
+            if (restrict.Count == 0)
+            {
+                int p = Math.Max(request.PageIndex, 1);
+                int s = Math.Max(request.PageSize, 1);
+                var empty = new PagedList<IssueSummaryDto>(new List<IssueSummaryDto>(), 0, p, s);
+                return Result.Success(empty);
+            }
+        }
+
+        IReadOnlySet<Guid>? exclude = null;
+        if (request.ExcludeIssueIds is { Count: > 0 })
+            exclude = request.ExcludeIssueIds.ToHashSet();
+
         var criteria = new IssueSearchCriteria(
             request.ProjectId, request.IssueTypeId, assigneeId, request.ReporterId,
             statusId, request.Priority, textSearch, request.IncludeArchived,
             request.PageIndex, request.PageSize, request.Sort,
             assigneeUnassigned,
-            restrict);
+            restrict,
+            exclude,
+            currentStatusIds);
 
         var page = await _repo.SearchAsync(criteria, ct);
         var dtos = page.Items.Select(Mappers.ToSummary).ToList();
@@ -217,6 +314,11 @@ public sealed class IssueService : IIssueService
         }
 
         await PublishAssigneeChangedIfNeededAsync(issue, null, issue.AssigneeId, ct);
+
+        await _realtime.NotifyProjectBoardAsync(
+            issue.ProjectId,
+            new IssueBoardRealtimeEvent("created", issue.Id, issue.Key),
+            ct);
 
         _logger.LogInformation("Issue created Key={Key} Project={ProjectId}", issue.Key, issue.ProjectId);
         return Result.Success(Mappers.ToDto(issue), "issue.created.success", new { key = issue.Key });
@@ -313,10 +415,17 @@ public sealed class IssueService : IIssueService
                 issue.Id,
                 issue.Key,
                 issue.ProjectId,
+                issue.AssigneeId,
                 fromStatus,
                 issue.CurrentStatusId,
                 _currentUser.UserId,
                 watchers), ct);
+
+            await _realtime.NotifyProjectBoardAsync(
+                issue.ProjectId,
+                new IssueBoardRealtimeEvent("status", issue.Id, issue.Key),
+                ct);
+            await _realtime.NotifyIssueThreadAsync(issue.Id, new IssueThreadRealtimeEvent("status"), ct);
         }
 
         await PublishAssigneeChangedIfNeededAsync(issue, prevAssignee, issue.AssigneeId, ct);
@@ -359,6 +468,27 @@ public sealed class IssueService : IIssueService
         return Result.Success(Mappers.ToDto(issue), "issue.watcher.removed");
     }
 
+    private async Task<HashSet<Guid>> ResolveStatusIdsByNameInProjectAsync(
+        Guid projectId,
+        string statusName,
+        CancellationToken ct)
+    {
+        IReadOnlyList<global::Workflow.Domain.Workflow> workflows =
+            await _workflowRepository.ListByProjectAsync(projectId, ct);
+        HashSet<Guid> set = new();
+        string needle = statusName.Trim();
+        foreach (global::Workflow.Domain.Workflow w in workflows)
+        {
+            foreach (global::Workflow.Domain.WorkflowStatus s in w.Statuses)
+            {
+                if (string.Equals(s.Name, needle, StringComparison.OrdinalIgnoreCase))
+                    set.Add(s.Id);
+            }
+        }
+
+        return set;
+    }
+
     private static string? IntegrationTraceId() =>
         Activity.Current?.TraceId.ToString();
 
@@ -371,10 +501,16 @@ public sealed class IssueService : IIssueService
         Guid? newAssignee,
         CancellationToken ct)
     {
-        if (newAssignee == previousAssignee || newAssignee is null)
+        if (newAssignee == previousAssignee)
             return;
 
-        if (_currentUser.UserId is null)
+        await _realtime.NotifyProjectBoardAsync(
+            issue.ProjectId,
+            new IssueBoardRealtimeEvent("assignee", issue.Id, issue.Key),
+            ct);
+        await _realtime.NotifyIssueThreadAsync(issue.Id, new IssueThreadRealtimeEvent("assignee"), ct);
+
+        if (newAssignee is null || _currentUser.UserId is null)
             return;
 
         var evt = new IssueAssigneeChangedIntegrationEvent(

@@ -28,7 +28,7 @@
 | P5.5 | End-to-end smoke test + docker compose | `[x]` Stack `postgres + api + web` chạy được, FE↔BE qua nginx proxy `/api/`. Branch merged vào main (commit 6cfd6e4) |
 | P6 | Board Kanban (drag-drop, signal-based) | `[x]` CDK + filters + transition dialog + polling 30s + **swimlanes theo assignee**. SignalR → P11 |
 | P7 | Comment + Attachment + Activity Log | `[x]` Comment ✅; ActivityLog ✅; **Attachment** ✅ (`BB.Storage` Local/S3, module Attachment, FE upload/list/download/delete). |
-| P8 | Sprint + Backlog | `[ ]` |
+| P8 | Sprint + Backlog | `[x]` Module Sprint + API + Postgres migration + FE backlog drag + board scope active sprint + Reports burndown (activity-based). Oracle migration Sprint defer |
 | P9 | Search + Filter (incl. custom field) + Notification | `[~]` slice: JQL-lite + CFV indexed filter + Notification module + FE bell |
 | P10 | Workflow Editor UI + Field Editor UI | `[~]` **partial**: layout `display_order` + context/project + FE nhập nhiều kiểu field — chưa có admin Screen designer |
 | P11 | Identity hoàn thiện (RBAC + Permission scheme) | `[ ]` |
@@ -58,7 +58,7 @@
   - [ ] Scrum: backlog + sprint, burndown
 - [ ] **Backlog**: list issue chưa vào sprint, drag vào sprint
 - [ ] **Search & JQL-lite**: filter cơ bản (assignee, status, type, label, text), lưu filter
-- [ ] **Notification**: in-app + email (mention, assign, status change)
+- [~] **Notification**: in-app ✅ + email (Resend + template + log + admin test send ✅; auto-send theo event defer)
 - [ ] **Dashboard**: widget cơ bản (my issues, recent activity, sprint progress)
 
 ### 1.2. Nâng cao (sau MVP)

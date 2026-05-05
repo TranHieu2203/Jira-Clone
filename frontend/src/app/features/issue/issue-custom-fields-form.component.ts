@@ -26,6 +26,7 @@ import {
 
 const CF_TEXT: CustomFieldType = 1;
 const CF_NUMBER: CustomFieldType = 3;
+const CF_DECIMAL: CustomFieldType = 4;
 const CF_DATE: CustomFieldType = 5;
 const CF_SELECT: CustomFieldType = 10;
 const CF_MULTI: CustomFieldType = 11;
@@ -78,6 +79,20 @@ type DraftCell = string | number | string[] | null;
                   [showButtons]="true"
                   [min]="0"
                   [useGrouping]="false"
+                  styleClass="cf-input-number"
+                />
+              }
+              @case (cfDecimal) {
+                <p-inputNumber
+                  [ngModel]="numDraft(f)"
+                  (ngModelChange)="setNumDraft(f, $event)"
+                  [name]="'cf-' + f.key"
+                  [attr.data-testid]="'cf-' + f.key"
+                  [showButtons]="true"
+                  [min]="0"
+                  [useGrouping]="false"
+                  [minFractionDigits]="0"
+                  [maxFractionDigits]="2"
                   styleClass="cf-input-number"
                 />
               }
@@ -187,6 +202,7 @@ export class IssueCustomFieldsFormComponent {
 
   readonly cfText = CF_TEXT;
   readonly cfNumber = CF_NUMBER;
+  readonly cfDecimal = CF_DECIMAL;
   readonly cfDate = CF_DATE;
   readonly cfSelect = CF_SELECT;
   readonly cfMulti = CF_MULTI;
@@ -311,6 +327,7 @@ export class IssueCustomFieldsFormComponent {
       case CF_MULTI:
         return [];
       case CF_NUMBER:
+      case CF_DECIMAL:
         return null;
       default:
         return null;
@@ -326,6 +343,14 @@ export class IssueCustomFieldsFormComponent {
         if (typeof u === 'number' && !Number.isNaN(u)) return Math.trunc(u);
         if (typeof u === 'string') {
           const n = parseInt(u, 10);
+          return Number.isNaN(n) ? null : n;
+        }
+        return null;
+      }
+      case CF_DECIMAL: {
+        if (typeof u === 'number' && !Number.isNaN(u)) return u;
+        if (typeof u === 'string') {
+          const n = parseFloat(u);
           return Number.isNaN(n) ? null : n;
         }
         return null;
@@ -368,6 +393,11 @@ export class IssueCustomFieldsFormComponent {
         if (raw === null || raw === undefined) return undefined;
         if (typeof raw !== 'number' || Number.isNaN(raw)) return undefined;
         return Math.trunc(raw);
+      }
+      case CF_DECIMAL: {
+        if (raw === null || raw === undefined) return undefined;
+        if (typeof raw !== 'number' || Number.isNaN(raw)) return undefined;
+        return raw;
       }
       case CF_MULTI: {
         if (!Array.isArray(raw) || raw.length === 0) return undefined;

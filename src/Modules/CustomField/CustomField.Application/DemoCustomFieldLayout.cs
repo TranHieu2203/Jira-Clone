@@ -13,5 +13,6 @@ public static class DemoCustomFieldLayout
         ("cf_story_points", 30),
         ("cf_target_date", 40),
         ("cf_components", 50),
+        ("mandays", 60),
     ];
 }

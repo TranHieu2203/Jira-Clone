@@ -30,6 +30,7 @@
             ],
             "styles": [
               "node_modules/primeicons/primeicons.css",
+              "node_modules/quill/dist/quill.snow.css",
               "src/styles/theme.scss"
             ],
             "scripts": []
@@ -78,5 +79,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }

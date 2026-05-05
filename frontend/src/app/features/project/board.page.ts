@@ -15,12 +15,15 @@ import {
   projectDetailToSummary
 } from '@core/api/project.service';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
+import { SprintApiService } from '@core/api/sprint-api.service';
 import { AvailableTransition, Workflow, WorkflowApiService, WorkflowStatus } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
+import { WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 import { NotificationService } from '@core/notification/notification.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
-import { filter, firstValueFrom, interval, switchMap } from 'rxjs';
+import { PagedList } from '@shared/models/api-response';
+import { filter, firstValueFrom, interval, Observable, of, switchMap } from 'rxjs';
 
 interface Column {
   status: WorkflowStatus;
@@ -87,6 +90,13 @@ interface SwimlaneRow {
             <select [(ngModel)]="swimlaneLayout" class="layout-native">
               <option value="flat">{{ 'board.layout_flat' | translate }}</option>
               <option value="assignee">{{ 'board.layout_assignee' | translate }}</option>
+            </select>
+          </label>
+          <label class="filt layout-select">
+            <span>{{ 'board.scope' | translate }}</span>
+            <select [(ngModel)]="boardScope" (ngModelChange)="onBoardScopeChange()" class="layout-native">
+              <option value="all">{{ 'board.scope_all' | translate }}</option>
+              <option value="active_sprint">{{ 'board.scope_active_sprint' | translate }}</option>
             </select>
           </label>
         </div>
@@ -305,18 +315,25 @@ interface SwimlaneRow {
   `]
 })
 export class BoardPageComponent implements OnInit {
-  /** Khoảng làm mới board khi có workflow (MVP polling, defer SignalR). */
+  /** Khoảng làm mới board khi có workflow (polling dự phòng khi hub lỗi). */
   private static readonly PollIntervalMs = 30_000;
 
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly projApi = inject(ProjectApiService);
   private readonly issueApi = inject(IssueApiService);
+  private readonly sprintApi = inject(SprintApiService);
   private readonly wfApi = inject(WorkflowApiService);
   private readonly auth = inject(AuthService);
   private readonly notif = inject(NotificationService);
   private readonly statusCache = inject(StatusCacheService);
   private readonly workspaceCtx = inject(WorkspaceContextService);
+  private readonly hub = inject(WorkspaceHubService);
+
+  private wiredProjectId: string | null = null;
+  private readonly boardRealtimeHandler = (): void => {
+    void this.reloadBoardIssues();
+  };
 
   readonly project = signal<ProjectDetail | null>(null);
   readonly workflow = signal<Workflow | null>(null);
@@ -327,6 +344,7 @@ export class BoardPageComponent implements OnInit {
   readonly filterIssueTypeId = model<string | null>(null);
   /** flat = một hàng cột; assignee = một swimlane mỗi người được giao (+ hàng chưa giao). */
   readonly swimlaneLayout = model<'flat' | 'assignee'>('flat');
+  readonly boardScope = model<'all' | 'active_sprint'>('all');
 
   readonly pickVisible = model(false);
   readonly pendingPick = signal<PendingTransitionPick | null>(null);
@@ -424,6 +442,13 @@ export class BoardPageComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.destroyRef.onDestroy(() => {
+      this.hub.removeBoardListener(this.boardRealtimeHandler);
+      if (this.wiredProjectId) void this.hub.leaveProject(this.wiredProjectId);
+      this.wiredProjectId = null;
+      this.workspaceCtx.setProject(null);
+    });
+
     const key = this.route.snapshot.paramMap.get('projectKey');
     if (!key) return;
     this.loading.set(true);
@@ -443,6 +468,7 @@ export class BoardPageComponent implements OnInit {
         this.issuesAll.set([]);
         this.workflow.set(null);
         this.loading.set(false);
+        this.wireBoardRealtime(detail.id);
         return;
       }
 
@@ -450,20 +476,78 @@ export class BoardPageComponent implements OnInit {
       this.workflow.set(fullWf);
       this.statusCache.putMany(fullWf.statuses);
 
-      const page = await firstValueFrom(this.issueApi.search({
-        projectId: detail.id,
-        pageIndex: 1,
-        pageSize: 200,
-        sort: 'key',
-        includeArchived: false
-      }));
+      const page = await firstValueFrom(this.loadBoardIssues$(detail.id));
 
       this.issuesAll.set(page.items);
       this.loading.set(false);
       this.startIssuePolling();
+      this.wireBoardRealtime(detail.id);
     } catch {
       this.loading.set(false);
     }
+  }
+
+  private wireBoardRealtime(projectId: string): void {
+    if (this.wiredProjectId && this.wiredProjectId !== projectId) {
+      void this.hub.leaveProject(this.wiredProjectId);
+    }
+    this.wiredProjectId = projectId;
+    this.hub.removeBoardListener(this.boardRealtimeHandler);
+    this.hub.addBoardListener(this.boardRealtimeHandler);
+    void this.hub.joinProject(projectId);
+  }
+
+  onBoardScopeChange(): void {
+    void this.reloadBoardIssues();
+  }
+
+  private async reloadBoardIssues(): Promise<void> {
+    const detail = this.project();
+    const wf = this.workflow();
+    if (!detail || !wf || this.loading()) return;
+    try {
+      const page = await firstValueFrom(this.loadBoardIssues$(detail.id));
+      this.issuesAll.set(page.items);
+    } catch {
+      /* silent */
+    }
+  }
+
+  private loadBoardIssues$(projectId: string): Observable<PagedList<IssueSummary>> {
+    if (this.boardScope() === 'all') {
+      return this.issueApi.search({
+        projectId,
+        pageIndex: 1,
+        pageSize: 200,
+        sort: 'key',
+        includeArchived: false
+      });
+    }
+
+    return this.sprintApi.getActive(projectId).pipe(
+      switchMap((active) => {
+        if (!active?.orderedIssueIds?.length) {
+          const empty: PagedList<IssueSummary> = {
+            items: [],
+            totalCount: 0,
+            pageIndex: 1,
+            pageSize: 200,
+            totalPages: 0,
+            hasPrevious: false,
+            hasNext: false
+          };
+          return of(empty);
+        }
+        return this.issueApi.search({
+          projectId,
+          issueIds: active.orderedIssueIds,
+          pageIndex: 1,
+          pageSize: 200,
+          sort: 'key',
+          includeArchived: false
+        });
+      })
+    );
   }
 
   /** Đồng bộ danh sách issue định kỳ (không toast; lỗi bỏ qua). */
@@ -478,16 +562,7 @@ export class BoardPageComponent implements OnInit {
           const hasWf = this.workflow() !== null;
           return hasProject && hasWf && !this.loading() && !this.pickVisible();
         }),
-        switchMap(() => {
-          const projectId = this.project()!.id;
-          return this.issueApi.search({
-            projectId,
-            pageIndex: 1,
-            pageSize: 200,
-            sort: 'key',
-            includeArchived: false
-          });
-        })
+        switchMap(() => this.loadBoardIssues$(this.project()!.id))
       )
       .subscribe({
         next: (page) => this.issuesAll.set(page.items),

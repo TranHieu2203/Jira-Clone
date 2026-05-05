@@ -94,6 +94,10 @@ export interface SearchIssuesRequest {
   sort?: string | null;
   jql?: string | null;
   fieldFilters?: IssueFieldFilterRequest[] | null;
+  /** Filter to these issue IDs (AND with field filters if present). */
+  issueIds?: string[] | null;
+  /** Exclude these issue IDs from results. */
+  excludeIssueIds?: string[] | null;
 }
 
 export interface TransitionIssueRequest {

@@ -33,7 +33,41 @@
     "backlog": "Backlog",
     "reports": "Reports",
     "overview": "Overview",
-    "settings": "Settings"
+    "settings": "Settings",
+    "admin_section": "Administration",
+    "admin_email_templates": "Email templates",
+    "admin_email_logs": "Email logs"
+  },
+  "admin": {
+    "email": {
+      "templates_title": "Email templates",
+      "templates_intro": "Create and edit templates used for automatic notifications (comment, assignee, status). Keys must match what the backend dispatches (e.g. comment.added).",
+      "placeholders_hint": "Placeholders use double braces, e.g. {{issueKey}}, {{preview}} for comments; {{issueKey}} for status and assignee changes.",
+      "logs_title": "Email logs",
+      "logs_intro": "Audit trail of notification emails: sent, failed, or skipped.",
+      "new_template": "New template",
+      "edit_template": "Edit template",
+      "subject": "Subject template",
+      "html_body": "HTML body",
+      "text_body": "Plain text body (optional)",
+      "col_key": "Key",
+      "col_name": "Name",
+      "col_enabled": "Enabled",
+      "col_template": "Template",
+      "col_to": "To",
+      "col_status": "Status",
+      "col_error": "Detail",
+      "col_created": "Created",
+      "filter_template": "Filter by template key",
+      "filter_to": "Filter by recipient email",
+      "log_status_all": "All statuses",
+      "log_status": "Status",
+      "log_status_pending": "Pending",
+      "log_status_sent": "Sent",
+      "log_status_failed": "Failed",
+      "log_status_skipped": "Skipped",
+      "log_status_unknown": "Unknown"
+    }
   },
   "profile": {
     "title": "Profile",
@@ -91,8 +125,22 @@
     "custom_fields_by_type": "Custom fields by issue type",
     "no_custom_fields_rows": "No issue types to show.",
     "settings_title": "Project settings",
+    "settings_nav_overview": "Overview",
+    "settings_nav_members": "Members",
+    "settings_nav_workflow": "Workflow",
+    "settings_nav_fields": "Custom fields",
+    "members_title": "Project members",
+    "members_hint": "Add/remove members and change project roles.",
+    "member_add": "Add",
+    "member_remove": "Remove",
+    "member_joined": "Joined",
+    "member_remove_confirm_title": "Remove member?",
+    "member_remove_confirm_detail": "This user will lose access to this project.",
+    "settings_overview_hint":
+      "Summary of workflow, issue types, and custom field coverage. Project admins can open Workflow and Custom fields to change definitions; field values are still edited on each issue.",
+    "admin_only": "Only project administrators can use this screen.",
     "settings_readonly_hint":
-      "Workflow, issue types, and custom fields are shown here for reference. Editing workflows or field definitions in the UI is planned (see backlog P10); values are edited on each issue. Seed and APIs apply today.",
+      "Workflow, issue types, and custom fields are shown here for reference. Use Workflow and Custom fields (admins) to edit definitions; values are edited on each issue.",
     "reports_coming_soon":
       "Reports and dashboards are not implemented yet. Use Board and Issues for now; burndown and gadgets are tracked as future work (see backlog P8/P12)."
   },
@@ -115,6 +163,8 @@
     "key": "Key",
     "summary": "Summary",
     "description": "Description",
+    "desc_edit": "Edit description",
+    "description_editor_placeholder": "Detailed description (bold, lists, links…)",
     "status": "Status",
     "priority": "Priority",
     "assignee": "Assignee",
@@ -126,7 +176,23 @@
     "transition": "Transition",
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
-    "jql_placeholder": "JQL (e.g. assignee = currentUser() AND text ~ \"bug\")",
+    "jql_placeholder": "JQL (e.g. status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "search": {
+      "jql": {
+        "invalid": "Invalid JQL.",
+        "duplicate_assignee": "Assignee appears more than once in JQL.",
+        "current_user_required": "assignee = currentUser() requires a signed-in user.",
+        "status_empty": "Status value in JQL cannot be empty.",
+        "duplicate_status": "Status appears more than once in JQL.",
+        "duplicate_text": "text ~ appears more than once in JQL.",
+        "unrecognized_clause": "Unsupported or invalid JQL clause.",
+        "status_name_requires_project": "To search by status name, filter by project first.",
+        "field_not_found": "Unknown custom field key: {{key}}.",
+        "duplicate_cf": "Each custom field can appear only once in JQL.",
+        "cf_key_invalid": "Invalid custom field key in JQL.",
+        "cf_number_invalid": "Invalid number in custom field clause."
+      }
+    },
     "empty": "No issues match the criteria.",
     "assignee_save": "Save assignee",
     "custom_fields": "Custom fields",
@@ -140,6 +206,7 @@
     "you": "You",
     "edited": "edited",
     "empty": "No comments yet. Be the first.",
+    "mention_hint": "Type @ then pick a user — username must match an account (e.g. @admin).",
     "placeholder": "Write a comment. Use @username to mention...",
     "delete_confirm_title": "Delete comment?",
     "delete_confirm_detail": "This cannot be undone."
@@ -150,8 +217,8 @@
     "issue": {
       "created": "Issue created ({{issueKey}})",
       "field_updated": "{{field}} updated",
-      "assignee_changed": "Assignee changed",
-      "status_changed": "Status changed",
+      "assignee_changed": "Assignee changed {{oldAssigneeId}} → {{newAssigneeId}}",
+      "status_changed": "Status changed {{fromStatusId}} → {{toStatusId}}",
       "parent_changed": "Parent issue changed",
       "watcher_added": "Watcher added",
       "watcher_removed": "Watcher removed",
@@ -162,6 +229,109 @@
       "edited": "Comment edited",
       "deleted": "Comment deleted"
     }
+  },
+  "workflow": {
+    "created": { "success": "Workflow \"{{name}}\" created" },
+    "updated": { "success": "Workflow updated" },
+    "deleted": { "success": "Workflow deleted" },
+    "status": {
+      "added": "Status added",
+      "removed": "Status removed",
+      "initial_set": "Initial status updated"
+    },
+    "transition": {
+      "added": "Transition added",
+      "removed": "Transition removed"
+    },
+    "category": {
+      "todo": "To do",
+      "in_progress": "In progress",
+      "done": "Done"
+    }
+  },
+  "field": {
+    "created": { "success": "Field \"{{name}}\" created" },
+    "updated": { "success": "Field updated" },
+    "deleted": { "success": "Field deleted" },
+    "option": {
+      "added": "Option added",
+      "updated": "Option updated",
+      "removed": "Option removed"
+    },
+    "context": {
+      "added": "Field context added",
+      "removed": "Field context removed"
+    },
+    "value": {
+      "saved": "Field values saved",
+      "cleared": "Field value cleared"
+    }
+  },
+  "workflow_editor": {
+    "select_workflow": "Workflow",
+    "create_workflow": "New workflow",
+    "statuses": "Statuses",
+    "transitions": "Transitions",
+    "add_status": "Add status",
+    "add_transition": "Add transition",
+    "set_initial": "Set as initial",
+    "initial": "Initial",
+    "initial_badge": "Initial",
+    "status_name": "Name",
+    "status_key": "Key",
+    "category": "Category",
+    "order": "Order",
+    "from_status": "From",
+    "to_status": "To",
+    "transition_name": "Transition name",
+    "from_any": "Any status (global)",
+    "no_workflows": "No workflow for this project yet. Create one to add statuses and transitions.",
+    "remove_status_title": "Remove status?",
+    "remove_status_detail": "Remove status \"{{name}}\"? Transitions that use it may break.",
+    "remove_transition_title": "Remove transition?",
+    "remove_transition_detail": "Remove transition \"{{name}}\"?"
+  },
+  "field_type": {
+    "text": "Text",
+    "text_area": "Text area",
+    "number": "Number",
+    "decimal": "Decimal",
+    "date": "Date",
+    "date_time": "Date/time",
+    "select": "Select",
+    "multi_select": "Multi-select",
+    "cascading": "Cascading select",
+    "user": "User",
+    "user_multi": "Multi-user",
+    "checkbox": "Checkbox",
+    "url": "URL",
+    "label": "Labels",
+    "read_only": "Read-only"
+  },
+  "field_admin": {
+    "create_field": "New custom field",
+    "edit_field": "Edit custom field",
+    "col_key": "Key",
+    "col_name": "Name",
+    "col_type": "Type",
+    "col_system": "System",
+    "field_key": "Field key",
+    "field_name": "Field name",
+    "field_type": "Field type",
+    "searchable": "Searchable",
+    "contexts_for_project": "Contexts for this project",
+    "context_global": "Global",
+    "required": "Required",
+    "no_contexts": "No contexts scoped to this project yet.",
+    "add_context": "Add context",
+    "remove_context": "Remove",
+    "context_name": "Context name",
+    "display_order": "Display order",
+    "delete_title": "Delete field?",
+    "delete_detail": "Delete field \"{{name}}\"? This cannot be undone.",
+    "remove_context_title": "Remove context?",
+    "remove_context_detail": "Remove context \"{{name}}\"?",
+    "bind_demo_contexts": "Bind demo contexts"
   },
   "board": {
     "title": "Board",
@@ -175,7 +345,55 @@
     "layout_flat": "Flat",
     "layout_assignee": "Swimlanes by assignee",
     "pick_transition": "Choose transition",
-    "pick_transition_hint": "Multiple transitions lead to this column. Pick one:"
+    "pick_transition_hint": "Multiple transitions lead to this column. Pick one:",
+    "scope": "Board scope",
+    "scope_all": "All project issues",
+    "scope_active_sprint": "Active sprint only"
+  },
+  "backlog": {
+    "product_backlog": "Product backlog",
+    "sprint_issues": "Sprint",
+    "empty_backlog": "No issues outside open sprints.",
+    "empty_sprint": "Drag issues here from the backlog.",
+    "pick_sprint": "Select a sprint to plan scope."
+  },
+  "sprint": {
+    "create": "New sprint",
+    "select": "Sprint",
+    "none": "No sprint",
+    "start_button": "Start sprint",
+    "complete": "Complete sprint",
+    "name": "Name",
+    "field_start": "Start date",
+    "field_end": "End date",
+    "created": { "success": "Sprint created" },
+    "updated": { "success": "Sprint updated" },
+    "started": { "success": "Sprint started" },
+    "completed": { "success": "Sprint completed" },
+    "issue_added": { "success": "Issue added to sprint" },
+    "issue_removed": { "success": "Issue removed from sprint" },
+    "reordered": { "success": "Sprint order updated" },
+    "not_found": "Sprint not found",
+    "name_required": "Sprint name is required",
+    "invalid_dates": "End date must be after start date",
+    "completed_immutable": "Completed sprint cannot be changed",
+    "active_exists": "Another sprint is already active",
+    "start_requires_planned": "Only a planned sprint can be started",
+    "complete_requires_active": "Only an active sprint can be completed",
+    "issue_wrong_project": "Issue does not belong to this project",
+    "issue_in_other_sprint": "Issue is already in another open sprint",
+    "issue_duplicate": "Issue is already in this sprint",
+    "burndown_bad_state": "Burndown requires an active or completed sprint",
+    "start_requires_issues": "Add at least one issue before starting",
+    "reorder_invalid": "Invalid issue order",
+    "issue_not_in_sprint": "Issue is not in this sprint"
+  },
+  "reports": {
+    "burndown_title": "Burndown (story points)",
+    "burndown_ideal": "Ideal",
+    "burndown_actual": "Actual",
+    "burndown_total_points": "Committed scope",
+    "burndown_need_active": "Burndown appears once you start a sprint, or after at least one sprint has completed."
   },
   "attachment": {
     "title": "Attachments",
@@ -218,5 +436,23 @@
     "not_found": "Product not found",
     "sku_duplicated": "SKU already exists",
     "price.invalid": "Price must be greater than or equal to 0"
+  },
+  "email": {
+    "template": {
+      "saved": "Email template saved",
+      "not_found": "Email template not found",
+      "disabled": "Email template is disabled"
+    },
+    "sent": {
+      "success": "Email sent",
+      "failed": "Email failed"
+    },
+    "send": {
+      "skipped": "Email sending skipped (disabled)"
+    },
+    "sending": {
+      "disabled": "Email sending is disabled"
+    },
+    "from_missing": "From email is not configured"
   }
 }

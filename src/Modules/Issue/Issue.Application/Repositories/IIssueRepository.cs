@@ -26,6 +26,8 @@ public sealed record IssueSearchCriteria(
     int PageSize = 50,
     string? Sort = null,
     bool AssigneeUnassignedOnly = false,
-    IReadOnlySet<Guid>? RestrictToIssueIds = null);
+    IReadOnlySet<Guid>? RestrictToIssueIds = null,
+    IReadOnlySet<Guid>? ExcludeIssueIds = null,
+    IReadOnlySet<Guid>? CurrentStatusIds = null);
 
 public interface IIssueUnitOfWork : IUnitOfWork { }

@@ -135,4 +135,8 @@ export class ProjectApiService {
   removeMember(id: string, userId: string): Observable<ProjectDetail> {
     return this.http.delete<ProjectDetail>(`${this.base}/${id}/members/${userId}`);
   }
+
+  changeMemberRole(id: string, userId: string, role: ProjectRole): Observable<ProjectDetail> {
+    return this.http.put<ProjectDetail>(`${this.base}/${id}/members/${userId}/role`, { role });
+  }
 }

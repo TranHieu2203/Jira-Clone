@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Sprint.Application</RootNamespace>
+    <AssemblyName>Sprint.Application</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.9.2" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Sprint.Domain\Sprint.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\ActivityLog.Application\ActivityLog.Application.csproj" />
+    <ProjectReference Include="..\..\ActivityLog\ActivityLog.Domain\ActivityLog.Domain.csproj" />
+    <ProjectReference Include="..\..\Issue\Issue.Application\Issue.Application.csproj" />
+    <ProjectReference Include="..\..\Issue\Issue.Domain\Issue.Domain.csproj" />
+    <ProjectReference Include="..\..\Workflow\Workflow.Application\Workflow.Application.csproj" />
+    <ProjectReference Include="..\..\Workflow\Workflow.Domain\Workflow.Domain.csproj" />
+  </ItemGroup>
+</Project>

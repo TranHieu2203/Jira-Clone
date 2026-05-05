@@ -146,6 +146,11 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
     if (variant === 'backlog') {
       this.listTitleKey.set('nav.backlog');
     }
+    /** Global /issues: default JQL so list is only issues assigned to the logged-in user (see JqlLiteParser on BE). */
+    if (variant === 'my') {
+      this.listTitleKey.set('nav.my_issues');
+      this.jqlFilter = 'assignee = currentUser()';
+    }
 
     const projectKey = this.route.snapshot.paramMap.get('projectKey');
     if (projectKey) {

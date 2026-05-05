@@ -56,6 +56,36 @@ export interface AvailableTransition {
   screenId?: string | null;
 }
 
+export interface CreateWorkflowRequest {
+  projectId: string | null;
+  name: string;
+  key: string;
+  description?: string | null;
+  isTemplate: boolean;
+}
+
+export interface UpdateWorkflowRequest {
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+}
+
+export interface AddStatusRequest {
+  name: string;
+  key: string;
+  category: number;
+  color?: string | null;
+  order?: number | null;
+}
+
+export interface AddTransitionRequest {
+  fromStatusId?: string | null;
+  toStatusId: string;
+  name: string;
+  screenId?: string | null;
+  isAutomatic: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorkflowApiService {
   private readonly http = inject(HttpClient);
@@ -80,5 +110,37 @@ export class WorkflowApiService {
   ): Observable<AvailableTransition[]> {
     const url = `${this.transitionBase}/available?projectId=${projectId}&issueTypeId=${issueTypeId}&currentStatusId=${currentStatusId}&currentUserId=${currentUserId}`;
     return this.http.get<AvailableTransition[]>(url);
+  }
+
+  create(request: CreateWorkflowRequest): Observable<Workflow> {
+    return this.http.post<Workflow>(this.base, request);
+  }
+
+  update(id: string, request: UpdateWorkflowRequest): Observable<Workflow> {
+    return this.http.put<Workflow>(`${this.base}/${id}`, request);
+  }
+
+  delete(id: string): Observable<unknown> {
+    return this.http.delete(`${this.base}/${id}`);
+  }
+
+  addStatus(workflowId: string, request: AddStatusRequest): Observable<Workflow> {
+    return this.http.post<Workflow>(`${this.base}/${workflowId}/statuses`, request);
+  }
+
+  removeStatus(workflowId: string, statusId: string): Observable<Workflow> {
+    return this.http.delete<Workflow>(`${this.base}/${workflowId}/statuses/${statusId}`);
+  }
+
+  setInitialStatus(workflowId: string, statusId: string): Observable<Workflow> {
+    return this.http.put<Workflow>(`${this.base}/${workflowId}/initial-status/${statusId}`, {});
+  }
+
+  addTransition(workflowId: string, request: AddTransitionRequest): Observable<Workflow> {
+    return this.http.post<Workflow>(`${this.base}/${workflowId}/transitions`, request);
+  }
+
+  removeTransition(workflowId: string, transitionId: string): Observable<Workflow> {
+    return this.http.delete<Workflow>(`${this.base}/${workflowId}/transitions/${transitionId}`);
   }
 }

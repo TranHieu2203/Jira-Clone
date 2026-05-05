@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { AuthService } from '@core/auth/auth.service';
 import { WorkspaceContextService } from './workspace-context.service';
 
 interface NavItem {
@@ -44,6 +45,18 @@ interface NavItem {
             <span class="label">{{ item.i18nKey | translate }}</span>
           </a>
         }
+        @if (isSystemAdmin()) {
+          <div class="section-title admin-section">
+            <span class="name">{{ 'nav.admin_section' | translate }}</span>
+          </div>
+          @for (item of adminNav(); track item.link) {
+            <a [routerLink]="item.link" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+               class="nav-item" [title]="item.i18nKey | translate">
+              <span class="icon">{{ item.icon }}</span>
+              <span class="label">{{ item.i18nKey | translate }}</span>
+            </a>
+          }
+        }
       }
     </aside>
   `,
@@ -72,6 +85,7 @@ interface NavItem {
       background: var(--c-surface-3); color: var(--c-text-muted);
     }
     .section-title .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .section-title.admin-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--c-border); }
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 7px 10px; border-radius: var(--radius);
@@ -98,6 +112,7 @@ interface NavItem {
 })
 export class AppSidebarComponent {
   private readonly ctx = inject(WorkspaceContextService);
+  private readonly auth = inject(AuthService);
 
   readonly collapsed = input(false);
 
@@ -109,6 +124,13 @@ export class AppSidebarComponent {
     { label: 'Workspaces', i18nKey: 'nav.workspaces', icon: '📁', link: '/workspaces' },
     { label: 'Projects', i18nKey: 'nav.projects', icon: '📋', link: '/projects' },
     { label: 'My Issues', i18nKey: 'nav.my_issues', icon: '✦', link: '/issues' }
+  ]);
+
+  readonly isSystemAdmin = computed(() => (this.auth.user()?.roles ?? []).includes('Admin'));
+
+  readonly adminNav = computed<NavItem[]>(() => [
+    { label: 'Email templates', i18nKey: 'nav.admin_email_templates', icon: '✉', link: '/admin/email-templates' },
+    { label: 'Email logs', i18nKey: 'nav.admin_email_logs', icon: '☰', link: '/admin/email-logs' }
   ]);
 
   readonly projectNav = computed<NavItem[]>(() => {

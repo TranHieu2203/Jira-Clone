@@ -21,6 +21,7 @@ import { SelectModule } from 'primeng/select';
 import { Issue, IssueApiService, IssuePriority } from '@core/api/issue.service';
 import { IssueType, ProjectApiService, ProjectDetail, ProjectSummary } from '@core/api/project.service';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
+import { RichTextEditorComponent } from '@shared/ui/rich-text-editor.component';
 import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.component';
 
 @Component({
@@ -29,7 +30,7 @@ import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.compo
   imports: [
     CommonModule, FormsModule, TranslateModule,
     ButtonModule, DialogModule, InputTextModule, TextareaModule, SelectModule,
-    UserPickerComponent, IssueCustomFieldsFormComponent
+    UserPickerComponent, RichTextEditorComponent, IssueCustomFieldsFormComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -62,7 +63,11 @@ import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.compo
         </label>
         <label class="field">
           <span>{{ 'issue.description' | translate }}</span>
-          <textarea pTextarea rows="4" [(ngModel)]="model.description" name="description"></textarea>
+          <app-rich-text-editor
+            [(ngModel)]="model.description"
+            name="description"
+            [placeholderText]="'issue.description_editor_placeholder' | translate"
+          />
         </label>
         <label class="field">
           <span>{{ 'issue.priority' | translate }}</span>

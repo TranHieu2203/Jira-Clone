@@ -14,6 +14,8 @@ using Microsoft.OpenApi.Models;
 using ActivityLog.Api;
 using Attachment.Api;
 using Notification.Api;
+using Sprint.Api;
+using Sprint.Infrastructure;
 using Notification.Infrastructure;
 using Comment.Api;
 using CustomField.Api;
@@ -21,8 +23,11 @@ using Issue.Api;
 using Project.Api;
 using Serilog;
 using Workflow.Api;
+using System.Text.Json;
 using Api.Host.Infrastructure.Outbox;
+using Api.Host.Infrastructure.SignalR;
 using BB.EventBus;
+using Issue.Application;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,6 +65,7 @@ builder.Services.AddActivityLogModule(builder.Configuration);
 builder.Services.AddBbStorage(builder.Configuration);
 builder.Services.AddAttachmentModule(builder.Configuration);
 builder.Services.AddNotificationModule(builder.Configuration);
+builder.Services.AddSprintModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -72,6 +78,14 @@ builder.Services.AddScoped<IOutboxStore, EfOutboxStore>();
 builder.Services.AddScoped<InMemoryEventBus>();
 builder.Services.AddScoped<IEventBus, OutboxingEventBus>();
 builder.Services.AddHostedService<OutboxProcessorHostedService>();
+
+builder.Services.AddSignalR()
+    .AddJsonProtocol(o =>
+    {
+        o.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
+builder.Services.AddScoped<IIssueRealtimeNotifier, SignalRIssueRealtimeNotifier>();
 
 builder.Services.AddControllers();
 
@@ -149,6 +163,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers().RequireRateLimiting("default");
+app.MapHub<WorkspaceHub>("/hubs/workspace").RequireAuthorization();
 app.MapHealthChecks("/health/live");
 app.MapHealthChecks("/health/ready");
 
@@ -166,6 +181,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var attachmentDb = scope.ServiceProvider.GetRequiredService<Attachment.Infrastructure.AttachmentDbContext>();
     var outboxDb = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
     var notificationDb = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
+    var sprintDb = scope.ServiceProvider.GetRequiredService<SprintDbContext>();
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -176,11 +192,13 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(attachmentDb, bootstrapLogger);
     await EnsureSchemaAsync(outboxDb, bootstrapLogger);
     await EnsureSchemaAsync(notificationDb, bootstrapLogger);
+    await EnsureSchemaAsync(sprintDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();
 await Workflow.Infrastructure.Seed.WorkflowSeeder.SeedDefaultsAsync(app.Services);
 await CustomField.Infrastructure.Seed.CustomFieldSeeder.SeedDefaultsAsync(app.Services);
+await Notification.Infrastructure.Seed.EmailTemplateSeeder.SeedDefaultsAsync(app.Services);
 await Api.Host.Bootstrap.CustomFieldDemoProjectBinderBackfill.RunAsync(app.Services);
 
 app.Run();

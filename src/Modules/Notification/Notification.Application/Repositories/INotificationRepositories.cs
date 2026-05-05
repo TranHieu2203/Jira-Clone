@@ -15,4 +15,15 @@ public interface INotificationRepository : IRepository<InAppNotification>
     Task MarkAllReadAsync(Guid userId, CancellationToken ct = default);
 }
 
+public interface IEmailTemplateRepository : IRepository<EmailTemplate>
+{
+    Task<EmailTemplate?> FindByKeyAsync(string key, CancellationToken ct = default);
+    Task<PagedList<EmailTemplate>> ListAsync(int pageIndex, int pageSize, string? q, CancellationToken ct = default);
+}
+
+public interface IEmailLogRepository : IRepository<EmailLog>
+{
+    Task<PagedList<EmailLog>> ListAsync(int pageIndex, int pageSize, string? templateKey, string? toEmail, EmailLogStatus? status, CancellationToken ct = default);
+}
+
 public interface INotificationUnitOfWork : IUnitOfWork { }

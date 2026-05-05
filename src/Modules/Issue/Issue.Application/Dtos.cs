@@ -81,4 +81,6 @@ public sealed record SearchIssuesRequest(
     Guid? CurrentStatusId, int? Priority, string? TextSearch, bool? IncludeArchived,
     int PageIndex = 1, int PageSize = 50, string? Sort = null,
     string? Jql = null,
-    List<IssueFieldFilterRequest>? FieldFilters = null);
+    List<IssueFieldFilterRequest>? FieldFilters = null,
+    List<Guid>? IssueIds = null,
+    List<Guid>? ExcludeIssueIds = null);

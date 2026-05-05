@@ -24,10 +24,13 @@ public sealed class UserRepository : Repository<User>, IUserRepository
         return await q.OrderBy(u => u.UserName).Take(limit).ToListAsync(ct);
     }
 
-    public Task<User?> FindByUserNameAsync(string userName, CancellationToken ct = default) =>
-        _ctx.Users.AsNoTracking()
+    public Task<User?> FindByUserNameAsync(string userName, CancellationToken ct = default)
+    {
+        string normalized = userName.Trim().ToLowerInvariant();
+        return _ctx.Users.AsNoTracking()
             .Include(u => u.Roles).ThenInclude(r => r.Role)
-            .FirstOrDefaultAsync(u => u.UserName == userName, ct);
+            .FirstOrDefaultAsync(u => u.UserName.ToLower() == normalized, ct);
+    }
 
     public Task<User?> FindByRefreshTokenAsync(string token, CancellationToken ct = default) =>
         _ctx.Users.AsNoTracking()

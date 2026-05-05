@@ -24,6 +24,27 @@ public sealed class ActivityEntryRepository : Repository<ActivityEntry>, IActivi
             .ToListAsync(ct);
         return new PagedList<ActivityEntry>(items, total, page, size);
     }
+
+    public async Task<IReadOnlyList<ActivityEntry>> ListIssueStatusChangesForIssuesAsync(
+        IReadOnlyCollection<Guid> issueIds,
+        DateTimeOffset fromUtcInclusive,
+        DateTimeOffset toUtcInclusive,
+        CancellationToken ct = default)
+    {
+        if (issueIds.Count == 0)
+            return Array.Empty<ActivityEntry>();
+
+        const string kind = ActivityKinds.IssueStatusChanged;
+        List<ActivityEntry> list = await _ctx.ActivityEntries.AsNoTracking()
+            .Where(a =>
+                issueIds.Contains(a.IssueId)
+                && a.Kind == kind
+                && a.OccurredAt >= fromUtcInclusive
+                && a.OccurredAt <= toUtcInclusive)
+            .OrderBy(a => a.OccurredAt)
+            .ToListAsync(ct);
+        return list;
+    }
 }
 
 public sealed class ActivityLogUnitOfWork : UnitOfWork<ActivityLogDbContext>, IActivityLogUnitOfWork

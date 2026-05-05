@@ -12,5 +12,6 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.EventBus\BB.EventBus.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Web\BB.Web.csproj" />
   </ItemGroup>
 </Project>

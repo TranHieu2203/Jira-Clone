@@ -33,7 +33,41 @@
     "backlog": "Backlog",
     "reports": "Báo cáo",
     "overview": "Tổng quan",
-    "settings": "Cấu hình"
+    "settings": "Cấu hình",
+    "admin_section": "Quản trị",
+    "admin_email_templates": "Mẫu email",
+    "admin_email_logs": "Nhật ký email"
+  },
+  "admin": {
+    "email": {
+      "templates_title": "Mẫu email",
+      "templates_intro": "Tạo và sửa mẫu dùng cho thông báo tự động (bình luận, người được giao, đổi trạng thái). Key phải khớp backend (ví dụ comment.added).",
+      "placeholders_hint": "Biến dùng hai ngoặc nhọn, ví dụ {{issueKey}}, {{preview}} cho bình luận; {{issueKey}} cho đổi trạng thái và assignee.",
+      "logs_title": "Nhật ký email",
+      "logs_intro": "Lịch sử gửi email thông báo: đã gửi, lỗi hoặc bỏ qua.",
+      "new_template": "Mẫu mới",
+      "edit_template": "Sửa mẫu",
+      "subject": "Tiêu đề (mẫu)",
+      "html_body": "Nội dung HTML",
+      "text_body": "Nội dung dạng text (tuỳ chọn)",
+      "col_key": "Key",
+      "col_name": "Tên",
+      "col_enabled": "Bật",
+      "col_template": "Mẫu",
+      "col_to": "Người nhận",
+      "col_status": "Trạng thái",
+      "col_error": "Chi tiết",
+      "col_created": "Thời điểm",
+      "filter_template": "Lọc theo key mẫu",
+      "filter_to": "Lọc theo email nhận",
+      "log_status_all": "Mọi trạng thái",
+      "log_status": "Trạng thái",
+      "log_status_pending": "Chờ",
+      "log_status_sent": "Đã gửi",
+      "log_status_failed": "Lỗi",
+      "log_status_skipped": "Bỏ qua",
+      "log_status_unknown": "Không rõ"
+    }
   },
   "profile": {
     "title": "Hồ sơ",
@@ -91,8 +125,22 @@
     "custom_fields_by_type": "Trường tùy chỉnh theo loại issue",
     "no_custom_fields_rows": "Không có loại issue để hiển thị.",
     "settings_title": "Cấu hình dự án",
+    "settings_nav_overview": "Tổng quan",
+    "settings_nav_members": "Thành viên",
+    "settings_nav_workflow": "Workflow",
+    "settings_nav_fields": "Trường tùy chỉnh",
+    "members_title": "Thành viên dự án",
+    "members_hint": "Thêm/xóa thành viên và đổi vai trò theo từng dự án.",
+    "member_add": "Thêm",
+    "member_remove": "Gỡ",
+    "member_joined": "Tham gia",
+    "member_remove_confirm_title": "Gỡ thành viên?",
+    "member_remove_confirm_detail": "Thành viên sẽ mất quyền truy cập vào dự án này.",
+    "settings_overview_hint":
+      "Tóm tắt workflow, loại issue và phạm vi trường tùy chỉnh. Admin dự án có thể mở Workflow và Trường tùy chỉnh để sửa định nghĩa; giá trị field vẫn nhập trên từng issue.",
+    "admin_only": "Chỉ quản trị viên dự án mới dùng được màn hình này.",
     "settings_readonly_hint":
-      "Luồng workflow, loại issue và trường tùy chỉnh hiển thị ở đây để tham khảo. Chỉnh sửa workflow/định nghĩa field trên UI đang nằm trong backlog (P10); giá trị field nhập trên từng issue. Hiện dùng seed và API.",
+      "Luồng workflow, loại issue và trường tùy chỉnh hiển thị ở đây để tham khảo. Dùng Workflow và Trường tùy chỉnh (admin) để sửa định nghĩa; giá trị field nhập trên từng issue.",
     "reports_coming_soon":
       "Báo cáo và dashboard chưa triển khai. Tạm dùng Bảng và Issues; burndown và gadget nằm trong backlog (P8/P12)."
   },
@@ -115,6 +163,8 @@
     "key": "Mã",
     "summary": "Tóm tắt",
     "description": "Mô tả",
+    "desc_edit": "Sửa mô tả",
+    "description_editor_placeholder": "Mô tả chi tiết (in đậm, danh sách, liên kết…)",
     "status": "Trạng thái",
     "priority": "Độ ưu tiên",
     "assignee": "Người xử lý",
@@ -126,7 +176,23 @@
     "transition": "Chuyển trạng thái",
     "created_at": "Tạo lúc",
     "search_placeholder": "Tìm theo summary hoặc key...",
-    "jql_placeholder": "JQL (vd: assignee = currentUser() AND text ~ \"bug\")",
+    "jql_placeholder": "JQL (vd: status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "search": {
+      "jql": {
+        "invalid": "JQL không hợp lệ.",
+        "duplicate_assignee": "Assignee xuất hiện nhiều lần trong JQL.",
+        "current_user_required": "assignee = currentUser() cần người dùng đã đăng nhập.",
+        "status_empty": "Giá trị status trong JQL không được để trống.",
+        "duplicate_status": "Status xuất hiện nhiều lần trong JQL.",
+        "duplicate_text": "text ~ xuất hiện nhiều lần trong JQL.",
+        "unrecognized_clause": "Điều kiện JQL không được hỗ trợ hoặc không hợp lệ.",
+        "status_name_requires_project": "Để tìm theo tên trạng thái, hãy lọc theo dự án trước.",
+        "field_not_found": "Không có custom field với key: {{key}}.",
+        "duplicate_cf": "Mỗi custom field chỉ được xuất hiện một lần trong JQL.",
+        "cf_key_invalid": "Key custom field trong JQL không hợp lệ.",
+        "cf_number_invalid": "Số trong điều kiện custom field không hợp lệ."
+      }
+    },
     "empty": "Không có issue nào khớp tiêu chí.",
     "assignee_save": "Lưu người xử lý",
     "custom_fields": "Trường tùy chỉnh",
@@ -140,6 +206,7 @@
     "you": "Bạn",
     "edited": "đã sửa",
     "empty": "Chưa có bình luận. Hãy là người đầu tiên.",
+    "mention_hint": "Gõ @ rồi chọn user — username phải khớp tài khoản (vd: @admin).",
     "placeholder": "Nhập bình luận. Dùng @username để mention...",
     "delete_confirm_title": "Xóa bình luận?",
     "delete_confirm_detail": "Thao tác này không hoàn tác."
@@ -150,8 +217,8 @@
     "issue": {
       "created": "Đã tạo issue ({{issueKey}})",
       "field_updated": "Đã cập nhật {{field}}",
-      "assignee_changed": "Đổi người được giao",
-      "status_changed": "Đổi trạng thái",
+      "assignee_changed": "Đổi người được giao {{oldAssigneeId}} → {{newAssigneeId}}",
+      "status_changed": "Đổi trạng thái {{fromStatusId}} → {{toStatusId}}",
       "parent_changed": "Đổi issue cha",
       "watcher_added": "Thêm người theo dõi",
       "watcher_removed": "Bỏ người theo dõi",
@@ -162,6 +229,109 @@
       "edited": "Đã sửa bình luận",
       "deleted": "Đã xóa bình luận"
     }
+  },
+  "workflow": {
+    "created": { "success": "Đã tạo workflow \"{{name}}\"" },
+    "updated": { "success": "Đã cập nhật workflow" },
+    "deleted": { "success": "Đã xóa workflow" },
+    "status": {
+      "added": "Đã thêm trạng thái",
+      "removed": "Đã xóa trạng thái",
+      "initial_set": "Đã đặt trạng thái ban đầu"
+    },
+    "transition": {
+      "added": "Đã thêm transition",
+      "removed": "Đã xóa transition"
+    },
+    "category": {
+      "todo": "Chưa làm",
+      "in_progress": "Đang làm",
+      "done": "Hoàn thành"
+    }
+  },
+  "field": {
+    "created": { "success": "Đã tạo trường \"{{name}}\"" },
+    "updated": { "success": "Đã cập nhật trường" },
+    "deleted": { "success": "Đã xóa trường" },
+    "option": {
+      "added": "Đã thêm lựa chọn",
+      "updated": "Đã cập nhật lựa chọn",
+      "removed": "Đã xóa lựa chọn"
+    },
+    "context": {
+      "added": "Đã thêm ngữ cảnh field",
+      "removed": "Đã xóa ngữ cảnh field"
+    },
+    "value": {
+      "saved": "Đã lưu giá trị field",
+      "cleared": "Đã xóa giá trị field"
+    }
+  },
+  "workflow_editor": {
+    "select_workflow": "Workflow",
+    "create_workflow": "Tạo workflow mới",
+    "statuses": "Trạng thái",
+    "transitions": "Transition",
+    "add_status": "Thêm trạng thái",
+    "add_transition": "Thêm transition",
+    "set_initial": "Đặt làm ban đầu",
+    "initial": "Ban đầu",
+    "initial_badge": "Ban đầu",
+    "status_name": "Tên",
+    "status_key": "Mã",
+    "category": "Nhóm",
+    "order": "Thứ tự",
+    "from_status": "Từ",
+    "to_status": "Đến",
+    "transition_name": "Tên transition",
+    "from_any": "Mọi trạng thái (global)",
+    "no_workflows": "Dự án chưa có workflow. Hãy tạo workflow để thêm trạng thái và transition.",
+    "remove_status_title": "Xóa trạng thái?",
+    "remove_status_detail": "Xóa trạng thái \"{{name}}\"? Các transition dùng trạng thái này có thể lỗi.",
+    "remove_transition_title": "Xóa transition?",
+    "remove_transition_detail": "Xóa transition \"{{name}}\"?"
+  },
+  "field_type": {
+    "text": "Text",
+    "text_area": "Văn bản dài",
+    "number": "Số nguyên",
+    "decimal": "Số thập phân",
+    "date": "Ngày",
+    "date_time": "Ngày giờ",
+    "select": "Chọn một",
+    "multi_select": "Chọn nhiều",
+    "cascading": "Cascading",
+    "user": "User",
+    "user_multi": "Nhiều user",
+    "checkbox": "Checkbox",
+    "url": "URL",
+    "label": "Nhãn",
+    "read_only": "Chỉ đọc"
+  },
+  "field_admin": {
+    "create_field": "Trường tùy chỉnh mới",
+    "edit_field": "Sửa trường tùy chỉnh",
+    "col_key": "Key",
+    "col_name": "Tên",
+    "col_type": "Kiểu",
+    "col_system": "Hệ thống",
+    "field_key": "Key",
+    "field_name": "Tên hiển thị",
+    "field_type": "Kiểu field",
+    "searchable": "Cho phép tìm kiếm",
+    "contexts_for_project": "Ngữ cảnh cho dự án này",
+    "context_global": "Toàn cục",
+    "required": "Bắt buộc",
+    "no_contexts": "Chưa có ngữ cảnh nào gắn dự án này.",
+    "add_context": "Thêm ngữ cảnh",
+    "remove_context": "Gỡ",
+    "context_name": "Tên ngữ cảnh",
+    "display_order": "Thứ tự hiển thị",
+    "delete_title": "Xóa field?",
+    "delete_detail": "Xóa field \"{{name}}\"? Không hoàn tác.",
+    "remove_context_title": "Gỡ ngữ cảnh?",
+    "remove_context_detail": "Gỡ ngữ cảnh \"{{name}}\"?",
+    "bind_demo_contexts": "Gắn ngữ cảnh demo"
   },
   "board": {
     "title": "Bảng",
@@ -175,7 +345,55 @@
     "layout_flat": "Phẳng",
     "layout_assignee": "Swimlane theo assignee",
     "pick_transition": "Chọn transition",
-    "pick_transition_hint": "Có nhiều transition dẫn tới cột này. Chọn một:"
+    "pick_transition_hint": "Có nhiều transition dẫn tới cột này. Chọn một:",
+    "scope": "Phạm vi bảng",
+    "scope_all": "Toàn bộ issue project",
+    "scope_active_sprint": "Chỉ sprint đang chạy"
+  },
+  "backlog": {
+    "product_backlog": "Backlog sản phẩm",
+    "sprint_issues": "Sprint",
+    "empty_backlog": "Không có issue ngoài sprint đang/mới lập.",
+    "empty_sprint": "Kéo issue từ backlog vào đây.",
+    "pick_sprint": "Chọn một sprint để lên scope."
+  },
+  "sprint": {
+    "create": "Tạo sprint",
+    "select": "Sprint",
+    "none": "Không có sprint",
+    "start_button": "Bắt đầu sprint",
+    "complete": "Hoàn thành sprint",
+    "name": "Tên",
+    "field_start": "Ngày bắt đầu",
+    "field_end": "Ngày kết thúc",
+    "created": { "success": "Đã tạo sprint" },
+    "updated": { "success": "Đã cập nhật sprint" },
+    "started": { "success": "Đã bắt đầu sprint" },
+    "completed": { "success": "Đã hoàn thành sprint" },
+    "issue_added": { "success": "Đã thêm issue vào sprint" },
+    "issue_removed": { "success": "Đã gỡ issue khỏi sprint" },
+    "reordered": { "success": "Đã cập nhật thứ tự sprint" },
+    "not_found": "Không tìm thấy sprint",
+    "name_required": "Tên sprint là bắt buộc",
+    "invalid_dates": "Ngày kết thúc phải sau ngày bắt đầu",
+    "completed_immutable": "Sprint đã hoàn thành không được chỉnh sửa",
+    "active_exists": "Đã có sprint Active khác",
+    "start_requires_planned": "Chỉ sprint Planned mới được start",
+    "complete_requires_active": "Chỉ sprint Active mới được complete",
+    "issue_wrong_project": "Issue không thuộc project này",
+    "issue_in_other_sprint": "Issue đã nằm trong sprint Planned/Active khác",
+    "issue_duplicate": "Issue đã có trong sprint này",
+    "burndown_bad_state": "Burndown chỉ cho sprint Active hoặc Completed",
+    "start_requires_issues": "Thêm ít nhất một issue trước khi start",
+    "reorder_invalid": "Thứ tự issue không hợp lệ",
+    "issue_not_in_sprint": "Issue không nằm trong sprint này"
+  },
+  "reports": {
+    "burndown_title": "Burndown (story points)",
+    "burndown_ideal": "Lý tưởng",
+    "burndown_actual": "Thực tế",
+    "burndown_total_points": "Scope đã commit",
+    "burndown_need_active": "Burndown hiện sau khi có sprint Active hoặc đã hoàn thành ít nhất một sprint."
   },
   "attachment": {
     "title": "Đính kèm",
@@ -218,5 +436,23 @@
     "not_found": "Không tìm thấy sản phẩm",
     "sku_duplicated": "Mã SKU đã tồn tại",
     "price.invalid": "Giá phải lớn hơn hoặc bằng 0"
+  },
+  "email": {
+    "template": {
+      "saved": "Đã lưu mẫu email",
+      "not_found": "Không tìm thấy mẫu email",
+      "disabled": "Mẫu email đang bị tắt"
+    },
+    "sent": {
+      "success": "Đã gửi email",
+      "failed": "Gửi email thất bại"
+    },
+    "send": {
+      "skipped": "Bỏ qua gửi email (đang tắt)"
+    },
+    "sending": {
+      "disabled": "Email sending đang tắt"
+    },
+    "from_missing": "Thiếu cấu hình email người gửi"
   }
 }
