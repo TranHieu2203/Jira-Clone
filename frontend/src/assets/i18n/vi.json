@@ -159,13 +159,10 @@
     "member_joined": "Tham gia",
     "member_remove_confirm_title": "Gỡ thành viên?",
     "member_remove_confirm_detail": "Thành viên sẽ mất quyền truy cập vào dự án này.",
-    "settings_overview_hint":
-      "Tóm tắt workflow, loại issue và phạm vi trường tùy chỉnh. Admin dự án có thể mở Workflow và Trường tùy chỉnh để sửa định nghĩa; giá trị field vẫn nhập trên từng issue.",
+    "settings_overview_hint": "Tóm tắt workflow, loại issue và phạm vi trường tùy chỉnh. Admin dự án có thể mở Workflow và Trường tùy chỉnh để sửa định nghĩa; giá trị field vẫn nhập trên từng issue.",
     "admin_only": "Chỉ quản trị viên dự án mới dùng được màn hình này.",
-    "settings_readonly_hint":
-      "Luồng workflow, loại issue và trường tùy chỉnh hiển thị ở đây để tham khảo. Dùng Workflow và Trường tùy chỉnh (admin) để sửa định nghĩa; giá trị field nhập trên từng issue.",
-    "reports_coming_soon":
-      "Báo cáo và dashboard chưa triển khai. Tạm dùng Bảng và Issues; burndown và gadget nằm trong backlog (P8/P12)."
+    "settings_readonly_hint": "Luồng workflow, loại issue và trường tùy chỉnh hiển thị ở đây để tham khảo. Dùng Workflow và Trường tùy chỉnh (admin) để sửa định nghĩa; giá trị field nhập trên từng issue.",
+    "reports_coming_soon": "Báo cáo và dashboard chưa triển khai. Tạm dùng Bảng và Issues; burndown và gadget nằm trong backlog (P8/P12)."
   },
   "notifications": {
     "title": "Thông báo",
@@ -250,7 +247,8 @@
     "custom_fields": "Trường tùy chỉnh",
     "custom_fields_save": "Lưu trường tùy chỉnh",
     "no_custom_fields": "Không có trường tùy chỉnh cho ngữ cảnh này.",
-    "custom_field_unsupported": "Kiểu field chưa hỗ trợ trên giao diện."
+    "custom_field_unsupported": "Kiểu field chưa hỗ trợ trên giao diện.",
+    "unassigned": "Chưa giao"
   },
   "comment": {
     "title": "Bình luận",
@@ -283,9 +281,15 @@
     }
   },
   "workflow": {
-    "created": { "success": "Đã tạo workflow \"{{name}}\"" },
-    "updated": { "success": "Đã cập nhật workflow" },
-    "deleted": { "success": "Đã xóa workflow" },
+    "created": {
+      "success": "Đã tạo workflow \"{{name}}\""
+    },
+    "updated": {
+      "success": "Đã cập nhật workflow"
+    },
+    "deleted": {
+      "success": "Đã xóa workflow"
+    },
     "status": {
       "added": "Đã thêm trạng thái",
       "removed": "Đã xóa trạng thái",
@@ -302,9 +306,15 @@
     }
   },
   "field": {
-    "created": { "success": "Đã tạo trường \"{{name}}\"" },
-    "updated": { "success": "Đã cập nhật trường" },
-    "deleted": { "success": "Đã xóa trường" },
+    "created": {
+      "success": "Đã tạo trường \"{{name}}\""
+    },
+    "updated": {
+      "success": "Đã cập nhật trường"
+    },
+    "deleted": {
+      "success": "Đã xóa trường"
+    },
     "option": {
       "added": "Đã thêm lựa chọn",
       "updated": "Đã cập nhật lựa chọn",
@@ -407,7 +417,13 @@
     "sprint_issues": "Sprint",
     "empty_backlog": "Không có issue ngoài sprint đang/mới lập.",
     "empty_sprint": "Kéo issue từ backlog vào đây.",
-    "pick_sprint": "Chọn một sprint để lên scope."
+    "pick_sprint": "Chọn một sprint để lên scope.",
+    "group_by": "Nhóm",
+    "group_epic": "Theo Epic",
+    "group_flat": "Phẳng",
+    "group_no_epic": "Không thuộc Epic",
+    "count_issues": "{{count}} issue",
+    "story_points": "Story points"
   },
   "sprint": {
     "create": "Tạo sprint",
@@ -418,13 +434,27 @@
     "name": "Tên",
     "field_start": "Ngày bắt đầu",
     "field_end": "Ngày kết thúc",
-    "created": { "success": "Đã tạo sprint" },
-    "updated": { "success": "Đã cập nhật sprint" },
-    "started": { "success": "Đã bắt đầu sprint" },
-    "completed": { "success": "Đã hoàn thành sprint" },
-    "issue_added": { "success": "Đã thêm issue vào sprint" },
-    "issue_removed": { "success": "Đã gỡ issue khỏi sprint" },
-    "reordered": { "success": "Đã cập nhật thứ tự sprint" },
+    "created": {
+      "success": "Đã tạo sprint"
+    },
+    "updated": {
+      "success": "Đã cập nhật sprint"
+    },
+    "started": {
+      "success": "Đã bắt đầu sprint"
+    },
+    "completed": {
+      "success": "Đã hoàn thành sprint"
+    },
+    "issue_added": {
+      "success": "Đã thêm issue vào sprint"
+    },
+    "issue_removed": {
+      "success": "Đã gỡ issue khỏi sprint"
+    },
+    "reordered": {
+      "success": "Đã cập nhật thứ tự sprint"
+    },
     "not_found": "Không tìm thấy sprint",
     "name_required": "Tên sprint là bắt buộc",
     "invalid_dates": "Ngày kết thúc phải sau ngày bắt đầu",
@@ -474,9 +504,17 @@
     "deleted": "Đã xoá filter",
     "not_owner": "Chỉ chủ filter mới sửa được",
     "not_found": "Không tìm thấy filter",
-    "name": { "required": "Tên là bắt buộc", "too_long": "Tên quá dài" },
-    "jql": { "required": "JQL là bắt buộc", "too_long": "JQL quá dài" },
-    "description": { "too_long": "Mô tả quá dài" }
+    "name": {
+      "required": "Tên là bắt buộc",
+      "too_long": "Tên quá dài"
+    },
+    "jql": {
+      "required": "JQL là bắt buộc",
+      "too_long": "JQL quá dài"
+    },
+    "description": {
+      "too_long": "Mô tả quá dài"
+    }
   },
   "issue_link": {
     "title": "Issue liên quan",
@@ -538,9 +576,15 @@
     "create": "Tạo sản phẩm",
     "edit": "Sửa sản phẩm",
     "delete_confirm": "Xóa sản phẩm \"{{name}}\"?",
-    "created": { "success": "Tạo sản phẩm {{name}} thành công" },
-    "updated": { "success": "Cập nhật sản phẩm {{name}} thành công" },
-    "deleted": { "success": "Xóa sản phẩm thành công" },
+    "created": {
+      "success": "Tạo sản phẩm {{name}} thành công"
+    },
+    "updated": {
+      "success": "Cập nhật sản phẩm {{name}} thành công"
+    },
+    "deleted": {
+      "success": "Xóa sản phẩm thành công"
+    },
     "not_found": "Không tìm thấy sản phẩm",
     "sku_duplicated": "Mã SKU đã tồn tại",
     "price.invalid": "Giá phải lớn hơn hoặc bằng 0"

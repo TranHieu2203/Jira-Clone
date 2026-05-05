@@ -17,6 +17,9 @@ export interface IssueSummary {
   priority: IssuePriority;
   assigneeId?: string | null;
   createdAt: string;
+  parentIssueId?: string | null;
+  storyPoints?: number | null;
+  labels?: string[] | null;
 }
 
 export interface Issue {

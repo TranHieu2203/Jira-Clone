@@ -4,6 +4,7 @@ import {
   Component,
   OnDestroy,
   OnInit,
+  computed,
   inject,
   model,
   signal
@@ -17,6 +18,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { TooltipModule } from 'primeng/tooltip';
 import { AppPageHeaderComponent } from '@shared/ui/app-page-header.component';
 import { IssueApiService, IssueSummary } from '@core/api/issue.service';
 import {
@@ -29,14 +31,22 @@ import {
   ProjectDetail,
   projectDetailToSummary
 } from '@core/api/project.service';
+import { IssueType } from '@core/api/project.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { CreateIssueDialogComponent } from '@features/issue/create-issue.dialog';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { UserCacheService } from '@core/api/user-cache.service';
 import { firstValueFrom } from 'rxjs';
 
 const SprintPlanned = 0;
 const SprintActive = 1;
 const SprintCompleted = 2;
+
+interface IssueGroup {
+  /** null = "No epic / orphan items". */
+  readonly epic: IssueSummary | null;
+  readonly items: readonly IssueSummary[];
+}
 
 @Component({
   selector: 'app-backlog-page',
@@ -53,6 +63,7 @@ const SprintCompleted = 2;
     DialogModule,
     InputTextModule,
     SelectModule,
+    TooltipModule,
     AppPageHeaderComponent,
     CreateIssueDialogComponent
   ],
@@ -85,11 +96,30 @@ const SprintCompleted = 2;
             <button pButton (click)="completeSprint(sp)" [label]="'sprint.complete' | translate" class="p-button-secondary"></button>
           }
         }
+        <div class="grow"></div>
+        <label class="field toggle-field">
+          <span>{{ 'backlog.group_by' | translate }}</span>
+          <button
+            type="button"
+            class="toggle-btn"
+            [class.active]="groupByEpic()"
+            (click)="groupByEpic.set(!groupByEpic())"
+            [attr.aria-pressed]="groupByEpic()">
+            <i class="pi" [class.pi-sitemap]="groupByEpic()" [class.pi-list]="!groupByEpic()"></i>
+            {{ (groupByEpic() ? 'backlog.group_epic' : 'backlog.group_flat') | translate }}
+          </button>
+        </label>
       </div>
 
       <div class="split" cdkDropListGroup>
         <section class="panel">
-          <h2 class="panel-title">{{ 'backlog.product_backlog' | translate }}</h2>
+          <header class="panel-head">
+            <h2 class="panel-title">{{ 'backlog.product_backlog' | translate }}</h2>
+            <span class="panel-stats">
+              {{ 'backlog.count_issues' | translate: { count: backlogItems().length } }}
+              @if (backlogPoints() > 0) { · {{ backlogPoints() }} SP }
+            </span>
+          </header>
           <div
             id="product-backlog-list"
             class="drop-list"
@@ -97,19 +127,50 @@ const SprintCompleted = 2;
             cdkDropListConnectedTo="sprint-issues-list"
             [cdkDropListData]="backlogItems()"
             (cdkDropListDropped)="onDrop($event)">
-            @for (issue of backlogItems(); track issue.id) {
-              <div class="issue-card" cdkDrag [cdkDragData]="issue">
-                <div class="row">
-                  <a [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
-                  <div class="meta">
-                    <span class="status-pill" [attr.data-cat]="statusCat(issue.currentStatusId)">
-                      {{ statusName(issue.currentStatusId) }}
-                    </span>
-                    <span class="pri pri-{{ issue.priority }}">P{{ issue.priority }}</span>
-                  </div>
+            @for (g of backlogGroups(); track g.epic?.id ?? '__none__') {
+              @if (groupByEpic() && (g.epic || g.items.length > 0)) {
+                <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
+                  @if (g.epic; as ep) {
+                    <span class="type-pill" [style.background]="typeColorOf(ep.issueTypeId)" [pTooltip]="typeNameOf(ep.issueTypeId)">{{ typeInitialOf(ep.issueTypeId) }}</span>
+                    <a class="group-key" [routerLink]="['/issues', ep.key]"><code>{{ ep.key }}</code></a>
+                    <span class="group-summary">{{ ep.summary }}</span>
+                    <span class="status-badge" [attr.data-cat]="statusCat(ep.currentStatusId)">{{ statusName(ep.currentStatusId) }}</span>
+                  } @else {
+                    <span class="group-summary muted">{{ 'backlog.group_no_epic' | translate }}</span>
+                  }
+                  <span class="group-count">{{ g.items.length }}</span>
                 </div>
-                <div class="sum">{{ issue.summary }}</div>
-              </div>
+              }
+              @for (issue of g.items; track issue.id) {
+                <div class="issue-row" cdkDrag [cdkDragData]="issue">
+                  <span class="drag-handle" cdkDragHandle><i class="pi pi-bars"></i></span>
+                  <span class="type-pill" [style.background]="typeColorOf(issue.issueTypeId)" [pTooltip]="typeNameOf(issue.issueTypeId)">{{ typeInitialOf(issue.issueTypeId) }}</span>
+                  <a class="row-key" [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
+                  <span class="row-summary" [title]="issue.summary">{{ issue.summary }}</span>
+                  @if (issue.labels && issue.labels.length > 0) {
+                    <span class="row-labels">
+                      @for (l of issue.labels.slice(0, 2); track l) {
+                        <span class="label-chip">{{ l }}</span>
+                      }
+                      @if (issue.labels.length > 2) {
+                        <span class="label-chip more">+{{ issue.labels.length - 2 }}</span>
+                      }
+                    </span>
+                  }
+                  @if (issue.storyPoints != null) {
+                    <span class="sp-pill" [pTooltip]="'backlog.story_points' | translate">{{ issue.storyPoints }}</span>
+                  }
+                  <span class="status-badge" [attr.data-cat]="statusCat(issue.currentStatusId)">{{ statusName(issue.currentStatusId) }}</span>
+                  <i class="pi priority-icon {{ priorityIcon(issue.priority) }}" [attr.data-pri]="issue.priority" [pTooltip]="priorityLabel(issue.priority)"></i>
+                  <span class="assignee" [pTooltip]="assigneeName(issue.assigneeId) ?? ('issue.unassigned' | translate)">
+                    @if (issue.assigneeId) {
+                      <span class="avatar">{{ assigneeInitials(issue.assigneeId) }}</span>
+                    } @else {
+                      <span class="avatar avatar-empty"><i class="pi pi-user"></i></span>
+                    }
+                  </span>
+                </div>
+              }
             }
             @if (backlogItems().length === 0) {
               <p class="empty">{{ 'backlog.empty_backlog' | translate }}</p>
@@ -118,7 +179,15 @@ const SprintCompleted = 2;
         </section>
 
         <section class="panel">
-          <h2 class="panel-title">{{ 'backlog.sprint_issues' | translate }}</h2>
+          <header class="panel-head">
+            <h2 class="panel-title">{{ 'backlog.sprint_issues' | translate }}</h2>
+            @if (selectedSprint()) {
+              <span class="panel-stats">
+                {{ 'backlog.count_issues' | translate: { count: sprintItems().length } }}
+                @if (sprintPoints() > 0) { · {{ sprintPoints() }} SP }
+              </span>
+            }
+          </header>
           @if (!selectedSprint()) {
             <p class="hint">{{ 'backlog.pick_sprint' | translate }}</p>
           } @else {
@@ -129,19 +198,50 @@ const SprintCompleted = 2;
               cdkDropListConnectedTo="product-backlog-list"
               [cdkDropListData]="sprintItems()"
               (cdkDropListDropped)="onDrop($event)">
-              @for (issue of sprintItems(); track issue.id) {
-                <div class="issue-card" cdkDrag [cdkDragData]="issue">
-                  <div class="row">
-                    <a [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
-                    <div class="meta">
-                      <span class="status-pill" [attr.data-cat]="statusCat(issue.currentStatusId)">
-                        {{ statusName(issue.currentStatusId) }}
-                      </span>
-                      <span class="pri pri-{{ issue.priority }}">P{{ issue.priority }}</span>
-                    </div>
+              @for (g of sprintGroups(); track g.epic?.id ?? '__none__') {
+                @if (groupByEpic() && (g.epic || g.items.length > 0)) {
+                  <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
+                    @if (g.epic; as ep) {
+                      <span class="type-pill" [style.background]="typeColorOf(ep.issueTypeId)" [pTooltip]="typeNameOf(ep.issueTypeId)">{{ typeInitialOf(ep.issueTypeId) }}</span>
+                      <a class="group-key" [routerLink]="['/issues', ep.key]"><code>{{ ep.key }}</code></a>
+                      <span class="group-summary">{{ ep.summary }}</span>
+                      <span class="status-badge" [attr.data-cat]="statusCat(ep.currentStatusId)">{{ statusName(ep.currentStatusId) }}</span>
+                    } @else {
+                      <span class="group-summary muted">{{ 'backlog.group_no_epic' | translate }}</span>
+                    }
+                    <span class="group-count">{{ g.items.length }}</span>
                   </div>
-                  <div class="sum">{{ issue.summary }}</div>
-                </div>
+                }
+                @for (issue of g.items; track issue.id) {
+                  <div class="issue-row" cdkDrag [cdkDragData]="issue">
+                    <span class="drag-handle" cdkDragHandle><i class="pi pi-bars"></i></span>
+                    <span class="type-pill" [style.background]="typeColorOf(issue.issueTypeId)" [pTooltip]="typeNameOf(issue.issueTypeId)">{{ typeInitialOf(issue.issueTypeId) }}</span>
+                    <a class="row-key" [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
+                    <span class="row-summary" [title]="issue.summary">{{ issue.summary }}</span>
+                    @if (issue.labels && issue.labels.length > 0) {
+                      <span class="row-labels">
+                        @for (l of issue.labels.slice(0, 2); track l) {
+                          <span class="label-chip">{{ l }}</span>
+                        }
+                        @if (issue.labels.length > 2) {
+                          <span class="label-chip more">+{{ issue.labels.length - 2 }}</span>
+                        }
+                      </span>
+                    }
+                    @if (issue.storyPoints != null) {
+                      <span class="sp-pill" [pTooltip]="'backlog.story_points' | translate">{{ issue.storyPoints }}</span>
+                    }
+                    <span class="status-badge" [attr.data-cat]="statusCat(issue.currentStatusId)">{{ statusName(issue.currentStatusId) }}</span>
+                    <i class="pi priority-icon {{ priorityIcon(issue.priority) }}" [attr.data-pri]="issue.priority" [pTooltip]="priorityLabel(issue.priority)"></i>
+                    <span class="assignee" [pTooltip]="assigneeName(issue.assigneeId) ?? ('issue.unassigned' | translate)">
+                      @if (issue.assigneeId) {
+                        <span class="avatar">{{ assigneeInitials(issue.assigneeId) }}</span>
+                      } @else {
+                        <span class="avatar avatar-empty"><i class="pi pi-user"></i></span>
+                      }
+                    </span>
+                  </div>
+                }
               }
               @if (sprintItems().length === 0) {
                 <p class="empty">{{ 'backlog.empty_sprint' | translate }}</p>
@@ -175,16 +275,24 @@ const SprintCompleted = 2;
     }
   `,
   styles: [`
+    /* ──────── Toolbar ──────── */
     .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
-    .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--c-text-muted); }
-    ::ng-deep .sprint-select { min-width: 240px; }
-    .split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      align-items: start;
+    .grow { flex: 1; }
+    .field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .toggle-field { align-items: stretch; }
+    .toggle-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: var(--radius);
+      border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text);
+      font-size: 12px; font-weight: 500; cursor: pointer; transition: background 0.1s;
     }
-    @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+    .toggle-btn:hover { background: var(--c-surface-2); }
+    .toggle-btn.active { background: var(--c-text); color: var(--c-on-primary); border-color: var(--c-text); }
+    ::ng-deep .sprint-select { min-width: 240px; }
+
+    /* ──────── Layout ──────── */
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 1100px) { .split { grid-template-columns: 1fr; } }
     .panel {
       background: var(--c-surface-2);
       border: 1px solid var(--c-border);
@@ -192,34 +300,151 @@ const SprintCompleted = 2;
       padding: 12px;
       min-height: 320px;
     }
-    .panel-title { font-size: 13px; font-weight: 600; margin: 0 0 12px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .drop-list { min-height: 120px; display: flex; flex-direction: column; gap: 8px; }
-    .issue-card {
+    .panel-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 8px; margin: 0 4px 12px;
+    }
+    .panel-title { font-size: 13px; font-weight: 600; margin: 0; color: var(--c-text); text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel-stats { font-size: 11px; color: var(--c-text-muted); }
+    .drop-list { min-height: 120px; display: flex; flex-direction: column; gap: 2px; }
+
+    /* ──────── Group header (Epic) ──────── */
+    .group-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
       background: var(--c-surface);
       border: 1px solid var(--c-border);
       border-radius: var(--radius);
-      padding: 10px;
-      cursor: grab;
+      margin-top: 10px;
+      font-size: 12px;
     }
-    .issue-card:active { cursor: grabbing; }
-    .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .meta { display: inline-flex; align-items: center; gap: 6px; }
-    code { font-size: 12px; }
-    .sum { font-size: 13px; color: var(--c-text); line-height: 1.35; }
-    .status-pill {
-      display: inline-block; padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; font-weight: 600;
+    .group-header[data-empty="1"] { opacity: 0.6; }
+    .group-header:first-child { margin-top: 0; }
+    .group-key code { font-family: monospace; font-size: 11px; color: var(--c-text-muted); }
+    .group-key { text-decoration: none; }
+    .group-key:hover code { color: var(--c-text); text-decoration: underline; }
+    .group-summary { font-weight: 600; color: var(--c-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .group-summary.muted { font-weight: 500; color: var(--c-text-muted); font-style: italic; }
+    .group-count {
       background: var(--c-surface-3); color: var(--c-text-muted);
+      padding: 2px 8px; border-radius: 10px;
+      font-size: 10px; font-weight: 600;
     }
-    .status-pill[data-cat="1"] { background: var(--c-surface-3); color: var(--c-text-muted); }
-    .status-pill[data-cat="2"] { background: #dbeafe; color: #1e40af; }
-    .status-pill[data-cat="3"] { background: #d1fae5; color: #065f46; }
-    .pri { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--c-surface-3); color: var(--c-text-muted); }
-    .pri-4, .pri-5 { background: var(--c-accent-danger); color: white; }
-    .empty, .hint { color: var(--c-text-muted); font-size: 13px; padding: 12px; text-align: center; }
+
+    /* ──────── Issue row (Jira-like compact) ──────── */
+    .issue-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 10px;
+      background: var(--c-surface);
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      min-height: 36px;
+      cursor: default;
+      transition: background 0.08s, border-color 0.08s;
+    }
+    .issue-row:hover { background: var(--c-surface-3); border-color: var(--c-border); }
+    .drag-handle {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; color: var(--c-text-subtle); cursor: grab;
+      opacity: 0; transition: opacity 0.1s;
+    }
+    .issue-row:hover .drag-handle { opacity: 1; }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle .pi { font-size: 12px; }
+
+    .type-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 18px; width: 18px; height: 18px;
+      border-radius: 3px;
+      color: white; font-size: 10px; font-weight: 700;
+      text-transform: uppercase;
+    }
+    .row-key { text-decoration: none; flex: 0 0 auto; }
+    .row-key code {
+      font-family: monospace; font-size: 12px; color: var(--c-text-muted);
+    }
+    .row-key:hover code { color: var(--c-text); text-decoration: underline; }
+
+    .row-summary {
+      flex: 1; min-width: 0; font-size: 13px; color: var(--c-text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .row-labels { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+    .label-chip {
+      background: var(--c-surface-3); color: var(--c-text-muted);
+      padding: 1px 6px; border-radius: 8px;
+      font-size: 10px; font-weight: 500;
+      max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .label-chip.more { background: transparent; color: var(--c-text-subtle); }
+
+    .sp-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 22px; min-width: 22px; height: 22px;
+      padding: 0 6px;
+      border-radius: 11px; background: var(--c-surface-3); color: var(--c-text);
+      font-size: 11px; font-weight: 600;
+    }
+
+    /* ──────── Status badge (BIG, Jira-style) ──────── */
+    .status-badge {
+      display: inline-flex; align-items: center;
+      flex: 0 0 auto;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.3px;
+      background: #dfe1e6; color: #42526e;
+      white-space: nowrap;
+    }
+    .status-badge[data-cat="2"] { background: #deebff; color: #0747a6; }
+    .status-badge[data-cat="3"] { background: #e3fcef; color: #006644; }
+    [data-theme="dark"] .status-badge { background: #44546f; color: #c7d1e0; }
+    [data-theme="dark"] .status-badge[data-cat="2"] { background: #1c3d6e; color: #a0c4f4; }
+    [data-theme="dark"] .status-badge[data-cat="3"] { background: #1a4731; color: #8fdcb0; }
+
+    /* ──────── Priority arrows (Jira-style) ──────── */
+    .priority-icon {
+      flex: 0 0 16px; font-size: 14px; text-align: center;
+    }
+    .priority-icon[data-pri="1"] { color: #2684ff; }   /* Lowest — blue down */
+    .priority-icon[data-pri="2"] { color: #57a55a; }   /* Low — green down */
+    .priority-icon[data-pri="3"] { color: #f5cd47; }   /* Medium — yellow */
+    .priority-icon[data-pri="4"] { color: #fd9941; }   /* High — orange */
+    .priority-icon[data-pri="5"] { color: #e34935; }   /* Highest — red */
+
+    /* ──────── Assignee avatar ──────── */
+    .assignee { flex: 0 0 24px; }
+    .avatar {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--c-text); color: var(--c-on-primary);
+      font-size: 10px; font-weight: 600;
+    }
+    .avatar-empty {
+      background: transparent; color: var(--c-text-subtle);
+      border: 1px dashed var(--c-border);
+    }
+    .avatar-empty .pi { font-size: 11px; }
+
+    /* ──────── Misc ──────── */
+    .empty, .hint { color: var(--c-text-muted); font-size: 13px; padding: 24px; text-align: center; }
     .page-loading { padding: 40px; text-align: center; color: var(--c-text-muted); }
     .form-grid { display: grid; grid-template-columns: 100px 1fr; gap: 10px; align-items: center; }
     .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    /* CDK drag visuals */
+    .cdk-drag-preview {
+      box-shadow: var(--shadow-md);
+      border-radius: var(--radius);
+      background: var(--c-surface);
+    }
+    .cdk-drag-placeholder { opacity: 0.3; }
+    .cdk-drag-animating { transition: transform 200ms cubic-bezier(0, 0, 0.2, 1); }
+    .drop-list.cdk-drop-list-dragging .issue-row:not(.cdk-drag-placeholder) {
+      transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+    }
   `]
 })
 export class BacklogPageComponent implements OnInit, OnDestroy {
@@ -233,6 +458,7 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   private readonly sprintApi = inject(SprintApiService);
   private readonly ctx = inject(WorkspaceContextService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly userCache = inject(UserCacheService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly project = signal<ProjectDetail | null>(null);
@@ -243,6 +469,10 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   readonly loading = signal(false);
   readonly dialogVisible = signal(false);
   readonly createSprintVisible = model(false);
+  readonly groupByEpic = signal(true);
+
+  /** issueTypeId → IssueType (cached from project detail). */
+  private readonly typeMap = signal<Map<string, IssueType>>(new Map());
 
   /** Bound to p-select (template-driven). */
   selectedSprintIdModel: string | null = null;
@@ -250,6 +480,12 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   newSprintName = '';
   newSprintStart = '';
   newSprintEnd = '';
+
+  // ─── Derived: sums + grouped lists ───────────────────────────────────────
+  readonly backlogPoints = computed(() => sumPoints(this.backlogItems()));
+  readonly sprintPoints = computed(() => sumPoints(this.sprintItems()));
+  readonly backlogGroups = computed<readonly IssueGroup[]>(() => buildGroups(this.backlogItems()));
+  readonly sprintGroups = computed<readonly IssueGroup[]>(() => buildGroups(this.sprintItems()));
 
   ngOnInit(): void {
     const key = this.route.snapshot.paramMap.get('projectKey');
@@ -335,6 +571,7 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
 
     if (ev.previousContainer === ev.container) {
       if (sp.status === SprintCompleted) return;
+      if (ev.container.id !== 'sprint-issues-list') return; // chỉ reorder trong sprint
       const list = [...this.sprintItems()];
       const prevIdx = ev.previousIndex;
       const newIdx = ev.currentIndex;
@@ -360,12 +597,70 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
     await this.reloadAll();
   }
 
+  // ─── Type / status / user helpers ─────────────────────────────────────────
+  typeNameOf(typeId: string): string {
+    return this.typeMap().get(typeId)?.name ?? '';
+  }
+  typeColorOf(typeId: string): string {
+    const t = this.typeMap().get(typeId);
+    return t?.color || '#6b7280';
+  }
+  typeInitialOf(typeId: string): string {
+    const name = this.typeMap().get(typeId)?.name;
+    if (!name) return '?';
+    // Sub-task → S; Story → St; map first char of canonical key → uppercase.
+    const key = this.typeMap().get(typeId)?.key;
+    if (key === 'EPIC') return 'E';
+    if (key === 'STORY') return 'S';
+    if (key === 'TASK') return 'T';
+    if (key === 'BUG') return 'B';
+    if (key === 'SUBTASK') return '↳';
+    return name.slice(0, 1).toUpperCase();
+  }
+
+  statusName(statusId: string): string {
+    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
+  }
+  statusCat(statusId: string): number {
+    return this.statusCache.categoryOf(statusId) ?? 1;
+  }
+
+  assigneeName(userId: string | null | undefined): string | null {
+    return this.userCache.displayNameOf(userId);
+  }
+  assigneeInitials(userId: string | null | undefined): string {
+    return this.userCache.initialsOf(userId);
+  }
+
+  priorityIcon(p: number): string {
+    switch (p) {
+      case 1: return 'pi-angle-double-down';
+      case 2: return 'pi-angle-down';
+      case 3: return 'pi-equals';
+      case 4: return 'pi-angle-up';
+      case 5: return 'pi-angle-double-up';
+      default: return 'pi-equals';
+    }
+  }
+  priorityLabel(p: number): string {
+    switch (p) {
+      case 1: return 'Lowest';
+      case 2: return 'Low';
+      case 3: return 'Medium';
+      case 4: return 'High';
+      case 5: return 'Highest';
+      default: return 'Medium';
+    }
+  }
+
+  // ─── Bootstrap & reload ───────────────────────────────────────────────────
   private async bootstrap(projectKey: string): Promise<void> {
     this.loading.set(true);
     try {
       const detail = await firstValueFrom(this.projApi.getDetailForMemberByKey(projectKey));
       this.project.set(detail);
       this.ctx.setProject(projectDetailToSummary(detail));
+      this.typeMap.set(new Map(detail.issueTypes.map((t) => [t.id, t])));
       await this.reloadSprints();
       await this.reloadAll();
     } finally {
@@ -396,6 +691,7 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   private async reloadAll(): Promise<void> {
     await this.reloadBacklog();
     await this.reloadSprintColumn();
+    await this.warmAuxCaches();
     this.cdr.markForCheck();
   }
 
@@ -413,7 +709,6 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
         excludeIssueIds: exclude.length ? exclude : null
       })
     );
-    await this.warmStatus(page.items);
     this.backlogItems.set(page.items);
   }
 
@@ -444,7 +739,6 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
         includeArchived: false
       })
     );
-    await this.warmStatus(page.items);
     const map = new Map(page.items.map((i) => [i.id, i]));
     const ordered: IssueSummary[] = [];
     for (const id of sp.orderedIssueIds) {
@@ -454,10 +748,17 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
     this.sprintItems.set(ordered);
   }
 
-  private async warmStatus(items: IssueSummary[]): Promise<void> {
+  /** Pre-fetch user names + statuses cho cả 2 list. */
+  private async warmAuxCaches(): Promise<void> {
     const p = this.project();
     if (!p) return;
     await this.statusCache.ensureProjectLoaded(p.id);
+    const all = [...this.backlogItems(), ...this.sprintItems()];
+    const userIds = new Set<string>();
+    for (const i of all) {
+      if (i.assigneeId) userIds.add(i.assigneeId);
+    }
+    await this.userCache.ensureLoaded([...userIds]);
     this.cdr.markForCheck();
   }
 
@@ -466,12 +767,60 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
     if (st === SprintCompleted) return 'Done';
     return 'Planned';
   }
+}
 
-  statusName(statusId: string): string {
-    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
+// ─── Pure helpers ──────────────────────────────────────────────────────────────
+
+function sumPoints(items: readonly IssueSummary[]): number {
+  let n = 0;
+  for (const i of items) {
+    if (typeof i.storyPoints === 'number') n += i.storyPoints;
+  }
+  return Math.round(n * 10) / 10;
+}
+
+/**
+ * Group issues by parentIssueId. Items whose parent is also in the list trở thành
+ * children của epic group; items có parent ngoài list hoặc không có parent → group "no epic".
+ *
+ * Epic-level items (xuất hiện như parent của ai đó) được TÁCH ra khỏi danh sách item
+ * thường — chúng chỉ render dưới dạng group header. Như vậy không bị duplicate.
+ */
+function buildGroups(items: readonly IssueSummary[]): readonly IssueGroup[] {
+  const byId = new Map<string, IssueSummary>();
+  for (const i of items) byId.set(i.id, i);
+
+  const childrenByParent = new Map<string, IssueSummary[]>();
+  const orphans: IssueSummary[] = [];
+  const usedAsParent = new Set<string>();
+
+  for (const i of items) {
+    if (i.parentIssueId && byId.has(i.parentIssueId)) {
+      usedAsParent.add(i.parentIssueId);
+      const arr = childrenByParent.get(i.parentIssueId) ?? [];
+      arr.push(i);
+      childrenByParent.set(i.parentIssueId, arr);
+    } else {
+      orphans.push(i);
+    }
   }
 
-  statusCat(statusId: string): number {
-    return this.statusCache.categoryOf(statusId) ?? 1;
+  // Items used as parent (Epics) đều render-as-header; loại khỏi orphans nếu có.
+  const filteredOrphans = orphans.filter((i) => !usedAsParent.has(i.id));
+
+  const groups: IssueGroup[] = [];
+  // Epics có children — sort theo key
+  const epicIds = [...childrenByParent.keys()].sort((a, b) => {
+    const ka = byId.get(a)?.key ?? '';
+    const kb = byId.get(b)?.key ?? '';
+    return ka.localeCompare(kb);
+  });
+  for (const eid of epicIds) {
+    groups.push({ epic: byId.get(eid) ?? null, items: childrenByParent.get(eid) ?? [] });
   }
+  // Group cuối: orphans không thuộc epic nào
+  if (filteredOrphans.length > 0) {
+    groups.push({ epic: null, items: filteredOrphans });
+  }
+  return groups;
 }

@@ -24,5 +24,8 @@ internal static class Mappers
             i.Summary,
             (int)i.Priority,
             i.AssigneeId,
-            i.CreatedAt);
+            i.CreatedAt,
+            i.ParentIssueId,
+            i.StoryPoints,
+            i.Labels.ToList());
 }

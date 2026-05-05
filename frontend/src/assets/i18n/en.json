@@ -159,13 +159,10 @@
     "member_joined": "Joined",
     "member_remove_confirm_title": "Remove member?",
     "member_remove_confirm_detail": "This user will lose access to this project.",
-    "settings_overview_hint":
-      "Summary of workflow, issue types, and custom field coverage. Project admins can open Workflow and Custom fields to change definitions; field values are still edited on each issue.",
+    "settings_overview_hint": "Summary of workflow, issue types, and custom field coverage. Project admins can open Workflow and Custom fields to change definitions; field values are still edited on each issue.",
     "admin_only": "Only project administrators can use this screen.",
-    "settings_readonly_hint":
-      "Workflow, issue types, and custom fields are shown here for reference. Use Workflow and Custom fields (admins) to edit definitions; values are edited on each issue.",
-    "reports_coming_soon":
-      "Reports and dashboards are not implemented yet. Use Board and Issues for now; burndown and gadgets are tracked as future work (see backlog P8/P12)."
+    "settings_readonly_hint": "Workflow, issue types, and custom fields are shown here for reference. Use Workflow and Custom fields (admins) to edit definitions; values are edited on each issue.",
+    "reports_coming_soon": "Reports and dashboards are not implemented yet. Use Board and Issues for now; burndown and gadgets are tracked as future work (see backlog P8/P12)."
   },
   "notifications": {
     "title": "Notifications",
@@ -250,7 +247,8 @@
     "custom_fields": "Custom fields",
     "custom_fields_save": "Save custom fields",
     "no_custom_fields": "No custom fields for this context.",
-    "custom_field_unsupported": "Field type not supported in UI yet."
+    "custom_field_unsupported": "Field type not supported in UI yet.",
+    "unassigned": "Unassigned"
   },
   "comment": {
     "title": "Comments",
@@ -283,9 +281,15 @@
     }
   },
   "workflow": {
-    "created": { "success": "Workflow \"{{name}}\" created" },
-    "updated": { "success": "Workflow updated" },
-    "deleted": { "success": "Workflow deleted" },
+    "created": {
+      "success": "Workflow \"{{name}}\" created"
+    },
+    "updated": {
+      "success": "Workflow updated"
+    },
+    "deleted": {
+      "success": "Workflow deleted"
+    },
     "status": {
       "added": "Status added",
       "removed": "Status removed",
@@ -302,9 +306,15 @@
     }
   },
   "field": {
-    "created": { "success": "Field \"{{name}}\" created" },
-    "updated": { "success": "Field updated" },
-    "deleted": { "success": "Field deleted" },
+    "created": {
+      "success": "Field \"{{name}}\" created"
+    },
+    "updated": {
+      "success": "Field updated"
+    },
+    "deleted": {
+      "success": "Field deleted"
+    },
     "option": {
       "added": "Option added",
       "updated": "Option updated",
@@ -407,7 +417,13 @@
     "sprint_issues": "Sprint",
     "empty_backlog": "No issues outside open sprints.",
     "empty_sprint": "Drag issues here from the backlog.",
-    "pick_sprint": "Select a sprint to plan scope."
+    "pick_sprint": "Select a sprint to plan scope.",
+    "group_by": "Group",
+    "group_epic": "By Epic",
+    "group_flat": "Flat",
+    "group_no_epic": "No Epic",
+    "count_issues": "{{count}} issues",
+    "story_points": "Story points"
   },
   "sprint": {
     "create": "New sprint",
@@ -418,13 +434,27 @@
     "name": "Name",
     "field_start": "Start date",
     "field_end": "End date",
-    "created": { "success": "Sprint created" },
-    "updated": { "success": "Sprint updated" },
-    "started": { "success": "Sprint started" },
-    "completed": { "success": "Sprint completed" },
-    "issue_added": { "success": "Issue added to sprint" },
-    "issue_removed": { "success": "Issue removed from sprint" },
-    "reordered": { "success": "Sprint order updated" },
+    "created": {
+      "success": "Sprint created"
+    },
+    "updated": {
+      "success": "Sprint updated"
+    },
+    "started": {
+      "success": "Sprint started"
+    },
+    "completed": {
+      "success": "Sprint completed"
+    },
+    "issue_added": {
+      "success": "Issue added to sprint"
+    },
+    "issue_removed": {
+      "success": "Issue removed from sprint"
+    },
+    "reordered": {
+      "success": "Sprint order updated"
+    },
     "not_found": "Sprint not found",
     "name_required": "Sprint name is required",
     "invalid_dates": "End date must be after start date",
@@ -474,9 +504,17 @@
     "deleted": "Filter deleted",
     "not_owner": "Only the owner can modify this filter",
     "not_found": "Filter not found",
-    "name": { "required": "Name is required", "too_long": "Name is too long" },
-    "jql": { "required": "JQL is required", "too_long": "JQL is too long" },
-    "description": { "too_long": "Description is too long" }
+    "name": {
+      "required": "Name is required",
+      "too_long": "Name is too long"
+    },
+    "jql": {
+      "required": "JQL is required",
+      "too_long": "JQL is too long"
+    },
+    "description": {
+      "too_long": "Description is too long"
+    }
   },
   "issue_link": {
     "title": "Linked issues",
@@ -538,9 +576,15 @@
     "create": "Create product",
     "edit": "Edit product",
     "delete_confirm": "Delete product \"{{name}}\"?",
-    "created": { "success": "Product {{name}} created successfully" },
-    "updated": { "success": "Product {{name}} updated successfully" },
-    "deleted": { "success": "Product deleted successfully" },
+    "created": {
+      "success": "Product {{name}} created successfully"
+    },
+    "updated": {
+      "success": "Product {{name}} updated successfully"
+    },
+    "deleted": {
+      "success": "Product deleted successfully"
+    },
     "not_found": "Product not found",
     "sku_duplicated": "SKU already exists",
     "price.invalid": "Price must be greater than or equal to 0"

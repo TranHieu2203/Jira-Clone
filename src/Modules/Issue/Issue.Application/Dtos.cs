@@ -36,7 +36,10 @@ public sealed record IssueSummaryDto(
     string Summary,
     int Priority,
     Guid? AssigneeId,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    Guid? ParentIssueId = null,
+    decimal? StoryPoints = null,
+    IReadOnlyList<string>? Labels = null);
 
 public sealed record CreateIssueRequest(
     Guid ProjectId,
