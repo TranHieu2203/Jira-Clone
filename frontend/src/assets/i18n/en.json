@@ -190,7 +190,11 @@
         "field_not_found": "Unknown custom field key: {{key}}.",
         "duplicate_cf": "Each custom field can appear only once in JQL.",
         "cf_key_invalid": "Invalid custom field key in JQL.",
-        "cf_number_invalid": "Invalid number in custom field clause."
+        "cf_number_invalid": "Invalid number in custom field clause.",
+        "duplicate_priority": "Priority appears more than once in JQL.",
+        "duplicate_type": "Type appears more than once in JQL.",
+        "type_requires_project": "To search by type key, filter by project first.",
+        "label_in_empty": "label IN (...) requires at least one value."
       },
       "project_access_denied": "You do not have access to this project."
     },

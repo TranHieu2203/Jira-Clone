@@ -80,4 +80,98 @@ public sealed class JqlLiteParserTests
         r.IsSuccess.Should().BeFalse();
         r.MessageKey.Should().Be("issue.search.jql.duplicate_cf");
     }
+
+    // ─── F1: priority / type / label ─────────────────────────────────
+
+    [Theory]
+    [InlineData("priority = High", 4)]
+    [InlineData("priority = high", 4)]
+    [InlineData("priority = \"Highest\"", 5)]
+    [InlineData("priority = Lowest", 1)]
+    [InlineData("priority = 3", 3)]
+    [InlineData("priority = 5", 5)]
+    public void Priority_parses_name_or_number(string jql, int expected)
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse(jql, User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.Priority.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Priority_invalid_number_fails()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("priority = 9", User);
+        r.IsSuccess.Should().BeFalse();
+        r.MessageKey.Should().Be("issue.search.jql.unrecognized_clause");
+    }
+
+    [Fact]
+    public void Priority_duplicate_fails()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("priority = High AND priority = Low", User);
+        r.IsSuccess.Should().BeFalse();
+        r.MessageKey.Should().Be("issue.search.jql.duplicate_priority");
+    }
+
+    [Fact]
+    public void Type_captures_key()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("type = \"BUG\"", User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.IssueTypeKey.Should().Be("BUG");
+    }
+
+    [Fact]
+    public void Type_duplicate_fails()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("type = \"BUG\" AND type = \"STORY\"", User);
+        r.IsSuccess.Should().BeFalse();
+        r.MessageKey.Should().Be("issue.search.jql.duplicate_type");
+    }
+
+    [Fact]
+    public void Label_equals_single()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("label = \"frontend\"", User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.Labels.Should().ContainSingle().Which.Should().Be("frontend");
+    }
+
+    [Fact]
+    public void Label_in_multi()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("label in (\"frontend\", \"urgent\", \"v2\")", User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.Labels.Should().HaveCount(3).And.Contain(new[] { "frontend", "urgent", "v2" });
+    }
+
+    [Fact]
+    public void Label_in_dedup_case_insensitive()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("label in (\"frontend\", \"FRONTEND\")", User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.Labels.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Label_in_empty_fails()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse("label in ()", User);
+        r.IsSuccess.Should().BeFalse();
+        r.MessageKey.Should().Be("issue.search.jql.label_in_empty");
+    }
+
+    [Fact]
+    public void All_clauses_combined()
+    {
+        Result<JqlLiteResult> r = JqlLiteParser.Parse(
+            "assignee = currentUser() AND priority = High AND type = \"BUG\" AND label = \"urgent\" AND text ~ \"crash\"",
+            User);
+        r.IsSuccess.Should().BeTrue();
+        r.Data!.AssigneeId.Should().Be(User);
+        r.Data.Priority.Should().Be(4);
+        r.Data.IssueTypeKey.Should().Be("BUG");
+        r.Data.Labels.Should().ContainSingle().Which.Should().Be("urgent");
+        r.Data.TextContains.Should().Be("crash");
+    }
 }

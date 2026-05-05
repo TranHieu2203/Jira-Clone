@@ -260,10 +260,10 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 | ID | Task | Effort | Status | Ghi chú |
 |---|---|---|---|---|
-| **F1** | JQL-lite mở rộng | M | ⬜ | `status = "In Progress"` (resolve theo workflow), `cf[key] = ...`, `priority = High`, `type = Bug`, `label in (...)`. |
+| **F1** | JQL-lite mở rộng | M | ✅ | Done — extended `JqlLiteParser` thêm 3 clause: `priority = High` (hoặc số 1-5), `type = "BUG"` (key, resolve sang IssueTypeId qua `IIssueTypeReader.ListByProjectAsync`), `label = "x"` + `label in ("a","b","c")` (AND across labels). `IssueSearchCriteria.RequiredLabels` mới + `IssueSpecifications` filter `i.Labels.Contains(lbl)` (Postgres jsonb-array translate; Oracle CLOB chưa support — known limit). 15 new test PASS (40/40 Issue tests). i18n keys vi/en cho 5 error mới (`duplicate_priority`, `duplicate_type`, `type_requires_project`, `label_in_empty`, `unrecognized_clause`). Status name → workflow resolve đã có sẵn từ trước. |
 | **F2** | Saved filter | S | ⬜ | `saved_filters` table + admin/user filter management. |
 | **F3** | **Issue Link module** (relates/blocks/duplicates/clones) | M | ✅ | Done — `Modules/IssueLink/` 4 layer (Domain/Application/Infrastructure/Api). 5 link type: RelatesTo (đối xứng), Blocks, Duplicates, Clones, Causes (asymmetric pairs với inverse label). Domain events `IssueLinkAdded/Removed`. Wire `IIssueAccessGuard` (cả source + target) + `IPermissionChecker.IssueEdit`. Idempotent unique index `(source, target, type)`. Postgres + Oracle migration. FE: `IssueLinkApiService` + `LinkedIssuesPanelComponent` (PrimeNG AutoComplete search issue + Select link type, list outgoing/incoming với forward/inverse label). Mount trong issue-detail.page. i18n vi/en đầy đủ. Build BE + FE PASS, 79 test PASS. |
-| **F4** | Rich text description (Markdown editor) | M | ⬜ | TipTap hoặc ngx-markdown. Backend lưu plain markdown, render FE. |
+| **F4** | Rich text description (Quill editor + mention) | M | ✅ | Already done — `RichTextEditorComponent` (Quill, monochrome theme override) wired vào: `create-issue.dialog`, `issue-detail.page` (edit mode), `comments-thread`. Hỗ trợ `@user` mention với `UserApiService` autocomplete. BE lưu HTML, FE render qua `[innerHTML]` + `isRichHtml()` detector. |
 | **F5** | Bulk edit (multi-select issues + batch update) | M | ⬜ | Issue search có checkbox + toolbar batch action (status/assignee/label). |
 | **F6** | Roadmap (Epic timeline Gantt) | L | ⬜ | View timeline epic theo `dueDate`. |
 | **F7** | Velocity report | S | ⬜ | Sum story points completed per sprint. |
@@ -298,18 +298,18 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 ### Next action (ưu tiên #1)
 
-> ✅ **Phase A đóng** (7 task). **Phase B test (T1-T5) tạm bỏ theo yêu cầu user** (sẽ làm khi kèm Testcontainers).
+> ✅ **Phase A đóng** (7 task). **Phase B test (T1-T5) tạm bỏ theo yêu cầu user**.
 >
-> ✅ **F3 (Issue Link)** vừa xong — Phase C đầu tiên.
+> ✅ Phase C tiến độ: **F3 (Issue Link)** + **F4 (Rich text — đã có sẵn)** + **F1 (JQL extended)** xong.
 >
-> Tiếp theo theo độ ưu tiên — **Phase C feature parity**:
-> - **F4** Rich text description (Markdown/TipTap) — UX win lớn.
-> - **F1** JQL-lite mở rộng (`status = "In Progress"`, `cf[key]`, `priority`, `type`, `label`).
-> - **F2** Saved filter (lưu JQL).
-> - **F5** Bulk edit (multi-select issues + batch action).
-> - **F7** Velocity report (sum SP completed/sprint, đã có Sprint module).
+> Tiếp theo:
+> - **F2** Saved filter — table `saved_filters` (id, ownerUserId, name, jql, isShared) + CRUD API + FE picker. Dễ làm sau F1 vì JQL đã ổn.
+> - **F5** Bulk edit — multi-select trên issue search + toolbar batch action (status/assignee/label).
+> - **F7** Velocity report — sum story points completed per sprint (có Sprint module sẵn).
+> - **F6** Roadmap (Epic timeline Gantt) — view timeline.
+> - **F8** CSV/JSON Import/Export.
 >
-> Đề xuất **F4 (Rich text) hoặc F1 (JQL)**. F4 dễ thấy + UX cao; F1 unblock saved-filter F2 + power user.
+> Đề xuất **F2 (Saved filter)** vì leverage F1 + dễ implement + power user feature thực dụng.
 
 ---
 

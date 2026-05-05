@@ -191,6 +191,35 @@ public sealed class IssueService : IIssueService
                 "issue.search.conflicting_assignee_filters");
         }
 
+        // F1: priority từ JQL ghi đè request.Priority.
+        int? priority = jql.Data.Priority ?? request.Priority;
+
+        // F1: type theo key (cần ProjectId để resolve sang Id).
+        Guid? issueTypeId = request.IssueTypeId;
+        if (!string.IsNullOrWhiteSpace(jql.Data.IssueTypeKey))
+        {
+            if (!request.ProjectId.HasValue)
+            {
+                return Result.Failure<PagedList<IssueSummaryDto>>(
+                    ErrorType.Validation,
+                    "issue.search.jql.type_requires_project");
+            }
+
+            string typeKey = jql.Data.IssueTypeKey.Trim();
+            IReadOnlyList<Project.Application.IssueTypeDto> types =
+                await _issueTypeReader.ListByProjectAsync(request.ProjectId.Value, ct);
+            Project.Application.IssueTypeDto? matched = types.FirstOrDefault(
+                t => string.Equals(t.Key, typeKey, StringComparison.OrdinalIgnoreCase));
+            if (matched is null)
+            {
+                int pe = Math.Max(request.PageIndex, 1);
+                int se = Math.Max(request.PageSize, 1);
+                // Type không tồn tại trong project → không có issue match → trả empty (Jira hành vi thực).
+                return Result.Success(new PagedList<IssueSummaryDto>(new List<IssueSummaryDto>(), 0, pe, se));
+            }
+            issueTypeId = matched.Id;
+        }
+
         List<IssueFieldFilterRequest>? mergedFieldFilters = null;
         if (request.FieldFilters is { Count: > 0 })
             mergedFieldFilters = new List<IssueFieldFilterRequest>(request.FieldFilters);
@@ -264,15 +293,18 @@ public sealed class IssueService : IIssueService
         if (request.ExcludeIssueIds is { Count: > 0 })
             exclude = request.ExcludeIssueIds.ToHashSet();
 
+        IReadOnlyList<string>? requiredLabels = jql.Data.Labels.Count == 0 ? null : jql.Data.Labels;
+
         var criteria = new IssueSearchCriteria(
-            request.ProjectId, request.IssueTypeId, assigneeId, request.ReporterId,
-            statusId, request.Priority, textSearch, request.IncludeArchived,
+            request.ProjectId, issueTypeId, assigneeId, request.ReporterId,
+            statusId, priority, textSearch, request.IncludeArchived,
             request.PageIndex, request.PageSize, request.Sort,
             assigneeUnassigned,
             restrict,
             exclude,
             currentStatusIds,
-            accessible);
+            accessible,
+            requiredLabels);
 
         var page = await _repo.SearchAsync(criteria, ct);
         var dtos = page.Items.Select(Mappers.ToSummary).ToList();

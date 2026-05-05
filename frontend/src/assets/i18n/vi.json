@@ -190,7 +190,11 @@
         "field_not_found": "Không có custom field với key: {{key}}.",
         "duplicate_cf": "Mỗi custom field chỉ được xuất hiện một lần trong JQL.",
         "cf_key_invalid": "Key custom field trong JQL không hợp lệ.",
-        "cf_number_invalid": "Số trong điều kiện custom field không hợp lệ."
+        "cf_number_invalid": "Số trong điều kiện custom field không hợp lệ.",
+        "duplicate_priority": "Priority xuất hiện nhiều lần trong JQL.",
+        "duplicate_type": "Type xuất hiện nhiều lần trong JQL.",
+        "type_requires_project": "Để tìm theo type key, hãy lọc theo dự án trước.",
+        "label_in_empty": "label IN (...) cần ít nhất 1 giá trị."
       },
       "project_access_denied": "Bạn không có quyền truy cập dự án này."
     },

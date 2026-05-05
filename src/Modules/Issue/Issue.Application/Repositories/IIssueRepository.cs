@@ -30,6 +30,8 @@ public sealed record IssueSearchCriteria(
     IReadOnlySet<Guid>? ExcludeIssueIds = null,
     IReadOnlySet<Guid>? CurrentStatusIds = null,
     /// <summary>Khi có: chỉ issue thuộc các project này (membership). Null = không lọc (chỉ test/đặc biệt).</summary>
-    IReadOnlySet<Guid>? AccessibleProjectIds = null);
+    IReadOnlySet<Guid>? AccessibleProjectIds = null,
+    /// <summary>Issue phải chứa TẤT CẢ label trong list (case-insensitive). Null/empty = không lọc.</summary>
+    IReadOnlyList<string>? RequiredLabels = null);
 
 public interface IIssueUnitOfWork : IUnitOfWork { }

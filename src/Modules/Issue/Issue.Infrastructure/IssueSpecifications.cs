@@ -60,6 +60,19 @@ internal static class IssueSpecifications
                 i.Summary.ToLower().Contains(s) || i.Key.ToLower().Contains(s)));
         }
 
+        // F1: label search. Labels được lưu thành jsonb (Postgres) / CLOB (Oracle) chứa List<string>.
+        // EF Core 8 + Npgsql translate `Contains` cho jsonb-array. Trên Oracle CLOB không
+        // translate được — cần fallback ở Repository (tùy database, nhưng MVP chỉ cần Postgres).
+        // Mỗi label trong RequiredLabels = AND clause riêng (issue phải có TẤT CẢ).
+        if (criteria.RequiredLabels is { Count: > 0 })
+        {
+            foreach (string lbl in criteria.RequiredLabels)
+            {
+                string captured = lbl;
+                Add(new Specification<Domain.Issue>(i => i.Labels.Contains(captured)));
+            }
+        }
+
         return spec ?? new Specification<Domain.Issue>(_ => true);
     }
 }
