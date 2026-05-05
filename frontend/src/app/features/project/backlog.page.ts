@@ -31,11 +31,16 @@ import {
   ProjectDetail,
   projectDetailToSummary
 } from '@core/api/project.service';
-import { IssueType } from '@core/api/project.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { CreateIssueDialogComponent } from '@features/issue/create-issue.dialog';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { IssueTypeCacheService } from '@core/api/issue-type-cache.service';
 import { UserCacheService } from '@core/api/user-cache.service';
+import { IssueStatusBadgeComponent } from '@shared/ui/issue-status-badge.component';
+import { IssuePriorityIconComponent } from '@shared/ui/issue-priority-icon.component';
+import { IssueTypePillComponent } from '@shared/ui/issue-type-pill.component';
+import { UserAvatarComponent } from '@shared/ui/user-avatar.component';
+import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 
 const SprintPlanned = 0;
@@ -65,7 +70,11 @@ interface IssueGroup {
     SelectModule,
     TooltipModule,
     AppPageHeaderComponent,
-    CreateIssueDialogComponent
+    CreateIssueDialogComponent,
+    IssueStatusBadgeComponent,
+    IssuePriorityIconComponent,
+    IssueTypePillComponent,
+    UserAvatarComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -131,10 +140,10 @@ interface IssueGroup {
               @if (groupByEpic() && (g.epic || g.items.length > 0)) {
                 <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
                   @if (g.epic; as ep) {
-                    <span class="type-pill" [style.background]="typeColorOf(ep.issueTypeId)" [pTooltip]="typeNameOf(ep.issueTypeId)">{{ typeInitialOf(ep.issueTypeId) }}</span>
+                    <app-issue-type-pill [typeId]="ep.issueTypeId" />
                     <a class="group-key" [routerLink]="['/issues', ep.key]"><code>{{ ep.key }}</code></a>
                     <span class="group-summary">{{ ep.summary }}</span>
-                    <span class="status-badge" [attr.data-cat]="statusCat(ep.currentStatusId)">{{ statusName(ep.currentStatusId) }}</span>
+                    <app-issue-status-badge [statusId]="ep.currentStatusId" />
                   } @else {
                     <span class="group-summary muted">{{ 'backlog.group_no_epic' | translate }}</span>
                   }
@@ -144,7 +153,7 @@ interface IssueGroup {
               @for (issue of g.items; track issue.id) {
                 <div class="issue-row" cdkDrag [cdkDragData]="issue">
                   <span class="drag-handle" cdkDragHandle><i class="pi pi-bars"></i></span>
-                  <span class="type-pill" [style.background]="typeColorOf(issue.issueTypeId)" [pTooltip]="typeNameOf(issue.issueTypeId)">{{ typeInitialOf(issue.issueTypeId) }}</span>
+                  <app-issue-type-pill [typeId]="issue.issueTypeId" />
                   <a class="row-key" [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
                   <span class="row-summary" [title]="issue.summary">{{ issue.summary }}</span>
                   @if (issue.labels && issue.labels.length > 0) {
@@ -160,15 +169,9 @@ interface IssueGroup {
                   @if (issue.storyPoints != null) {
                     <span class="sp-pill" [pTooltip]="'backlog.story_points' | translate">{{ issue.storyPoints }}</span>
                   }
-                  <span class="status-badge" [attr.data-cat]="statusCat(issue.currentStatusId)">{{ statusName(issue.currentStatusId) }}</span>
-                  <i class="pi priority-icon {{ priorityIcon(issue.priority) }}" [attr.data-pri]="issue.priority" [pTooltip]="priorityLabel(issue.priority)"></i>
-                  <span class="assignee" [pTooltip]="assigneeName(issue.assigneeId) ?? ('issue.unassigned' | translate)">
-                    @if (issue.assigneeId) {
-                      <span class="avatar">{{ assigneeInitials(issue.assigneeId) }}</span>
-                    } @else {
-                      <span class="avatar avatar-empty"><i class="pi pi-user"></i></span>
-                    }
-                  </span>
+                  <app-issue-status-badge [statusId]="issue.currentStatusId" />
+                  <app-issue-priority-icon [priority]="issue.priority" />
+                  <app-user-avatar [userId]="issue.assigneeId" [emptyTooltip]="unassignedTooltip()" />
                 </div>
               }
             }
@@ -202,10 +205,10 @@ interface IssueGroup {
                 @if (groupByEpic() && (g.epic || g.items.length > 0)) {
                   <div class="group-header" [attr.data-empty]="g.items.length === 0 ? '1' : null">
                     @if (g.epic; as ep) {
-                      <span class="type-pill" [style.background]="typeColorOf(ep.issueTypeId)" [pTooltip]="typeNameOf(ep.issueTypeId)">{{ typeInitialOf(ep.issueTypeId) }}</span>
+                      <app-issue-type-pill [typeId]="ep.issueTypeId" />
                       <a class="group-key" [routerLink]="['/issues', ep.key]"><code>{{ ep.key }}</code></a>
                       <span class="group-summary">{{ ep.summary }}</span>
-                      <span class="status-badge" [attr.data-cat]="statusCat(ep.currentStatusId)">{{ statusName(ep.currentStatusId) }}</span>
+                      <app-issue-status-badge [statusId]="ep.currentStatusId" />
                     } @else {
                       <span class="group-summary muted">{{ 'backlog.group_no_epic' | translate }}</span>
                     }
@@ -215,7 +218,7 @@ interface IssueGroup {
                 @for (issue of g.items; track issue.id) {
                   <div class="issue-row" cdkDrag [cdkDragData]="issue">
                     <span class="drag-handle" cdkDragHandle><i class="pi pi-bars"></i></span>
-                    <span class="type-pill" [style.background]="typeColorOf(issue.issueTypeId)" [pTooltip]="typeNameOf(issue.issueTypeId)">{{ typeInitialOf(issue.issueTypeId) }}</span>
+                    <app-issue-type-pill [typeId]="issue.issueTypeId" />
                     <a class="row-key" [routerLink]="['/issues', issue.key]"><code>{{ issue.key }}</code></a>
                     <span class="row-summary" [title]="issue.summary">{{ issue.summary }}</span>
                     @if (issue.labels && issue.labels.length > 0) {
@@ -231,15 +234,9 @@ interface IssueGroup {
                     @if (issue.storyPoints != null) {
                       <span class="sp-pill" [pTooltip]="'backlog.story_points' | translate">{{ issue.storyPoints }}</span>
                     }
-                    <span class="status-badge" [attr.data-cat]="statusCat(issue.currentStatusId)">{{ statusName(issue.currentStatusId) }}</span>
-                    <i class="pi priority-icon {{ priorityIcon(issue.priority) }}" [attr.data-pri]="issue.priority" [pTooltip]="priorityLabel(issue.priority)"></i>
-                    <span class="assignee" [pTooltip]="assigneeName(issue.assigneeId) ?? ('issue.unassigned' | translate)">
-                      @if (issue.assigneeId) {
-                        <span class="avatar">{{ assigneeInitials(issue.assigneeId) }}</span>
-                      } @else {
-                        <span class="avatar avatar-empty"><i class="pi pi-user"></i></span>
-                      }
-                    </span>
+                    <app-issue-status-badge [statusId]="issue.currentStatusId" />
+                    <app-issue-priority-icon [priority]="issue.priority" />
+                    <app-user-avatar [userId]="issue.assigneeId" [emptyTooltip]="unassignedTooltip()" />
                   </div>
                 }
               }
@@ -352,13 +349,6 @@ interface IssueGroup {
     .drag-handle:active { cursor: grabbing; }
     .drag-handle .pi { font-size: 12px; }
 
-    .type-pill {
-      display: inline-flex; align-items: center; justify-content: center;
-      flex: 0 0 18px; width: 18px; height: 18px;
-      border-radius: 3px;
-      color: white; font-size: 10px; font-weight: 700;
-      text-transform: uppercase;
-    }
     .row-key { text-decoration: none; flex: 0 0 auto; }
     .row-key code {
       font-family: monospace; font-size: 12px; color: var(--c-text-muted);
@@ -386,47 +376,6 @@ interface IssueGroup {
       border-radius: 11px; background: var(--c-surface-3); color: var(--c-text);
       font-size: 11px; font-weight: 600;
     }
-
-    /* ──────── Status badge (BIG, Jira-style) ──────── */
-    .status-badge {
-      display: inline-flex; align-items: center;
-      flex: 0 0 auto;
-      padding: 3px 8px;
-      border-radius: 3px;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.3px;
-      background: #dfe1e6; color: #42526e;
-      white-space: nowrap;
-    }
-    .status-badge[data-cat="2"] { background: #deebff; color: #0747a6; }
-    .status-badge[data-cat="3"] { background: #e3fcef; color: #006644; }
-    [data-theme="dark"] .status-badge { background: #44546f; color: #c7d1e0; }
-    [data-theme="dark"] .status-badge[data-cat="2"] { background: #1c3d6e; color: #a0c4f4; }
-    [data-theme="dark"] .status-badge[data-cat="3"] { background: #1a4731; color: #8fdcb0; }
-
-    /* ──────── Priority arrows (Jira-style) ──────── */
-    .priority-icon {
-      flex: 0 0 16px; font-size: 14px; text-align: center;
-    }
-    .priority-icon[data-pri="1"] { color: #2684ff; }   /* Lowest — blue down */
-    .priority-icon[data-pri="2"] { color: #57a55a; }   /* Low — green down */
-    .priority-icon[data-pri="3"] { color: #f5cd47; }   /* Medium — yellow */
-    .priority-icon[data-pri="4"] { color: #fd9941; }   /* High — orange */
-    .priority-icon[data-pri="5"] { color: #e34935; }   /* Highest — red */
-
-    /* ──────── Assignee avatar ──────── */
-    .assignee { flex: 0 0 24px; }
-    .avatar {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 24px; height: 24px; border-radius: 50%;
-      background: var(--c-text); color: var(--c-on-primary);
-      font-size: 10px; font-weight: 600;
-    }
-    .avatar-empty {
-      background: transparent; color: var(--c-text-subtle);
-      border: 1px dashed var(--c-border);
-    }
-    .avatar-empty .pi { font-size: 11px; }
 
     /* ──────── Misc ──────── */
     .empty, .hint { color: var(--c-text-muted); font-size: 13px; padding: 24px; text-align: center; }
@@ -458,7 +407,9 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   private readonly sprintApi = inject(SprintApiService);
   private readonly ctx = inject(WorkspaceContextService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly typeCache = inject(IssueTypeCacheService);
   private readonly userCache = inject(UserCacheService);
+  private readonly translate = inject(TranslateService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   readonly project = signal<ProjectDetail | null>(null);
@@ -470,9 +421,6 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
   readonly dialogVisible = signal(false);
   readonly createSprintVisible = model(false);
   readonly groupByEpic = signal(true);
-
-  /** issueTypeId → IssueType (cached from project detail). */
-  private readonly typeMap = signal<Map<string, IssueType>>(new Map());
 
   /** Bound to p-select (template-driven). */
   selectedSprintIdModel: string | null = null;
@@ -597,60 +545,9 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
     await this.reloadAll();
   }
 
-  // ─── Type / status / user helpers ─────────────────────────────────────────
-  typeNameOf(typeId: string): string {
-    return this.typeMap().get(typeId)?.name ?? '';
-  }
-  typeColorOf(typeId: string): string {
-    const t = this.typeMap().get(typeId);
-    return t?.color || '#6b7280';
-  }
-  typeInitialOf(typeId: string): string {
-    const name = this.typeMap().get(typeId)?.name;
-    if (!name) return '?';
-    // Sub-task → S; Story → St; map first char of canonical key → uppercase.
-    const key = this.typeMap().get(typeId)?.key;
-    if (key === 'EPIC') return 'E';
-    if (key === 'STORY') return 'S';
-    if (key === 'TASK') return 'T';
-    if (key === 'BUG') return 'B';
-    if (key === 'SUBTASK') return '↳';
-    return name.slice(0, 1).toUpperCase();
-  }
-
-  statusName(statusId: string): string {
-    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
-  }
-  statusCat(statusId: string): number {
-    return this.statusCache.categoryOf(statusId) ?? 1;
-  }
-
-  assigneeName(userId: string | null | undefined): string | null {
-    return this.userCache.displayNameOf(userId);
-  }
-  assigneeInitials(userId: string | null | undefined): string {
-    return this.userCache.initialsOf(userId);
-  }
-
-  priorityIcon(p: number): string {
-    switch (p) {
-      case 1: return 'pi-angle-double-down';
-      case 2: return 'pi-angle-down';
-      case 3: return 'pi-equals';
-      case 4: return 'pi-angle-up';
-      case 5: return 'pi-angle-double-up';
-      default: return 'pi-equals';
-    }
-  }
-  priorityLabel(p: number): string {
-    switch (p) {
-      case 1: return 'Lowest';
-      case 2: return 'Low';
-      case 3: return 'Medium';
-      case 4: return 'High';
-      case 5: return 'Highest';
-      default: return 'Medium';
-    }
+  /** Tooltip cho avatar khi assignee = null. Đọc từ TranslateService (sync). */
+  unassignedTooltip(): string {
+    return this.translate.instant('issue.unassigned');
   }
 
   // ─── Bootstrap & reload ───────────────────────────────────────────────────
@@ -660,7 +557,7 @@ export class BacklogPageComponent implements OnInit, OnDestroy {
       const detail = await firstValueFrom(this.projApi.getDetailForMemberByKey(projectKey));
       this.project.set(detail);
       this.ctx.setProject(projectDetailToSummary(detail));
-      this.typeMap.set(new Map(detail.issueTypes.map((t) => [t.id, t])));
+      this.typeCache.putMany(detail.issueTypes);
       // Persist last-visited project for `/backlog` shortcut redirect.
       try { localStorage.setItem('jira-clone:last-project-key', detail.key); } catch { /* ignore quota */ }
       await this.reloadSprints();

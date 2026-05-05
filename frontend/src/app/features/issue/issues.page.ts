@@ -26,6 +26,12 @@ import { CreateIssueDialogComponent } from './create-issue.dialog';
 import { SavedFilterPickerComponent } from './saved-filter-picker.component';
 import { BulkEditToolbarComponent } from './bulk-edit-toolbar.component';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { IssueTypeCacheService } from '@core/api/issue-type-cache.service';
+import { UserCacheService } from '@core/api/user-cache.service';
+import { IssueStatusBadgeComponent } from '@shared/ui/issue-status-badge.component';
+import { IssuePriorityIconComponent } from '@shared/ui/issue-priority-icon.component';
+import { IssueTypePillComponent } from '@shared/ui/issue-type-pill.component';
+import { UserAvatarComponent } from '@shared/ui/user-avatar.component';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
 import { CheckboxModule } from 'primeng/checkbox';
 
@@ -44,7 +50,11 @@ import { CheckboxModule } from 'primeng/checkbox';
     CreateIssueDialogComponent,
     SavedFilterPickerComponent,
     BulkEditToolbarComponent,
-    CheckboxModule
+    CheckboxModule,
+    IssueStatusBadgeComponent,
+    IssuePriorityIconComponent,
+    IssueTypePillComponent,
+    UserAvatarComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -79,17 +89,19 @@ import { CheckboxModule } from 'primeng/checkbox';
       (clear)="clearSelection()"
       (applied)="onBulkApplied()" />
 
-    <p-table [value]="page()?.items ?? []" [loading]="loading()" stripedRows>
+    <p-table [value]="page()?.items ?? []" [loading]="loading()" stripedRows class="jira-issue-table">
       <ng-template pTemplate="header">
         <tr>
           <th class="w-check">
             <p-checkbox [ngModel]="allChecked()" [binary]="true"
                         (onChange)="toggleAll($event.checked)" />
           </th>
+          <th class="w-type"></th>
           <th class="w-key">{{ 'issue.key' | translate }}</th>
           <th>{{ 'issue.summary' | translate }}</th>
           <th class="w-status">{{ 'issue.status' | translate }}</th>
           <th class="w-pri">{{ 'issue.priority' | translate }}</th>
+          <th class="w-assignee">{{ 'issue.assignee' | translate }}</th>
           <th class="w-date">{{ 'issue.created_at' | translate }}</th>
         </tr>
       </ng-template>
@@ -99,22 +111,30 @@ import { CheckboxModule } from 'primeng/checkbox';
             <p-checkbox [ngModel]="isSelected(r.id)" [binary]="true"
                         (onChange)="toggleOne(r.id, $event.checked)" />
           </td>
-          <td>
+          <td class="w-type">
+            <app-issue-type-pill [typeId]="r.issueTypeId" />
+          </td>
+          <td class="w-key">
             <a [routerLink]="['/issues', r.key]"><code>{{ r.key }}</code></a>
           </td>
-          <td>{{ r.summary }}</td>
-          <td>
-            <span class="status-pill" [attr.data-cat]="statusCat(r.currentStatusId)">
-              {{ statusName(r.currentStatusId) }}
-            </span>
+          <td class="cell-summary">
+            <a [routerLink]="['/issues', r.key]" class="summary-link">{{ r.summary }}</a>
           </td>
-          <td><span class="pri pri-{{ r.priority }}">P{{ r.priority }}</span></td>
-          <td>{{ r.createdAt | date: 'short' }}</td>
+          <td class="w-status">
+            <app-issue-status-badge [statusId]="r.currentStatusId" />
+          </td>
+          <td class="w-pri">
+            <app-issue-priority-icon [priority]="r.priority" />
+          </td>
+          <td class="w-assignee">
+            <app-user-avatar [userId]="r.assigneeId" size="sm" />
+          </td>
+          <td class="w-date cell-date">{{ r.createdAt | date: 'short' }}</td>
         </tr>
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6" class="empty">{{ 'issue.empty' | translate }}</td>
+          <td colspan="8" class="empty">{{ 'issue.empty' | translate }}</td>
         </tr>
       </ng-template>
     </p-table>
@@ -128,27 +148,33 @@ import { CheckboxModule } from 'primeng/checkbox';
     .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
     .filters input { flex: 1 1 220px; max-width: 420px; }
     .jql-input { flex: 2 1 280px; max-width: 560px; font-family: ui-monospace, monospace; font-size: 12px; }
+
     .w-check { width: 32px; padding-left: 8px; padding-right: 4px; }
+    .w-type { width: 36px; padding-left: 4px; padding-right: 4px; text-align: center; }
     .w-key { width: 100px; }
-    .w-status { width: 130px; }
-    .w-pri { width: 70px; }
+    .w-status { width: 140px; }
+    .w-pri { width: 56px; text-align: center; }
+    .w-assignee { width: 56px; text-align: center; }
     .w-date { width: 140px; }
     code { font-size: 12px; color: var(--c-text); }
-    .status-pill {
-      display: inline-block; padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; font-weight: 600;
-      background: var(--c-surface-3); color: var(--c-text-muted);
+    .summary-link {
+      color: var(--c-text); text-decoration: none;
     }
-    .status-pill[data-cat="1"] { background: var(--c-surface-3); color: var(--c-text-muted); }
-    .status-pill[data-cat="2"] { background: #dbeafe; color: #1e40af; }
-    .status-pill[data-cat="3"] { background: #d1fae5; color: #065f46; }
-    .pri {
-      display: inline-block; width: 24px; height: 22px; line-height: 22px; text-align: center;
-      border-radius: 3px; font-size: 11px; font-weight: 600;
-      background: var(--c-surface-3); color: var(--c-text-muted);
-    }
-    .pri-4, .pri-5 { background: var(--c-accent-danger); color: white; }
+    .summary-link:hover { color: #0747a6; text-decoration: underline; }
+    .cell-summary { font-size: 13px; }
+    .cell-date { color: var(--c-text-muted); font-size: 12px; }
     .empty { text-align: center; color: var(--c-text-muted); padding: 32px; }
+
+    /* Jira-like compact table — denser rows, hover row */
+    ::ng-deep .jira-issue-table .p-datatable-tbody > tr > td { padding: 6px 10px; vertical-align: middle; }
+    ::ng-deep .jira-issue-table .p-datatable-thead > tr > th {
+      padding: 8px 10px;
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.4px;
+      color: var(--c-text-muted);
+      background: var(--c-surface-2);
+    }
+    ::ng-deep .jira-issue-table .p-datatable-tbody > tr:hover { background: var(--c-surface-2); }
   `]
 })
 export class IssuesPageComponent implements OnInit, OnDestroy {
@@ -156,6 +182,8 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   private readonly projApi = inject(ProjectApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly typeCache = inject(IssueTypeCacheService);
+  private readonly userCache = inject(UserCacheService);
   private readonly ctx = inject(WorkspaceContextService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -317,22 +345,22 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
     this.reload();
   }
 
-  /** Preload workflow statuses per project so cross-project search resolves status names. */
+  /** Preload workflow statuses, issue types, assignee users per project. */
   private async warmStatusCacheFor(items: readonly IssueSummary[]): Promise<void> {
-    const ids = new Set<string>();
+    const projectIds = new Set<string>();
     const fixed = this.fixedProjectId();
-    if (fixed) ids.add(fixed);
+    if (fixed) projectIds.add(fixed);
     for (const i of items) {
-      if (i.projectId) ids.add(i.projectId);
+      if (i.projectId) projectIds.add(i.projectId);
     }
-    await Promise.all([...ids].map((id) => this.statusCache.ensureProjectLoaded(id)));
-  }
-
-  statusName(statusId: string): string {
-    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
-  }
-
-  statusCat(statusId: string): number {
-    return this.statusCache.categoryOf(statusId) ?? 1;
+    const userIds = new Set<string>();
+    for (const i of items) {
+      if (i.assigneeId) userIds.add(i.assigneeId);
+    }
+    await Promise.all([
+      ...[...projectIds].map((id) => this.statusCache.ensureProjectLoaded(id)),
+      ...[...projectIds].map((id) => this.typeCache.ensureProjectLoaded(id)),
+      this.userCache.ensureLoaded([...userIds])
+    ]);
   }
 }

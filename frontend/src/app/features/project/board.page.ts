@@ -22,6 +22,11 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
 import { WorkspaceHubService } from '@core/realtime/workspace-hub.service';
 import { NotificationService } from '@core/notification/notification.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { IssueTypeCacheService } from '@core/api/issue-type-cache.service';
+import { UserCacheService } from '@core/api/user-cache.service';
+import { IssueTypePillComponent } from '@shared/ui/issue-type-pill.component';
+import { IssuePriorityIconComponent } from '@shared/ui/issue-priority-icon.component';
+import { UserAvatarComponent } from '@shared/ui/user-avatar.component';
 import { PagedList } from '@shared/models/api-response';
 import { filter, firstValueFrom, interval, Observable, of, switchMap } from 'rxjs';
 
@@ -53,7 +58,8 @@ interface SwimlaneRow {
   imports: [
     CommonModule, FormsModule, RouterModule, TranslateModule,
     CdkDropListGroup, CdkDropList, CdkDrag,
-    ButtonModule, DialogModule, SelectModule, AppPageHeaderComponent
+    ButtonModule, DialogModule, SelectModule, AppPageHeaderComponent,
+    IssueTypePillComponent, IssuePriorityIconComponent, UserAvatarComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -125,16 +131,27 @@ interface SwimlaneRow {
                        (cdkDropListDropped)="onDrop($event)">
                     @for (issue of col.issues; track issue.id) {
                       <div class="card" cdkDrag [cdkDragData]="issue">
-                        <div class="card-key">
-                          <a [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
-                          <span class="pri pri-{{ issue.priority }}">P{{ issue.priority }}</span>
+                        <div class="card-summary">
+                          <app-issue-type-pill [typeId]="issue.issueTypeId" />
+                          {{ issue.summary }}
                         </div>
-                        <div class="card-summary">{{ issue.summary }}</div>
-                        @if (issue.assigneeId) {
-                          <div class="card-assignee" [title]="issue.assigneeId">
-                            {{ initialsOf(issue.assigneeId) }}
+                        @if (issue.labels && issue.labels.length > 0) {
+                          <div class="card-labels">
+                            @for (l of issue.labels.slice(0, 3); track l) {
+                              <span class="label-chip">{{ l }}</span>
+                            }
                           </div>
                         }
+                        <div class="card-foot">
+                          <a class="card-key" [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
+                          <div class="card-foot-right">
+                            @if (issue.storyPoints != null) {
+                              <span class="sp-pill">{{ issue.storyPoints }}</span>
+                            }
+                            <app-issue-priority-icon [priority]="issue.priority" />
+                            <app-user-avatar [userId]="issue.assigneeId" size="sm" />
+                          </div>
+                        </div>
                       </div>
                     }
                     @if (col.issues.length === 0) {
@@ -160,16 +177,27 @@ interface SwimlaneRow {
                    (cdkDropListDropped)="onDrop($event)">
                 @for (issue of col.issues; track issue.id) {
                   <div class="card" cdkDrag [cdkDragData]="issue">
-                    <div class="card-key">
-                      <a [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
-                      <span class="pri pri-{{ issue.priority }}">P{{ issue.priority }}</span>
+                    <div class="card-summary">
+                      <app-issue-type-pill [typeId]="issue.issueTypeId" />
+                      {{ issue.summary }}
                     </div>
-                    <div class="card-summary">{{ issue.summary }}</div>
-                    @if (issue.assigneeId) {
-                      <div class="card-assignee" [title]="issue.assigneeId">
-                        {{ initialsOf(issue.assigneeId) }}
+                    @if (issue.labels && issue.labels.length > 0) {
+                      <div class="card-labels">
+                        @for (l of issue.labels.slice(0, 3); track l) {
+                          <span class="label-chip">{{ l }}</span>
+                        }
                       </div>
                     }
+                    <div class="card-foot">
+                      <a class="card-key" [routerLink]="['/issues', issue.key]">{{ issue.key }}</a>
+                      <div class="card-foot-right">
+                        @if (issue.storyPoints != null) {
+                          <span class="sp-pill">{{ issue.storyPoints }}</span>
+                        }
+                        <app-issue-priority-icon [priority]="issue.priority" />
+                        <app-user-avatar [userId]="issue.assigneeId" size="sm" />
+                      </div>
+                    </div>
                   </div>
                 }
                 @if (col.issues.length === 0) {
@@ -267,34 +295,36 @@ interface SwimlaneRow {
     }
     .card:hover { box-shadow: var(--shadow-md); }
     .card:active { cursor: grabbing; }
-    .card-key {
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 11px; margin-bottom: 6px;
-    }
-    .card-key a {
-      font-family: monospace; color: var(--c-text-muted);
-      text-decoration: none;
-    }
-    .card-key a:hover { color: var(--c-text); text-decoration: underline; }
     .card-summary {
+      display: flex; align-items: flex-start; gap: 6px;
       font-size: 13px; color: var(--c-text);
       line-height: 1.4;
-      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
-      overflow: hidden;
+      margin-bottom: 6px;
     }
-    .card-assignee {
-      margin-top: 8px;
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 50%;
-      background: var(--c-text); color: var(--c-on-primary);
-      font-size: 9px; font-weight: 600;
-    }
-    .pri {
-      display: inline-block; width: 22px; line-height: 16px; text-align: center;
-      border-radius: 3px; font-size: 9px; font-weight: 700;
+    .card-summary > app-issue-type-pill { margin-top: 2px; flex-shrink: 0; }
+    .card-labels { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+    .label-chip {
       background: var(--c-surface-3); color: var(--c-text-muted);
+      padding: 1px 6px; border-radius: 8px;
+      font-size: 10px; font-weight: 500;
+      max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .pri-4, .pri-5 { background: var(--c-accent-danger); color: white; }
+    .card-foot {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 8px;
+    }
+    .card-foot-right { display: inline-flex; align-items: center; gap: 6px; }
+    .card-key {
+      font-family: monospace; font-size: 11px;
+      color: var(--c-text-muted); text-decoration: none;
+    }
+    .card-key:hover { color: var(--c-text); text-decoration: underline; }
+    .sp-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 22px; height: 18px; padding: 0 6px;
+      border-radius: 9px; background: var(--c-surface-3); color: var(--c-text);
+      font-size: 10px; font-weight: 600;
+    }
     .col-empty {
       padding: 16px; text-align: center; color: var(--c-text-subtle);
       font-size: 12px; font-style: italic;
@@ -327,6 +357,8 @@ export class BoardPageComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly notif = inject(NotificationService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly typeCache = inject(IssueTypeCacheService);
+  private readonly userCache = inject(UserCacheService);
   private readonly workspaceCtx = inject(WorkspaceContextService);
   private readonly hub = inject(WorkspaceHubService);
 
@@ -460,6 +492,7 @@ export class BoardPageComponent implements OnInit {
       const detail = await firstValueFrom(this.projApi.getDetailForMemberByKey(projectKey));
       this.workspaceCtx.setProject(projectDetailToSummary(detail));
       this.project.set(detail);
+      this.typeCache.putMany(detail.issueTypes);
 
       const workflows = await firstValueFrom(this.wfApi.listByProject(detail.id));
 
@@ -479,12 +512,21 @@ export class BoardPageComponent implements OnInit {
       const page = await firstValueFrom(this.loadBoardIssues$(detail.id));
 
       this.issuesAll.set(page.items);
+      void this.warmUserCache(page.items);
       this.loading.set(false);
       this.startIssuePolling();
       this.wireBoardRealtime(detail.id);
     } catch {
       this.loading.set(false);
     }
+  }
+
+  private async warmUserCache(items: readonly IssueSummary[]): Promise<void> {
+    const ids = new Set<string>();
+    for (const i of items) {
+      if (i.assigneeId) ids.add(i.assigneeId);
+    }
+    if (ids.size > 0) await this.userCache.ensureLoaded([...ids]);
   }
 
   private wireBoardRealtime(projectId: string): void {
@@ -508,6 +550,7 @@ export class BoardPageComponent implements OnInit {
     try {
       const page = await firstValueFrom(this.loadBoardIssues$(detail.id));
       this.issuesAll.set(page.items);
+      void this.warmUserCache(page.items);
     } catch {
       /* silent */
     }

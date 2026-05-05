@@ -12,6 +12,8 @@ import { IssueThreadRealtimePayload, WorkspaceHubService } from '@core/realtime/
 import { AvailableTransition, WorkflowApiService } from '@core/api/workflow.service';
 import { AuthService } from '@core/auth/auth.service';
 import { StatusCacheService } from '@core/api/status-cache.service';
+import { IssueTypeCacheService } from '@core/api/issue-type-cache.service';
+import { UserCacheService } from '@core/api/user-cache.service';
 import { ActivityTimelineComponent } from './activity-timeline.component';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
 import { CommentsThreadComponent } from './comments-thread.component';
@@ -19,6 +21,10 @@ import { AttachmentPanelComponent } from './attachment-panel.component';
 import { LinkedIssuesPanelComponent } from './linked-issues-panel.component';
 import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.component';
 import { RichTextEditorComponent } from '@shared/ui/rich-text-editor.component';
+import { IssueStatusBadgeComponent } from '@shared/ui/issue-status-badge.component';
+import { IssuePriorityIconComponent } from '@shared/ui/issue-priority-icon.component';
+import { IssueTypePillComponent } from '@shared/ui/issue-type-pill.component';
+import { UserAvatarComponent } from '@shared/ui/user-avatar.component';
 import { switchMap } from 'rxjs/operators';
 
 @Component({
@@ -32,13 +38,27 @@ import { switchMap } from 'rxjs/operators';
     LinkedIssuesPanelComponent,
     ActivityTimelineComponent,
     UserPickerComponent,
-    IssueCustomFieldsFormComponent
+    IssueCustomFieldsFormComponent,
+    IssueStatusBadgeComponent,
+    IssuePriorityIconComponent,
+    IssueTypePillComponent,
+    UserAvatarComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (issue(); as i) {
       <div class="head">
-        <div class="key">{{ i.key }}</div>
+        <div class="breadcrumb">
+          <a routerLink="/projects" class="bc-link">Projects</a>
+          <span class="bc-sep">/</span>
+          <a [routerLink]="['/projects', projectKeyOf(i.key)]" class="bc-link"><code>{{ projectKeyOf(i.key) }}</code></a>
+          <span class="bc-sep">/</span>
+          <span class="bc-key"><code>{{ i.key }}</code></span>
+        </div>
+        <div class="title-row">
+          <app-issue-type-pill [typeId]="i.issueTypeId" size="lg" />
+          <a [routerLink]="['/issues', i.key]" class="title-key"><code>{{ i.key }}</code></a>
+        </div>
         <h1>{{ i.summary }}</h1>
       </div>
 
@@ -105,41 +125,54 @@ import { switchMap } from 'rxjs/operators';
         </main>
 
         <aside class="side">
-          <div class="kv">
-            <span>{{ 'issue.status' | translate }}</span>
-            <span class="status-pill" [attr.data-cat]="statusCat(i.currentStatusId)">
-              {{ statusName(i.currentStatusId) }}
-            </span>
-          </div>
-          <div class="kv">
-            <span>{{ 'issue.priority' | translate }}</span>
-            <span class="pri pri-{{ i.priority }}">P{{ i.priority }}</span>
-          </div>
-          <div class="kv assignee-row">
-            <span>{{ 'issue.assignee' | translate }}</span>
-            <div class="assignee-edit">
-              <app-user-picker [(userId)]="assigneeDraft" />
-              <button pButton type="button" size="small" class="assignee-save"
-                      [loading]="savingAssignee()"
-                      [disabled]="!assigneeDirty() || savingAssignee()"
-                      (click)="saveAssignee()"
-                      [label]="'issue.assignee_save' | translate"></button>
+          <div class="side-section">
+            <div class="kv">
+              <span>{{ 'issue.status' | translate }}</span>
+              <app-issue-status-badge [statusId]="i.currentStatusId" size="lg" />
+            </div>
+            <div class="kv">
+              <span>{{ 'issue.priority' | translate }}</span>
+              <span class="pri-with-label">
+                <app-issue-priority-icon [priority]="i.priority" />
+                <span class="pri-label">{{ priorityLabel(i.priority) }}</span>
+              </span>
             </div>
           </div>
-          <div class="kv"><span>{{ 'issue.reporter' | translate }}</span>{{ i.reporterId.slice(0, 8) }}…</div>
-          @if (i.dueDate) { <div class="kv"><span>{{ 'issue.due_date' | translate }}</span>{{ i.dueDate | date:'short' }}</div> }
-          @if (i.storyPoints !== null && i.storyPoints !== undefined) {
-            <div class="kv"><span>{{ 'issue.story_points' | translate }}</span>{{ i.storyPoints }}</div>
-          }
-          @if (i.labels && i.labels.length > 0) {
-            <div class="kv">
-              <span>{{ 'issue.labels' | translate }}</span>
-              <div class="labels">
-                @for (l of i.labels; track l) { <span class="lbl">{{ l }}</span> }
+          <div class="side-section">
+            <div class="kv assignee-row">
+              <span>{{ 'issue.assignee' | translate }}</span>
+              <div class="assignee-edit">
+                <app-user-picker [(userId)]="assigneeDraft" />
+                <button pButton type="button" size="small" class="assignee-save"
+                        [loading]="savingAssignee()"
+                        [disabled]="!assigneeDirty() || savingAssignee()"
+                        (click)="saveAssignee()"
+                        [label]="'issue.assignee_save' | translate"></button>
               </div>
             </div>
-          }
-          <div class="kv"><span>{{ 'issue.watchers' | translate }}</span>{{ i.watchers.length }}</div>
+            <div class="kv">
+              <span>{{ 'issue.reporter' | translate }}</span>
+              <span class="reporter-cell">
+                <app-user-avatar [userId]="i.reporterId" size="sm" />
+                <span class="reporter-name">{{ reporterDisplayName(i.reporterId) }}</span>
+              </span>
+            </div>
+          </div>
+          <div class="side-section">
+            @if (i.dueDate) { <div class="kv"><span>{{ 'issue.due_date' | translate }}</span>{{ i.dueDate | date:'short' }}</div> }
+            @if (i.storyPoints !== null && i.storyPoints !== undefined) {
+              <div class="kv"><span>{{ 'issue.story_points' | translate }}</span>{{ i.storyPoints }}</div>
+            }
+            @if (i.labels && i.labels.length > 0) {
+              <div class="kv">
+                <span>{{ 'issue.labels' | translate }}</span>
+                <div class="labels">
+                  @for (l of i.labels; track l) { <span class="lbl">{{ l }}</span> }
+                </div>
+              </div>
+            }
+            <div class="kv"><span>{{ 'issue.watchers' | translate }}</span>{{ i.watchers.length }}</div>
+          </div>
         </aside>
       </div>
     } @else {
@@ -148,7 +181,16 @@ import { switchMap } from 'rxjs/operators';
   `,
   styles: [`
     .head { margin-bottom: 24px; }
-    .key { font-family: monospace; font-size: 13px; color: var(--c-text-muted); }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text-muted); margin-bottom: 8px; }
+    .bc-link { color: var(--c-text-muted); text-decoration: none; }
+    .bc-link:hover { color: var(--c-text); text-decoration: underline; }
+    .bc-key code { color: var(--c-text); font-weight: 500; }
+    .bc-link code, .bc-key code { font-family: monospace; font-size: 12px; }
+    .bc-sep { color: var(--c-text-subtle); }
+    .title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .title-key { text-decoration: none; }
+    .title-key code { font-family: monospace; font-size: 14px; color: var(--c-text-muted); font-weight: 500; }
+    .title-key:hover code { color: var(--c-text); }
     h1 { margin: 4px 0 0; font-size: 22px; font-weight: 600; line-height: 1.3; }
     .layout { display: grid; grid-template-columns: 1fr 280px; gap: 24px; }
     @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } }
@@ -178,32 +220,29 @@ import { switchMap } from 'rxjs/operators';
     .desc-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .transitions { display: flex; flex-wrap: wrap; gap: 8px; }
     .side {
-      padding: 16px; background: var(--c-surface); border: 1px solid var(--c-border);
-      border-radius: var(--radius); display: flex; flex-direction: column; gap: 10px;
+      background: var(--c-surface); border: 1px solid var(--c-border);
+      border-radius: var(--radius); display: flex; flex-direction: column;
       align-self: start; position: sticky; top: 64px;
+      overflow: hidden;
     }
-    .kv { display: flex; gap: 8px; font-size: 13px; align-items: baseline; }
+    .side-section {
+      padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .side-section:last-child { border-bottom: none; }
+    .kv { display: flex; gap: 8px; font-size: 13px; align-items: center; }
     .kv > span:first-child {
-      flex: 0 0 100px; font-size: 11px; text-transform: uppercase;
-      color: var(--c-text-muted); letter-spacing: 0.5px;
+      flex: 0 0 90px; font-size: 11px; text-transform: uppercase;
+      color: var(--c-text-muted); letter-spacing: 0.5px; font-weight: 600;
     }
     .kv.assignee-row { flex-direction: column; align-items: stretch; gap: 8px; }
     .kv.assignee-row > span:first-child { flex: none; }
     .assignee-edit { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-    .status-pill {
-      display: inline-block; padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; font-weight: 600;
-      background: var(--c-surface-3); color: var(--c-text-muted);
-    }
-    .status-pill[data-cat="1"] { background: var(--c-surface-3); color: var(--c-text-muted); }
-    .status-pill[data-cat="2"] { background: #dbeafe; color: #1e40af; }
-    .status-pill[data-cat="3"] { background: #d1fae5; color: #065f46; }
-    .pri {
-      display: inline-block; width: 24px; height: 22px; line-height: 22px; text-align: center;
-      border-radius: 3px; font-size: 11px; font-weight: 600;
-      background: var(--c-surface-3); color: var(--c-text-muted);
-    }
-    .pri-4, .pri-5 { background: var(--c-accent-danger); color: white; }
+    .pri-with-label { display: inline-flex; align-items: center; gap: 6px; }
+    .pri-label { font-size: 12px; color: var(--c-text); }
+    .reporter-cell { display: inline-flex; align-items: center; gap: 6px; }
+    .reporter-name { font-size: 12px; color: var(--c-text); }
     .labels { display: flex; flex-wrap: wrap; gap: 4px; }
     .lbl {
       font-size: 11px; padding: 1px 6px; border-radius: 3px;
@@ -218,6 +257,8 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
   private readonly wfApi = inject(WorkflowApiService);
   private readonly auth = inject(AuthService);
   private readonly statusCache = inject(StatusCacheService);
+  private readonly typeCache = inject(IssueTypeCacheService);
+  private readonly userCache = inject(UserCacheService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly hub = inject(WorkspaceHubService);
 
@@ -268,12 +309,25 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  statusName(statusId: string): string {
-    return this.statusCache.nameOf(statusId) ?? statusId.slice(0, 8) + '…';
+  /** Extract project key prefix from issue key. e.g. "DEMO-12" → "DEMO". */
+  projectKeyOf(issueKey: string): string {
+    const idx = issueKey.lastIndexOf('-');
+    return idx > 0 ? issueKey.substring(0, idx) : issueKey;
   }
 
-  statusCat(statusId: string): number {
-    return this.statusCache.categoryOf(statusId) ?? 1;
+  reporterDisplayName(userId: string): string {
+    return this.userCache.displayNameOf(userId) ?? userId.slice(0, 8) + '…';
+  }
+
+  priorityLabel(p: number): string {
+    switch (p) {
+      case 1: return 'Lowest';
+      case 2: return 'Low';
+      case 3: return 'Medium';
+      case 4: return 'High';
+      case 5: return 'Highest';
+      default: return 'Medium';
+    }
   }
 
   private load(issueKey: string): void {
@@ -283,6 +337,10 @@ export class IssueDetailPageComponent implements OnInit, OnDestroy {
       this.descriptionDraft = i.description ?? '';
       this.editingDescription.set(false);
       this.statusCache.ensureProjectLoaded(i.projectId);
+      this.typeCache.ensureProjectLoaded(i.projectId);
+      const userIds: string[] = [i.reporterId];
+      if (i.assigneeId) userIds.push(i.assigneeId);
+      void this.userCache.ensureLoaded(userIds);
       this.loadTransitions(i);
       // F12: join hub group cho issue này (re-join idempotent nếu đã join).
       if (this.joinedIssueId !== i.id) {
