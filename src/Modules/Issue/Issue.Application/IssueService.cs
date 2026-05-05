@@ -625,6 +625,131 @@ public sealed class IssueService : IIssueService
         return Result.Success(Mappers.ToDto(issue), "issue.watcher.removed");
     }
 
+    /// <summary>
+    /// F5: bulk update — apply same operations cho list issueId. Partial-success aware:
+    /// trả `Succeeded` (id đã apply) và `Failed` (id + lý do). Không rollback toàn bộ
+    /// nếu 1 issue fail — caller hiển thị tổng kết, user có thể retry các id failed.
+    ///
+    /// Permission/access kiểm tra per-issue:
+    /// - Issue không tồn tại HOẶC user không là member project → "issue.not_found"
+    /// - Có membership nhưng thiếu IssueEdit (vd Viewer) → "permission.denied"
+    /// - Operations không hợp lệ (priority sai range) → "issue.bulk.invalid_priority"
+    ///
+    /// Performance: scan từng issue đơn lẻ — chấp nhận với batch nhỏ MVP (FE giới hạn ≤ 100).
+    /// </summary>
+    public async Task<Result<BulkUpdateResultDto>> BulkUpdateAsync(BulkUpdateRequest request, CancellationToken ct = default)
+    {
+        if (_currentUser.UserId is null)
+            return Result.Failure<BulkUpdateResultDto>(ErrorType.Unauthorized, "auth.required");
+
+        if (request.IssueIds is null || request.IssueIds.Count == 0)
+            return Result.Failure<BulkUpdateResultDto>(ErrorType.Validation, "issue.bulk.no_ids");
+
+        const int MaxBatch = 100;
+        if (request.IssueIds.Count > MaxBatch)
+            return Result.Failure<BulkUpdateResultDto>(ErrorType.Validation, "issue.bulk.too_many");
+
+        var ops = request.Operations ?? new BulkUpdateOperationsDto();
+
+        // Validate priority range trước khi loop để fail-fast.
+        if (ops.Priority.HasValue && !Enum.IsDefined(typeof(Priority), ops.Priority.Value))
+            return Result.Failure<BulkUpdateResultDto>(ErrorType.Validation, "issue.bulk.invalid_priority");
+
+        // Detect no-op để tránh chạy vô ích.
+        bool willChangeAssignee = ops.AssigneeId.HasValue || ops.ClearAssignee;
+        bool willChangeLabels = (ops.AddLabels is { Count: > 0 }) || (ops.RemoveLabels is { Count: > 0 });
+        bool hasAnyOp = willChangeAssignee || ops.Priority.HasValue || willChangeLabels || ops.Archive.HasValue;
+        if (!hasAnyOp)
+            return Result.Failure<BulkUpdateResultDto>(ErrorType.Validation, "issue.bulk.no_operations");
+
+        var succeeded = new List<Guid>();
+        var failed = new List<BulkUpdateFailureDto>();
+
+        // Cache permission check theo project (nhiều issue cùng project → 1 lần check).
+        var permCache = new Dictionary<Guid, bool>();
+
+        foreach (Guid id in request.IssueIds.Distinct())
+        {
+            Domain.Issue? issue = await _repo.GetWithWatchersAsync(id, ct);
+            if (issue is null)
+            {
+                failed.Add(new BulkUpdateFailureDto(id, "issue.not_found"));
+                continue;
+            }
+
+            if (!await _projectAccess.CanAccessProjectAsync(_currentUser.UserId.Value, issue.ProjectId, ct))
+            {
+                failed.Add(new BulkUpdateFailureDto(id, "issue.not_found"));
+                continue;
+            }
+
+            if (!permCache.TryGetValue(issue.ProjectId, out bool canEdit))
+            {
+                canEdit = await _permissions.HasProjectPermissionAsync(
+                    _currentUser.UserId.Value, issue.ProjectId, PermissionKeys.IssueEdit, ct);
+                permCache[issue.ProjectId] = canEdit;
+            }
+            if (!canEdit)
+            {
+                failed.Add(new BulkUpdateFailureDto(id, "permission.denied"));
+                continue;
+            }
+
+            Guid? prevAssignee = issue.AssigneeId;
+
+            try
+            {
+                // Apply ops theo thứ tự deterministic.
+                if (ops.ClearAssignee) issue.Assign(null);
+                else if (ops.AssigneeId.HasValue) issue.Assign(ops.AssigneeId.Value);
+
+                if (ops.Priority.HasValue) issue.ChangePriority((Priority)ops.Priority.Value);
+
+                if (willChangeLabels)
+                {
+                    var current = new HashSet<string>(issue.Labels, StringComparer.OrdinalIgnoreCase);
+                    if (ops.RemoveLabels is { Count: > 0 })
+                        foreach (var rm in ops.RemoveLabels) current.RemoveWhere(x => string.Equals(x, rm, StringComparison.OrdinalIgnoreCase));
+                    if (ops.AddLabels is { Count: > 0 })
+                        foreach (var add in ops.AddLabels) current.Add(add);
+                    issue.SetLabels(current);
+                }
+
+                if (ops.Archive.HasValue)
+                {
+                    if (ops.Archive.Value) issue.Archive();
+                    else issue.Unarchive();
+                }
+
+                _repo.Update(issue);
+                await _uow.SaveChangesAsync(ct);
+
+                // Publish assignee event nếu đổi (cho notification + activity log).
+                if (prevAssignee != issue.AssigneeId)
+                    await PublishAssigneeChangedIfNeededAsync(issue, prevAssignee, issue.AssigneeId, ct);
+
+                succeeded.Add(id);
+            }
+            catch (DomainException dex)
+            {
+                _uow.DiscardChanges();
+                failed.Add(new BulkUpdateFailureDto(id, dex.MessageKey));
+            }
+            catch (Exception ex)
+            {
+                _uow.DiscardChanges();
+                _logger.LogWarning(ex, "Bulk update failed for issue {IssueId}", id);
+                failed.Add(new BulkUpdateFailureDto(id, "issue.bulk.unknown_error"));
+            }
+        }
+
+        _logger.LogInformation("Bulk update done: {Succ} succeeded, {Fail} failed", succeeded.Count, failed.Count);
+        return Result.Success(
+            new BulkUpdateResultDto(succeeded, failed),
+            messageKey: "issue.bulk.applied",
+            messageArgs: new { succeeded = succeeded.Count, failed = failed.Count });
+    }
+
     private async Task<HashSet<Guid>> ResolveStatusIdsByNameInProjectAsync(
         Guid projectId,
         string statusName,

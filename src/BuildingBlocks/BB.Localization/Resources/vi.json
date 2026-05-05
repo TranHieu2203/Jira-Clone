@@ -61,6 +61,14 @@
       },
       "conflicting_assignee_filters": "Không kết hợp được lọc assignee với chỉ issue chưa giao",
       "project_access_denied": "Bạn không có quyền truy cập dự án này."
+    },
+    "bulk": {
+      "applied": "Bulk update xong — Thành công {{succeeded}}, lỗi {{failed}}",
+      "no_ids": "Chọn ít nhất 1 issue",
+      "too_many": "Quá nhiều issue — tối đa 100 mỗi lần",
+      "no_operations": "Không có thay đổi để áp dụng",
+      "invalid_priority": "Giá trị priority ngoài range",
+      "unknown_error": "Lỗi không xác định khi bulk update"
     }
   },
   "notification": {

@@ -106,6 +106,32 @@ export interface TransitionIssueRequest {
   comment?: string | null;
 }
 
+// ── F5: Bulk edit ───────────────────────────────────────────────
+
+export interface BulkUpdateOperationsDto {
+  assigneeId?: string | null;
+  clearAssignee?: boolean;
+  priority?: number | null;
+  addLabels?: string[] | null;
+  removeLabels?: string[] | null;
+  archive?: boolean | null;
+}
+
+export interface BulkUpdateRequest {
+  issueIds: string[];
+  operations: BulkUpdateOperationsDto;
+}
+
+export interface BulkUpdateFailureDto {
+  issueId: string;
+  messageKey: string;
+}
+
+export interface BulkUpdateResultDto {
+  succeeded: string[];
+  failed: BulkUpdateFailureDto[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class IssueApiService {
   private readonly http = inject(HttpClient);
@@ -150,5 +176,10 @@ export class IssueApiService {
 
   removeWatcher(id: string, userId: string): Observable<Issue> {
     return this.http.delete<Issue>(`${this.base}/${id}/watchers/${userId}`);
+  }
+
+  /** F5: Bulk update — apply ops to many issues in 1 request. */
+  bulkUpdate(req: BulkUpdateRequest): Observable<BulkUpdateResultDto> {
+    return this.http.post<BulkUpdateResultDto>(`${this.base}/bulk-update`, req);
   }
 }

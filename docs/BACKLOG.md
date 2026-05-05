@@ -264,7 +264,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F2** | Saved filter | S | ✅ | Done — `SavedFilter` aggregate trong `Issue.Domain` (đặt cùng module Issue vì gắn JQL). Bảng `saved_filters` schema `issue` (Postgres incremental migration) + Oracle migration consolidated. CRUD API `/saved-filters/{mine,id}` với owner-only modify (404 cho non-owner non-shared để chống enumeration); shared filter cho phép user khác xem + apply. FE: `SavedFilterApiService` + `SavedFilterPickerComponent` (Select dropdown + Dialog "Save current/Edit" + ConfirmDialog xoá) mounted trong `IssuesPage` trên ô JQL. i18n vi/en đầy đủ (`saved_filter.*`). Build BE + FE PASS, 94 test PASS. |
 | **F3** | **Issue Link module** (relates/blocks/duplicates/clones) | M | ✅ | Done — `Modules/IssueLink/` 4 layer (Domain/Application/Infrastructure/Api). 5 link type: RelatesTo (đối xứng), Blocks, Duplicates, Clones, Causes (asymmetric pairs với inverse label). Domain events `IssueLinkAdded/Removed`. Wire `IIssueAccessGuard` (cả source + target) + `IPermissionChecker.IssueEdit`. Idempotent unique index `(source, target, type)`. Postgres + Oracle migration. FE: `IssueLinkApiService` + `LinkedIssuesPanelComponent` (PrimeNG AutoComplete search issue + Select link type, list outgoing/incoming với forward/inverse label). Mount trong issue-detail.page. i18n vi/en đầy đủ. Build BE + FE PASS, 79 test PASS. |
 | **F4** | Rich text description (Quill editor + mention) | M | ✅ | Already done — `RichTextEditorComponent` (Quill, monochrome theme override) wired vào: `create-issue.dialog`, `issue-detail.page` (edit mode), `comments-thread`. Hỗ trợ `@user` mention với `UserApiService` autocomplete. BE lưu HTML, FE render qua `[innerHTML]` + `isRichHtml()` detector. |
-| **F5** | Bulk edit (multi-select issues + batch update) | M | ⬜ | Issue search có checkbox + toolbar batch action (status/assignee/label). |
+| **F5** | Bulk edit (multi-select issues + batch update) | M | ✅ | Done — `IssueService.BulkUpdateAsync(BulkUpdateRequest)` partial-success: applies assignee (set/clear), priority, labels add/remove, archive/unarchive cho ≤100 issue per batch. Per-issue check `IIssueProjectAccess` + `IPermissionChecker.IssueEdit` (cached per project). Trả `{succeeded, failed[{id, messageKey}]}`. Endpoint `POST /api/v1/issues/bulk-update`. FE: checkbox column + select-all + selection signal trong `IssuesPage`; sticky `BulkEditToolbarComponent` hiện khi ≥1 issue selected → mở dialog (UserPicker assignee + clear flag, priority Select, add/remove labels comma-separated, archive yes/no/noop) → ConfirmDialog → BE call → toast partial nếu có lỗi. i18n vi/en đầy đủ (`issue.bulk.*`). Status transition cố tình defer vì cần per-issue workflow validation. Build BE 0/0, ng build OK, 94 test PASS. |
 | **F6** | Roadmap (Epic timeline Gantt) | L | ⬜ | View timeline epic theo `dueDate`. |
 | **F7** | Velocity report | S | ✅ | Done — `SprintService.GetVelocityAsync(projectId, count)` + `VelocityReportDto` + endpoint `GET /projects/{projectId}/sprints/velocity?count=6`. Per-sprint: committed = sum `SprintCommitLine.BurndownPoints`; completed = sum points của issue reach Done category trước EndDate (qua `IActivityEntryRepository.ListIssueStatusChangesForIssuesAsync` + workflow status category). Average = mean completed across sprints có data. FE: `SprintApiService.velocity()` + bar chart SVG (overlay committed mờ + completed đậm) trong `project-reports.page` cạnh Burndown, scale chart width theo số sprint. i18n vi/en (`reports.velocity_*`). Build BE 0/0, ng build OK. |
 | **F8** | CSV/JSON Import/Export | M | ⬜ | Import từ Jira/Excel, export filter. |
@@ -300,14 +300,13 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 > ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F7** xong (5/8).
+> ✅ Phase C tiến độ: **F1 + F2 + F3 + F4 + F5 + F7** xong (6/8).
 >
 > Tiếp theo:
-> - **F5** Bulk edit — multi-select issues + batch action (status/assignee/label). Effort M, power-user feature.
-> - **F8** CSV/JSON Import/Export — export filter results, import từ Jira/Excel. Effort M.
+> - **F8** CSV/JSON Import/Export — export filter results, import từ Jira/Excel. Effort M, leverage F1 search.
 > - **F6** Roadmap (Epic timeline Gantt) — view timeline epic theo dueDate. Effort L.
 >
-> Đề xuất **F5 (Bulk edit)** — power user dùng nhiều, khả năng leverage F1+F2 (chọn theo filter rồi batch action). Effort M.
+> Đề xuất **F8 (Export trước, Import sau)** — Export trước vì đơn giản (stream filter results sang CSV), Import phức tạp hơn (validate, idempotency, parent key resolution). Hoặc **F6 Roadmap** nếu muốn UX-heavy work.
 
 ---
 

@@ -19,4 +19,7 @@ public interface IIssueService
 
     Task<Result<IssueDto>> AddWatcherAsync(Guid id, Guid userId, CancellationToken ct = default);
     Task<Result<IssueDto>> RemoveWatcherAsync(Guid id, Guid userId, CancellationToken ct = default);
+
+    /// <summary>F5: bulk update — applies same operations to many issues, partial-success aware.</summary>
+    Task<Result<BulkUpdateResultDto>> BulkUpdateAsync(BulkUpdateRequest request, CancellationToken ct = default);
 }

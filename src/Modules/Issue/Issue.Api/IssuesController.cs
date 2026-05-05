@@ -60,4 +60,9 @@ public sealed class IssuesController : BaseController
     [HttpDelete("{id:guid}/watchers/{userId:guid}")]
     public async Task<IActionResult> RemoveWatcher(Guid id, Guid userId, CancellationToken ct) =>
         ToResponse(await _service.RemoveWatcherAsync(id, userId, ct));
+
+    /// <summary>F5: Bulk update — assignee/priority/labels/archive cho nhiều issue. Partial-success.</summary>
+    [HttpPost("bulk-update")]
+    public async Task<IActionResult> BulkUpdate([FromBody] BulkUpdateRequest request, CancellationToken ct) =>
+        ToResponse(await _service.BulkUpdateAsync(request, ct));
 }

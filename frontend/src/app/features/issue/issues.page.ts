@@ -4,6 +4,7 @@ import {
   Component,
   OnDestroy,
   OnInit,
+  computed,
   inject,
   signal
 } from '@angular/core';
@@ -23,8 +24,10 @@ import {
 import { PagedList } from '@shared/models/api-response';
 import { CreateIssueDialogComponent } from './create-issue.dialog';
 import { SavedFilterPickerComponent } from './saved-filter-picker.component';
+import { BulkEditToolbarComponent } from './bulk-edit-toolbar.component';
 import { StatusCacheService } from '@core/api/status-cache.service';
 import { WorkspaceContextService } from '@core/layout/workspace-context.service';
+import { CheckboxModule } from 'primeng/checkbox';
 
 @Component({
   selector: 'app-issues-page',
@@ -39,7 +42,9 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
     InputTextModule,
     AppPageHeaderComponent,
     CreateIssueDialogComponent,
-    SavedFilterPickerComponent
+    SavedFilterPickerComponent,
+    BulkEditToolbarComponent,
+    CheckboxModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -66,9 +71,18 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
       <button pButton (click)="reload()" [label]="'common.search' | translate"></button>
     </div>
 
+    <app-bulk-edit-toolbar
+      [selectedIds]="selectedIds()"
+      (clear)="clearSelection()"
+      (applied)="onBulkApplied()" />
+
     <p-table [value]="page()?.items ?? []" [loading]="loading()" stripedRows>
       <ng-template pTemplate="header">
         <tr>
+          <th class="w-check">
+            <p-checkbox [ngModel]="allChecked()" [binary]="true"
+                        (onChange)="toggleAll($event.checked)" />
+          </th>
           <th class="w-key">{{ 'issue.key' | translate }}</th>
           <th>{{ 'issue.summary' | translate }}</th>
           <th class="w-status">{{ 'issue.status' | translate }}</th>
@@ -78,6 +92,10 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
       </ng-template>
       <ng-template pTemplate="body" let-r>
         <tr>
+          <td class="w-check">
+            <p-checkbox [ngModel]="isSelected(r.id)" [binary]="true"
+                        (onChange)="toggleOne(r.id, $event.checked)" />
+          </td>
           <td>
             <a [routerLink]="['/issues', r.key]"><code>{{ r.key }}</code></a>
           </td>
@@ -93,7 +111,7 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
       </ng-template>
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="5" class="empty">{{ 'issue.empty' | translate }}</td>
+          <td colspan="6" class="empty">{{ 'issue.empty' | translate }}</td>
         </tr>
       </ng-template>
     </p-table>
@@ -107,6 +125,7 @@ import { WorkspaceContextService } from '@core/layout/workspace-context.service'
     .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
     .filters input { flex: 1 1 220px; max-width: 420px; }
     .jql-input { flex: 2 1 280px; max-width: 560px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .w-check { width: 32px; padding-left: 8px; padding-right: 4px; }
     .w-key { width: 100px; }
     .w-status { width: 130px; }
     .w-pri { width: 70px; }
@@ -142,6 +161,16 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   readonly dialogVisible = signal(false);
   readonly fixedProjectId = signal<string | null>(null);
   readonly listTitleKey = signal('issue.title');
+
+  // F5: bulk selection state.
+  readonly selectedIdsSet = signal<ReadonlySet<string>>(new Set());
+  readonly selectedIds = computed(() => Array.from(this.selectedIdsSet()));
+  readonly allChecked = computed(() => {
+    const items = this.page()?.items ?? [];
+    if (items.length === 0) return false;
+    const sel = this.selectedIdsSet();
+    return items.every(i => sel.has(i.id));
+  });
 
   textFilter = '';
   jqlFilter = '';
@@ -208,6 +237,37 @@ export class IssuesPageComponent implements OnInit, OnDestroy {
   /** F2: SavedFilterPicker emit JQL → set vào ô input + reload luôn. */
   onSavedFilterApplied(jql: string): void {
     this.jqlFilter = jql;
+    this.reload();
+  }
+
+  // ── F5: Bulk selection ─────────────────────────────────────────
+
+  isSelected(id: string): boolean {
+    return this.selectedIdsSet().has(id);
+  }
+
+  toggleOne(id: string, checked: boolean): void {
+    const next = new Set(this.selectedIdsSet());
+    if (checked) next.add(id); else next.delete(id);
+    this.selectedIdsSet.set(next);
+  }
+
+  toggleAll(checked: boolean): void {
+    if (!checked) {
+      this.selectedIdsSet.set(new Set());
+      return;
+    }
+    const items = this.page()?.items ?? [];
+    this.selectedIdsSet.set(new Set(items.map(i => i.id)));
+  }
+
+  clearSelection(): void {
+    this.selectedIdsSet.set(new Set());
+  }
+
+  /** Sau bulk apply: clear selection + reload (issue đã đổi status/assignee/labels…). */
+  onBulkApplied(): void {
+    this.clearSelection();
     this.reload();
   }
 

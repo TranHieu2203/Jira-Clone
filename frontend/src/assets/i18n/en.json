@@ -177,6 +177,27 @@
     "created_at": "Created",
     "search_placeholder": "Search by summary or key...",
     "jql_placeholder": "JQL (e.g. status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "bulk": {
+      "selected_count": "{{count}} selected",
+      "edit": "Bulk edit",
+      "edit_title": "Edit {{count}} issues",
+      "clear_selection": "Clear",
+      "clear_assignee": "Clear assignee (unset)",
+      "priority_placeholder": "— No change —",
+      "add_labels": "Add labels (comma-separated)",
+      "remove_labels": "Remove labels (comma-separated)",
+      "labels_placeholder": "frontend, urgent, v2",
+      "archive": "Archive",
+      "apply": "Apply",
+      "confirm": "Apply changes to {{count}} issues?",
+      "applied": "Bulk update applied",
+      "partial": "{{succeeded}} succeeded, {{failed}} failed",
+      "no_ids": "Select at least one issue.",
+      "too_many": "Too many issues. Max 100 per bulk update.",
+      "no_operations": "No changes to apply.",
+      "invalid_priority": "Priority value is invalid.",
+      "unknown_error": "Unknown error during bulk update."
+    },
     "search": {
       "jql": {
         "invalid": "Invalid JQL.",

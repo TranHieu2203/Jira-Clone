@@ -61,6 +61,14 @@
       },
       "conflicting_assignee_filters": "Cannot combine assignee filter with unassigned-only filter",
       "project_access_denied": "You do not have access to this project."
+    },
+    "bulk": {
+      "applied": "Bulk update done — {{succeeded}} succeeded, {{failed}} failed",
+      "no_ids": "Select at least one issue",
+      "too_many": "Too many issues — limit is 100 per bulk update",
+      "no_operations": "No operations specified",
+      "invalid_priority": "Priority value is out of range",
+      "unknown_error": "Unknown error during bulk update"
     }
   },
   "notification": {

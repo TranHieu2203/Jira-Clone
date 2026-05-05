@@ -177,6 +177,27 @@
     "created_at": "Tạo lúc",
     "search_placeholder": "Tìm theo summary hoặc key...",
     "jql_placeholder": "JQL (vd: status = \"In Progress\" AND cf[myfield] = \"x\")",
+    "bulk": {
+      "selected_count": "Đã chọn {{count}}",
+      "edit": "Sửa hàng loạt",
+      "edit_title": "Sửa {{count}} issue",
+      "clear_selection": "Bỏ chọn",
+      "clear_assignee": "Bỏ assignee (set null)",
+      "priority_placeholder": "— Không đổi —",
+      "add_labels": "Thêm label (cách nhau dấu phẩy)",
+      "remove_labels": "Gỡ label (cách nhau dấu phẩy)",
+      "labels_placeholder": "frontend, urgent, v2",
+      "archive": "Lưu trữ",
+      "apply": "Áp dụng",
+      "confirm": "Áp dụng thay đổi cho {{count}} issue?",
+      "applied": "Đã áp dụng bulk update",
+      "partial": "Thành công {{succeeded}}, lỗi {{failed}}",
+      "no_ids": "Chọn ít nhất 1 issue.",
+      "too_many": "Quá nhiều issue. Tối đa 100 mỗi lần.",
+      "no_operations": "Không có thay đổi để áp dụng.",
+      "invalid_priority": "Giá trị priority không hợp lệ.",
+      "unknown_error": "Lỗi không xác định khi bulk update."
+    },
     "search": {
       "jql": {
         "invalid": "JQL không hợp lệ.",
