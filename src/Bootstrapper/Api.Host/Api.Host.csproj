@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\Modules\Attachment\Attachment.Api\Attachment.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Notification\Notification.Api\Notification.Api.csproj" />
     <ProjectReference Include="..\..\Modules\Sprint\Sprint.Api\Sprint.Api.csproj" />
+    <ProjectReference Include="..\..\Modules\IssueLink\IssueLink.Api\IssueLink.Api.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\BB.Storage\BB.Storage.csproj" />
   </ItemGroup>
 </Project>

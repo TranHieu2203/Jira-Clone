@@ -402,6 +402,37 @@
     "empty": "No attachments yet.",
     "download": "Download"
   },
+  "issue_link": {
+    "title": "Linked issues",
+    "empty": "No linked issues yet.",
+    "type_label": "Link type",
+    "search_placeholder": "Search issue (key or summary)…",
+    "add": "Add link",
+    "added": "Link added",
+    "removed": "Link removed",
+    "duplicate": "This link already exists.",
+    "self_link": "Cannot link an issue to itself.",
+    "not_found": "Link not found.",
+    "confirm_delete": "Remove this link?",
+    "source": {
+      "missing": "Source issue not found."
+    },
+    "target": {
+      "missing": "Target issue not found."
+    },
+    "type": {
+      "relates_to": "relates to",
+      "blocks": "blocks",
+      "blocked_by": "is blocked by",
+      "duplicates": "duplicates",
+      "duplicated_by": "is duplicated by",
+      "clones": "clones",
+      "cloned_by": "is cloned by",
+      "causes": "causes",
+      "caused_by": "is caused by",
+      "invalid": "Invalid link type"
+    }
+  },
   "validation": {
     "required": "{{field}} is required",
     "failed": "Invalid data"

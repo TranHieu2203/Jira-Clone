@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.OpenApi.Models;
 using ActivityLog.Api;
 using Attachment.Api;
+using IssueLink.Api;
+using IssueLink.Infrastructure;
 using Notification.Api;
 using Sprint.Api;
 using Sprint.Infrastructure;
@@ -66,6 +68,7 @@ builder.Services.AddBbStorage(builder.Configuration);
 builder.Services.AddAttachmentModule(builder.Configuration);
 builder.Services.AddNotificationModule(builder.Configuration);
 builder.Services.AddSprintModule(builder.Configuration);
+builder.Services.AddIssueLinkModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -182,6 +185,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var outboxDb = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
     var notificationDb = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
     var sprintDb = scope.ServiceProvider.GetRequiredService<SprintDbContext>();
+    var issueLinkDb = scope.ServiceProvider.GetRequiredService<IssueLinkDbContext>();
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -193,6 +197,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(outboxDb, bootstrapLogger);
     await EnsureSchemaAsync(notificationDb, bootstrapLogger);
     await EnsureSchemaAsync(sprintDb, bootstrapLogger);
+    await EnsureSchemaAsync(issueLinkDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();

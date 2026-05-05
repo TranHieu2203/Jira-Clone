@@ -121,5 +121,18 @@
         "success": "Đã gắn các custom field demo vào dự án."
       }
     }
+  },
+  "issue_link": {
+    "added": "Đã thêm liên kết",
+    "removed": "Đã gỡ liên kết",
+    "duplicate": "Liên kết này đã tồn tại",
+    "self_link": "Không thể liên kết issue tới chính nó",
+    "not_found": "Không tìm thấy liên kết",
+    "source": { "missing": "Không tìm thấy issue nguồn" },
+    "target": { "missing": "Không tìm thấy issue đích" },
+    "type": { "invalid": "Loại liên kết không hợp lệ" }
+  },
+  "permission": {
+    "denied": "Bạn không có quyền thực hiện hành động này"
   }
 }

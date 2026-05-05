@@ -262,7 +262,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 |---|---|---|---|---|
 | **F1** | JQL-lite mở rộng | M | ⬜ | `status = "In Progress"` (resolve theo workflow), `cf[key] = ...`, `priority = High`, `type = Bug`, `label in (...)`. |
 | **F2** | Saved filter | S | ⬜ | `saved_filters` table + admin/user filter management. |
-| **F3** | **Issue Link module** (relates/blocks/duplicates/clones) | M | ⬜ | `IssueLink` domain + API + FE panel. **Hot Jira feature.** |
+| **F3** | **Issue Link module** (relates/blocks/duplicates/clones) | M | ✅ | Done — `Modules/IssueLink/` 4 layer (Domain/Application/Infrastructure/Api). 5 link type: RelatesTo (đối xứng), Blocks, Duplicates, Clones, Causes (asymmetric pairs với inverse label). Domain events `IssueLinkAdded/Removed`. Wire `IIssueAccessGuard` (cả source + target) + `IPermissionChecker.IssueEdit`. Idempotent unique index `(source, target, type)`. Postgres + Oracle migration. FE: `IssueLinkApiService` + `LinkedIssuesPanelComponent` (PrimeNG AutoComplete search issue + Select link type, list outgoing/incoming với forward/inverse label). Mount trong issue-detail.page. i18n vi/en đầy đủ. Build BE + FE PASS, 79 test PASS. |
 | **F4** | Rich text description (Markdown editor) | M | ⬜ | TipTap hoặc ngx-markdown. Backend lưu plain markdown, render FE. |
 | **F5** | Bulk edit (multi-select issues + batch update) | M | ⬜ | Issue search có checkbox + toolbar batch action (status/assignee/label). |
 | **F6** | Roadmap (Epic timeline Gantt) | L | ⬜ | View timeline epic theo `dueDate`. |
@@ -298,14 +298,18 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 ### Next action (ưu tiên #1)
 
-> ✅ **Phase A đã đóng hoàn toàn** (R1, R1.5, R2, C3, C4, C5, R4). Build + 79 test PASS sau mỗi commit.
+> ✅ **Phase A đóng** (7 task). **Phase B test (T1-T5) tạm bỏ theo yêu cầu user** (sẽ làm khi kèm Testcontainers).
 >
-> Tiếp tục **Phase B — Test coverage + Pipeline polish**:
-> - **T1** Unit test Comment module (10–12 test) — domain mention regex + author check + service paging.
-> - Hoặc **R3** Refactor `board.page.ts` 668 dòng → tách 4 file (BoardPollingService, BoardFiltersComponent, BoardSwimlaneLayout, page chính).
-> - Hoặc **R6** Email pipeline polish (dedupe + opt-out + DLQ).
+> ✅ **F3 (Issue Link)** vừa xong — Phase C đầu tiên.
 >
-> Đề xuất **T1 trước** vì Comment 0 test là gap hiện hữu nhất + setup test framework cho T2/T3/T4 sau.
+> Tiếp theo theo độ ưu tiên — **Phase C feature parity**:
+> - **F4** Rich text description (Markdown/TipTap) — UX win lớn.
+> - **F1** JQL-lite mở rộng (`status = "In Progress"`, `cf[key]`, `priority`, `type`, `label`).
+> - **F2** Saved filter (lưu JQL).
+> - **F5** Bulk edit (multi-select issues + batch action).
+> - **F7** Velocity report (sum SP completed/sprint, đã có Sprint module).
+>
+> Đề xuất **F4 (Rich text) hoặc F1 (JQL)**. F4 dễ thấy + UX cao; F1 unblock saved-filter F2 + power user.
 
 ---
 

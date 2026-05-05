@@ -402,6 +402,37 @@
     "empty": "Chưa có file đính kèm.",
     "download": "Tải xuống"
   },
+  "issue_link": {
+    "title": "Issue liên quan",
+    "empty": "Chưa có liên kết.",
+    "type_label": "Loại liên kết",
+    "search_placeholder": "Tìm issue (key hoặc tiêu đề)…",
+    "add": "Thêm liên kết",
+    "added": "Đã thêm liên kết",
+    "removed": "Đã gỡ liên kết",
+    "duplicate": "Liên kết này đã tồn tại.",
+    "self_link": "Không thể liên kết issue tới chính nó.",
+    "not_found": "Không tìm thấy liên kết.",
+    "confirm_delete": "Gỡ liên kết này?",
+    "source": {
+      "missing": "Không tìm thấy issue nguồn."
+    },
+    "target": {
+      "missing": "Không tìm thấy issue đích."
+    },
+    "type": {
+      "relates_to": "liên quan tới",
+      "blocks": "chặn",
+      "blocked_by": "bị chặn bởi",
+      "duplicates": "trùng với",
+      "duplicated_by": "bị trùng bởi",
+      "clones": "clone từ",
+      "cloned_by": "được clone từ",
+      "causes": "gây ra",
+      "caused_by": "gây ra bởi",
+      "invalid": "Loại liên kết không hợp lệ"
+    }
+  },
   "validation": {
     "required": "{{field}} là bắt buộc",
     "failed": "Dữ liệu không hợp lệ"

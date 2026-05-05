@@ -15,6 +15,7 @@ import { ActivityTimelineComponent } from './activity-timeline.component';
 import { UserPickerComponent } from '@shared/ui/user-picker.component';
 import { CommentsThreadComponent } from './comments-thread.component';
 import { AttachmentPanelComponent } from './attachment-panel.component';
+import { LinkedIssuesPanelComponent } from './linked-issues-panel.component';
 import { IssueCustomFieldsFormComponent } from './issue-custom-fields-form.component';
 import { RichTextEditorComponent } from '@shared/ui/rich-text-editor.component';
 import { switchMap } from 'rxjs/operators';
@@ -27,6 +28,7 @@ import { switchMap } from 'rxjs/operators';
     ButtonModule, ButtonGroupModule, InputTextModule, RichTextEditorComponent,
     CommentsThreadComponent,
     AttachmentPanelComponent,
+    LinkedIssuesPanelComponent,
     ActivityTimelineComponent,
     UserPickerComponent,
     IssueCustomFieldsFormComponent
@@ -95,6 +97,7 @@ import { switchMap } from 'rxjs/operators';
             </section>
           }
 
+          <app-linked-issues-panel [issueId]="i.id" />
           <app-comments-thread [issueId]="i.id" />
           <app-attachment-panel [issueId]="i.id" />
           <app-activity-timeline [issueId]="i.id" />

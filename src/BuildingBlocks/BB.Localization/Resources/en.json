@@ -121,5 +121,18 @@
         "success": "Demo custom fields have been bound to the project."
       }
     }
+  },
+  "issue_link": {
+    "added": "Link added",
+    "removed": "Link removed",
+    "duplicate": "This link already exists",
+    "self_link": "Cannot link an issue to itself",
+    "not_found": "Link not found",
+    "source": { "missing": "Source issue not found" },
+    "target": { "missing": "Target issue not found" },
+    "type": { "invalid": "Invalid link type" }
+  },
+  "permission": {
+    "denied": "You do not have permission to perform this action"
   }
 }
