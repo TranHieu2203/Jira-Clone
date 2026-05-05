@@ -12,14 +12,16 @@ public sealed class WorkspaceService : IWorkspaceService
     private readonly IProjectUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
     private readonly IPermissionChecker _permissions;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<WorkspaceService> _logger;
 
-    public WorkspaceService(IWorkspaceRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<WorkspaceService> logger)
+    public WorkspaceService(IWorkspaceRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, IAuditLogger audit, ILogger<WorkspaceService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
         _permissions = permissions;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -63,6 +65,7 @@ public sealed class WorkspaceService : IWorkspaceService
         await _uow.SaveChangesAsync(ct);
 
         _logger.LogInformation("Workspace created Id={Id} Slug={Slug}", w.Id, w.Slug);
+        await _audit.LogAsync(AuditActions.WorkspaceCreated, "org", w.Id, new { w.Name, w.Slug }, ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.created.success", new { name = w.Name });
     }
 
@@ -94,6 +97,7 @@ public sealed class WorkspaceService : IWorkspaceService
 
         _repo.Remove(w);
         await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.WorkspaceDeleted, "org", w.Id, new { w.Name, w.Slug }, ct);
         return Result.Success(messageKey: "workspace.deleted.success");
     }
 
@@ -130,9 +134,11 @@ public sealed class WorkspaceService : IWorkspaceService
         }
 
         Workspace? reloaded = await _repo.GetWithMembersAsync(id, ct);
-        return reloaded is null
-            ? Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found")
-            : Result.Success(Mappers.ToDetailDto(reloaded), "workspace.member.added");
+        if (reloaded is null)
+            return Result.Failure<WorkspaceDetailDto>(ErrorType.NotFound, "workspace.not_found");
+
+        await _audit.LogAsync(AuditActions.WorkspaceMemberAdded, "org", reloaded.Id, new { request.UserId, role = (int)role }, ct);
+        return Result.Success(Mappers.ToDetailDto(reloaded), "workspace.member.added");
     }
 
     public async Task<Result<WorkspaceDetailDto>> RemoveMemberAsync(Guid id, Guid userId, CancellationToken ct = default)
@@ -146,6 +152,7 @@ public sealed class WorkspaceService : IWorkspaceService
 
         w.RemoveMember(userId);
         await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.WorkspaceMemberRemoved, "org", w.Id, new { userId }, ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.member.removed");
     }
 
@@ -160,6 +167,7 @@ public sealed class WorkspaceService : IWorkspaceService
 
         w.ChangeMemberRole(userId, (WorkspaceRole)request.Role);
         await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.WorkspaceMemberRoleChanged, "org", w.Id, new { userId, role = request.Role }, ct);
         return Result.Success(Mappers.ToDetailDto(w), "workspace.member.role_changed");
     }
 }

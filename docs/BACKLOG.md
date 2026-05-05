@@ -280,7 +280,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F12** | SignalR realtime (board + comment + issue + attachment + link) | M | ✅ | Done — BE: `WorkspaceHub` (JoinProject/JoinIssue groups) + `SignalRIssueRealtimeNotifier` đã có sẵn. Bổ sung emit `IssueThreadRealtimeEvent`/`IssueBoardRealtimeEvent` cho 3 service mới: `IssueService.UpdateAsync` ("updated"), `AttachmentService.Upload/Delete` ("attachment"), `IssueLinkService.Create/Delete` ("link", emit cho cả source+target). FE: `WorkspaceHubService` đã có connect/reconnect/JWT-via-query (`accessTokenFactory`). Wire listener vào: `IssueDetailPage` (status/assignee/updated → reload issue), `ActivityTimelineComponent` (any event → reload list), `AttachmentPanelComponent` (action="attachment" → reload), `LinkedIssuesPanelComponent` (action="link" → reload). BoardPage + CommentsThread đã listen sẵn từ trước. **D4 đã đạt** — multi-user collab feel real-time, polling 30s vẫn giữ làm fallback. Build BE 0/0, ng build OK, 94 test PASS. |
 | **F13** | 2FA + Password reset + SSO/OAuth — **P11** | L | ⬜ | |
 | **F14** | Webhook + Public REST API + API token | L | ⬜ | |
-| **F15** | Audit log (admin actions, khác Activity log) | M | ⬜ | |
+| **F15** | Audit log (admin actions, khác Activity log) | M | ✅ | Done — module mới `Modules/AuditLog/` 4 layer (Domain `AuditEntry` immutable + Application `IAuditQueryService` + Infrastructure `EfAuditLogger` + Api `AuditAdminController`). `BB.Security.IAuditLogger` cross-cutting interface + `AuditActions.*` constants (workspace/project/workflow). Wire vào 11 admin actions: Workspace (Create/Delete/Member×3), Project (Create/Archive/Unarchive/Delete/Member×3), Workflow (Create/Delete). Best-effort logging — exception → log warning, không block business action. Postgres + Oracle migration consolidated. API `GET /api/v1/admin/audit?actorUserId=&action=&scope=&scopeId=&from=&to=&pageIndex=&pageSize=` `[Authorize(Roles=Admin)]`. FE: `AuditApiService` + `/admin/audit` page với filter (scope/action/scopeId) + pager. Sidebar nav admin có entry mới. i18n vi/en (`admin.audit.*`). Build BE 0/0, ng build OK, 94 test PASS. |
 | **F16** | Version + Component | M | ⬜ | |
 | **F17** | Automation rule (trigger → action engine) | L | ⬜ | |
 | **O1** | Production Dockerfile multi-stage + secrets management | M | ⬜ | |
@@ -301,20 +301,18 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 > ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
 >
-> ✅ Phase C: F1 + F2 + F3 + F4 + F5 + F7 + F8a xong (7/9 — F6 + F8b defer).
+> ✅ Phase C: F1 + F2 + F3 + F4 + F5 + F7 + F8a xong (7/9).
 >
-> ✅ Phase D bắt đầu: **F12 (SignalR realtime)** xong (1/12).
+> ✅ Phase D: **F12 + F15** xong (2/12).
 >
 > Tiếp theo theo độ ưu tiên:
-> - **F15** Audit log admin (M) — track admin actions (delete project, change role, edit workflow…). Khác ActivityLog (per-issue).
-> - **R6** Phase B Email pipeline polish (M) — dedupe + opt-out + DLQ admin page.
+> - **R6** Phase B Email pipeline polish (M) — dedupe + opt-out + DLQ admin page. Đóng L10 còn lại.
 > - **O1** Production Dockerfile multi-stage (M) — chuẩn bị deploy.
+> - **F14** Webhook + Public REST API + API token (L).
 > - **F11** Permission scheme custom (L) — replace 4-role fixed.
 > - **F13** 2FA + Password reset + SSO/OAuth (L).
 >
-> Đề xuất **F15 (Audit log)** — value cao cho admin/security review, effort vừa, leverage outbox sẵn có.
->
-> Hoặc **R6 (Email pipeline polish)** — đóng L10 hoàn toàn, ROI cao.
+> Đề xuất **R6** trước — leverage Notification module + AuditLog mới làm. Effort M, đóng L10. Hoặc **O1** nếu user muốn hướng deploy.
 
 ---
 

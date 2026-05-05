@@ -111,6 +111,11 @@ export const routes: Routes = [
             path: 'email-logs',
             loadComponent: () =>
               import('@features/admin/email-logs-admin.page').then((m) => m.EmailLogsAdminPageComponent)
+          },
+          {
+            path: 'audit',
+            loadComponent: () =>
+              import('@features/admin/audit-admin.page').then((m) => m.AuditAdminPageComponent)
           }
         ]
       }

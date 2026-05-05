@@ -12,14 +12,16 @@ public sealed class ProjectService : IProjectService
     private readonly IProjectUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
     private readonly IPermissionChecker _permissions;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(IProjectRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<ProjectService> logger)
+    public ProjectService(IProjectRepository repo, IProjectUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, IAuditLogger audit, ILogger<ProjectService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
         _permissions = permissions;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -85,6 +87,7 @@ public sealed class ProjectService : IProjectService
         await _uow.SaveChangesAsync(ct);
 
         _logger.LogInformation("Project created Id={Id} Key={Key}", p.Id, p.Key);
+        await _audit.LogAsync(AuditActions.ProjectCreated, "project", p.Id, new { p.Key, p.Name, p.WorkspaceId }, ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.created.success", new { key = p.Key });
     }
 
@@ -114,6 +117,7 @@ public sealed class ProjectService : IProjectService
         if (perm.IsFailure) return perm;
 
         p.Archive(); _repo.Update(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectArchived, "project", p.Id, new { p.Key }, ct);
         return Result.Success(messageKey: "project.archived");
     }
 
@@ -126,6 +130,7 @@ public sealed class ProjectService : IProjectService
         if (perm.IsFailure) return perm;
 
         p.Unarchive(); _repo.Update(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectUnarchived, "project", p.Id, new { p.Key }, ct);
         return Result.Success(messageKey: "project.unarchived");
     }
 
@@ -139,6 +144,7 @@ public sealed class ProjectService : IProjectService
         if (perm.IsFailure) return perm;
 
         _repo.Remove(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectDeleted, "project", p.Id, new { p.Key, p.Name }, ct);
         return Result.Success(messageKey: "project.deleted");
     }
 
@@ -152,6 +158,7 @@ public sealed class ProjectService : IProjectService
 
         p.AddMember(request.UserId, (ProjectRole)request.Role);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectMemberAdded, "project", p.Id, new { request.UserId, role = request.Role }, ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.added");
     }
 
@@ -165,6 +172,7 @@ public sealed class ProjectService : IProjectService
 
         p.RemoveMember(userId);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectMemberRemoved, "project", p.Id, new { userId }, ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.removed");
     }
 
@@ -178,6 +186,7 @@ public sealed class ProjectService : IProjectService
 
         p.ChangeMemberRole(userId, (ProjectRole)request.Role);
         _repo.Update(p); await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.ProjectMemberRoleChanged, "project", p.Id, new { userId, role = request.Role }, ct);
         return Result.Success(Mappers.ToDetailDto(p), "project.member.role_changed");
     }
 

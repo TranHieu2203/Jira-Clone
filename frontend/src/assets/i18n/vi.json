@@ -36,9 +36,24 @@
     "settings": "Cấu hình",
     "admin_section": "Quản trị",
     "admin_email_templates": "Mẫu email",
-    "admin_email_logs": "Nhật ký email"
+    "admin_email_logs": "Nhật ký email",
+    "admin_audit": "Audit log"
   },
   "admin": {
+    "audit": {
+      "title": "Audit log",
+      "intro": "Hành động quan trọng của admin và bảo mật trên workspace / project / workflow. Append-only — không sửa/xoá được.",
+      "scope_all": "— Tất cả scope —",
+      "action_filter": "Lọc action (vd project.created)",
+      "scope_id_filter": "Scope id (UUID)",
+      "empty": "Không có entry phù hợp.",
+      "col_time": "Thời gian",
+      "col_actor": "Người thực hiện",
+      "col_action": "Action",
+      "col_scope": "Scope",
+      "col_scope_id": "Scope id",
+      "col_payload": "Payload"
+    },
     "email": {
       "templates_title": "Mẫu email",
       "templates_intro": "Tạo và sửa mẫu dùng cho thông báo tự động (bình luận, người được giao, đổi trạng thái). Key phải khớp backend (ví dụ comment.added).",

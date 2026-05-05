@@ -12,14 +12,16 @@ public sealed class WorkflowService : IWorkflowService
     private readonly IWorkflowUnitOfWork _uow;
     private readonly ICurrentUser _currentUser;
     private readonly IPermissionChecker _permissions;
+    private readonly IAuditLogger _audit;
     private readonly ILogger<WorkflowService> _logger;
 
-    public WorkflowService(IWorkflowRepository repo, IWorkflowUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, ILogger<WorkflowService> logger)
+    public WorkflowService(IWorkflowRepository repo, IWorkflowUnitOfWork uow, ICurrentUser currentUser, IPermissionChecker permissions, IAuditLogger audit, ILogger<WorkflowService> logger)
     {
         _repo = repo;
         _uow = uow;
         _currentUser = currentUser;
         _permissions = permissions;
+        _audit = audit;
         _logger = logger;
     }
 
@@ -79,6 +81,8 @@ public sealed class WorkflowService : IWorkflowService
         await _uow.SaveChangesAsync(ct);
 
         _logger.LogInformation("Workflow created Id={Id} Key={Key}", workflow.Id, workflow.Key);
+        await _audit.LogAsync(AuditActions.WorkflowCreated, "workflow", workflow.Id,
+            new { workflow.Key, workflow.Name, workflow.ProjectId, workflow.IsTemplate }, ct);
 
         return Result.Success(WorkflowMapper.ToDto(workflow), "workflow.created.success", new { name = workflow.Name });
     }
@@ -109,6 +113,7 @@ public sealed class WorkflowService : IWorkflowService
 
         _repo.Remove(w);
         await _uow.SaveChangesAsync(ct);
+        await _audit.LogAsync(AuditActions.WorkflowDeleted, "workflow", w.Id, new { w.Key, w.Name, w.ProjectId }, ct);
         return Result.Success(messageKey: "workflow.deleted.success");
     }
 

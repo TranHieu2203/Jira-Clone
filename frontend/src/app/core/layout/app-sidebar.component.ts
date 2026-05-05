@@ -130,7 +130,8 @@ export class AppSidebarComponent {
 
   readonly adminNav = computed<NavItem[]>(() => [
     { label: 'Email templates', i18nKey: 'nav.admin_email_templates', icon: '✉', link: '/admin/email-templates' },
-    { label: 'Email logs', i18nKey: 'nav.admin_email_logs', icon: '☰', link: '/admin/email-logs' }
+    { label: 'Email logs', i18nKey: 'nav.admin_email_logs', icon: '☰', link: '/admin/email-logs' },
+    { label: 'Audit log', i18nKey: 'nav.admin_audit', icon: '⎙', link: '/admin/audit' }
   ]);
 
   readonly projectNav = computed<NavItem[]>(() => {

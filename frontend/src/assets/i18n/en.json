@@ -36,9 +36,24 @@
     "settings": "Settings",
     "admin_section": "Administration",
     "admin_email_templates": "Email templates",
-    "admin_email_logs": "Email logs"
+    "admin_email_logs": "Email logs",
+    "admin_audit": "Audit log"
   },
   "admin": {
+    "audit": {
+      "title": "Audit log",
+      "intro": "Admin and security-significant actions across workspaces, projects, and workflows. Append-only — entries cannot be edited or deleted.",
+      "scope_all": "— All scopes —",
+      "action_filter": "Action filter (e.g. project.created)",
+      "scope_id_filter": "Scope id (UUID)",
+      "empty": "No audit entries match your filter.",
+      "col_time": "Time",
+      "col_actor": "Actor",
+      "col_action": "Action",
+      "col_scope": "Scope",
+      "col_scope_id": "Scope id",
+      "col_payload": "Payload"
+    },
     "email": {
       "templates_title": "Email templates",
       "templates_intro": "Create and edit templates used for automatic notifications (comment, assignee, status). Keys must match what the backend dispatches (e.g. comment.added).",
