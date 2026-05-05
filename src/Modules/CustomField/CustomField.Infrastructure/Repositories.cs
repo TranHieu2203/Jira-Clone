@@ -45,6 +45,9 @@ public sealed class CustomFieldRepository : Repository<Domain.CustomField>, ICus
             .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    public void MarkContextAsAdded(CustomFieldContext context) =>
+        _ctx.Entry(context).State = EntityState.Added;
 }
 
 public sealed class IssueFieldValueRepository : Repository<IssueFieldValue>, IIssueFieldValueRepository

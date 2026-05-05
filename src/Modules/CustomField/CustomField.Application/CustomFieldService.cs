@@ -143,9 +143,11 @@ public sealed class CustomFieldService : ICustomFieldService
         var perm = await EnsureCanBindContextAsync(request.ProjectIds, ct);
         if (perm.IsFailure) return Result.Failure<CustomFieldDto>(perm);
 
-        f.AddContext(request.Name, request.IsGlobal, request.IsRequired, request.DefaultValueJson,
+        var newCtx = f.AddContext(request.Name, request.IsGlobal, request.IsRequired, request.DefaultValueJson,
             request.ProjectIds, request.IssueTypeIds, request.DisplayOrder ?? 0);
-        _repo.Update(f); await _uow.SaveChangesAsync(ct);
+        // Workaround EF Core 8 collection-nav add quirk — xem comment trên ICustomFieldRepository.MarkContextAsAdded.
+        _repo.MarkContextAsAdded(newCtx);
+        await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDto(f), "field.context.added");
     }
 

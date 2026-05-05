@@ -12,6 +12,14 @@ public interface ICustomFieldRepository : IRepository<Domain.CustomField>
 
     /// <summary>Lấy các field có context áp dụng vào (project, issueType).</summary>
     Task<IReadOnlyList<Domain.CustomField>> ResolveForAsync(Guid projectId, Guid issueTypeId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đánh dấu CustomFieldContext mới (vừa được thêm vào collection navigation của một CustomField
+    /// tracked) là Added thay vì Modified. Workaround cho EF Core 8 quirk: khi entity nav collection
+    /// có PK non-default (do BaseEntity.Id = Guid.NewGuid() ở field initializer), DetectChanges
+    /// sẽ treat như Modified entity → emit UPDATE thay INSERT → 0 rows affected → concurrency exception.
+    /// </summary>
+    void MarkContextAsAdded(CustomFieldContext context);
 }
 
 public interface IIssueFieldValueRepository : IRepository<IssueFieldValue>
