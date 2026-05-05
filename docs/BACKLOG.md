@@ -7,7 +7,59 @@
 > - `docs/BACKLOG.md` = **just the unfinished**, prioritized, actionable.
 > - `CLAUDE.md` = quy tắc kiến trúc, không đổi.
 >
-> **Cập nhật lần cuối**: 2026-05-04 (My Issues JQL, email pipeline, workspace add member, E2E email + DB)
+> **Cập nhật lần cuối**: 2026-05-05 (R6 email polish + L10 closed, O1 deferred per user request)
+
+---
+
+## ⚡ Dashboard tồn đọng (snapshot 2026-05-05)
+
+```
+Phase A — Bảo mật + hardening      ████████████  7/7   (100%) ✅ ĐÓNG
+Phase B — Test + polish              █░░░░░░░░░░░  1/8   (12%)
+Phase C — Jira feature parity      ███████████░  7/9   (78%) — F8a đã, F8b/F6 defer
+Phase D — Enterprise + Ops           ██░░░░░░░░░░  2/12  (17%)
+                                   ─────────────────────────────
+                                   17/36 task = 47%
+```
+
+### ⬜ Còn lại — theo độ ưu tiên
+
+**Phase B (test coverage + tech debt)** — `T1-T5` user đã yêu cầu tạm bỏ tests. Chỉ còn:
+- `R3` Refactor `board.page.ts` 668 dòng → 4 file (M, FE tech debt).
+- `R9` Domain dispatcher → outbox cho idempotent handlers (L, fix L4 event loss).
+
+**Phase C (feature parity còn lại)**:
+- `F6` Roadmap (Epic timeline Gantt) — L, defer.
+- `F8b` CSV Import — M, defer.
+
+**Phase D (enterprise + ops)** — 10/12 còn:
+- `F11` Permission scheme custom (replace 4-role) — L, P11.
+- `F13` 2FA + Password reset + SSO/OAuth — L, P11.
+- `F14` Webhook + Public REST API + API token — L.
+- `F16` Version + Component (Jira features ngách) — M.
+- `F17` Automation rule (trigger → action) — L.
+- `F9` Workflow Editor UI (drag-drop graph) — L, P10.
+- `F10` Field Editor UI + Screen schemes — L, P10.
+- `O1` Production Dockerfile — **M, deferred theo user request**.
+- `O2` CI matrix Postgres + Oracle integration test — M.
+- `O3` README deploy guide — M.
+
+### 🟢 Limitations còn open (3/15)
+
+- `L2` WorkflowProvisioner lazy (vẫn OK MVP).
+- `L4` Domain event handler khác transaction → `R9` fix.
+- `L7` Angular `@` escape `{{ '@' }}` (Angular 18 quirk, chấp nhận).
+- `L13` i18n key BE chưa cover hết (audit cần).
+
+### 📌 Đề xuất next session
+
+Theo độ ưu tiên + ROI:
+1. **F11 Permission scheme custom** — replace 4-role. Mở khoá multi-tenant/enterprise sale. Effort L.
+2. **F14 Public REST API + API token** — integration with external tools. Effort L.
+3. **R3 Refactor board.page.ts** — pure tech debt cleanup. Effort M.
+4. **F16 Version + Component** — Jira parity ngách. Effort M.
+
+Hoặc nếu muốn sang **production-ready stage**, mở lại O1/O2/O3 (deploy + CI).
 
 ---
 
@@ -283,7 +335,7 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 | **F15** | Audit log (admin actions, khác Activity log) | M | ✅ | Done — module mới `Modules/AuditLog/` 4 layer (Domain `AuditEntry` immutable + Application `IAuditQueryService` + Infrastructure `EfAuditLogger` + Api `AuditAdminController`). `BB.Security.IAuditLogger` cross-cutting interface + `AuditActions.*` constants (workspace/project/workflow). Wire vào 11 admin actions: Workspace (Create/Delete/Member×3), Project (Create/Archive/Unarchive/Delete/Member×3), Workflow (Create/Delete). Best-effort logging — exception → log warning, không block business action. Postgres + Oracle migration consolidated. API `GET /api/v1/admin/audit?actorUserId=&action=&scope=&scopeId=&from=&to=&pageIndex=&pageSize=` `[Authorize(Roles=Admin)]`. FE: `AuditApiService` + `/admin/audit` page với filter (scope/action/scopeId) + pager. Sidebar nav admin có entry mới. i18n vi/en (`admin.audit.*`). Build BE 0/0, ng build OK, 94 test PASS. |
 | **F16** | Version + Component | M | ⬜ | |
 | **F17** | Automation rule (trigger → action engine) | L | ⬜ | |
-| **O1** | Production Dockerfile multi-stage + secrets management | M | ⬜ | |
+| **O1** | Production Dockerfile multi-stage + secrets management | M | ⬜ | Defer theo user request 2026-05-05 — không ưu tiên, tập trung feature/quality trước. |
 | **O2** | CI matrix Postgres + Oracle integration test | M | ⬜ | |
 | **O3** | README deploy guide + HTTPS + backup/restore | M | ⬜ | |
 
@@ -299,20 +351,21 @@ Xem `docs/PROGRESS.md §8`. Quan trọng nhớ:
 
 ### Next action (ưu tiên #1)
 
-> ✅ Phase A đóng (7 task). Phase B test (T1-T5) tạm bỏ.
+> ✅ Phase A đóng. Phase B test (T1-T5) + O1 Docker tạm bỏ theo user.
 >
-> ✅ Phase C: F1 + F2 + F3 + F4 + F5 + F7 + F8a xong (7/9).
+> ✅ Phase C: 7/9 xong (F8b + F6 defer).
 >
-> ✅ Phase D: **F12 + F15** xong (2/12). **R6** (Phase B polish) đóng — L10 đã closed hoàn toàn.
+> ✅ Phase D: F12 + F15 xong (2/12). R6 polish đã đóng L10.
 >
-> Tiếp theo theo độ ưu tiên:
-> - **O1** Production Dockerfile multi-stage (M) — chuẩn bị deploy.
-> - **F14** Webhook + Public REST API + API token (L) — public consumer.
-> - **F11** Permission scheme custom (L) — replace 4-role fixed.
-> - **F13** 2FA + Password reset + SSO/OAuth (L) — identity hoàn thiện.
-> - **R9** Domain dispatcher → outbox (L) — fix L4 (event loss).
+> **Snapshot tồn đọng**: xem **Dashboard** ở đầu file (§ ⚡).
 >
-> Đề xuất **O1 (Production Dockerfile)** — task cuối cùng cần để deploy được production. Effort M.
+> Đề xuất theo ROI:
+> 1. **F11** Permission scheme custom (L) — multi-tenant/enterprise unlock.
+> 2. **F14** Public REST API + API token (L) — integration.
+> 3. **R3** Refactor `board.page.ts` (M) — pure cleanup, low risk.
+> 4. **F16** Version + Component (M) — Jira parity ngách.
+>
+> Hoặc mở lại **O1/O2/O3** nếu chuyển sang production-deploy stage.
 
 ---
 
