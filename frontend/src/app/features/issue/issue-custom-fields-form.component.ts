@@ -244,9 +244,22 @@ export class IssueCustomFieldsFormComponent {
     this.cdr.markForCheck();
   }
 
+  /**
+   * CRITICAL: Phải trả về reference STABLE — nếu mỗi call sinh array mới (như
+   * `v.map(String)` cũ), `<p-multiSelect>` so sánh reference qua ngModel thấy "đổi"
+   * → emit ngModelChange → re-render → cycle infinite → renderer OOM crash.
+   *
+   * Strategy: nếu `draft[f.id]` không phải string[], CHUẨN HÓA về string[] đúng
+   * 1 lần (in-place store), sau đó luôn trả cùng reference.
+   */
   multiDraft(f: CustomField): string[] {
     const v = this.draft[f.id];
-    return Array.isArray(v) ? v.map(String) : [];
+    if (Array.isArray(v) && v.every((x) => typeof x === 'string')) {
+      return v as string[];
+    }
+    const norm = Array.isArray(v) ? v.map(String) : [];
+    this.draft[f.id] = norm;
+    return norm;
   }
 
   setMultiDraft(f: CustomField, v: string[]): void {
