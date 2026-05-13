@@ -15,6 +15,8 @@ using ActivityLog.Api;
 using Attachment.Api;
 using AuditLog.Api;
 using AuditLog.Infrastructure;
+using FormManagement.Api;
+using FormManagement.Infrastructure;
 using IssueLink.Api;
 using IssueLink.Infrastructure;
 using Notification.Api;
@@ -37,6 +39,10 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseBbSerilog();
+
+// Phase 7: register Syncfusion BE license ngay đầu startup (trước khi DocIO bị load).
+// Key đọc từ appsettings:Syncfusion:LicenseKey hoặc env SYNCFUSION__LICENSEKEY.
+FormManagement.Infrastructure.SyncfusionLicense.Register(builder.Configuration);
 
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName));
 
@@ -72,6 +78,7 @@ builder.Services.AddNotificationModule(builder.Configuration);
 builder.Services.AddSprintModule(builder.Configuration);
 builder.Services.AddIssueLinkModule(builder.Configuration);
 builder.Services.AddAuditLogModule(builder.Configuration);
+builder.Services.AddFormManagementModule(builder.Configuration);
 
 // Cross-cutting cho domain events + clock (đã đăng ký 1 lần dùng cho mọi DbContext)
 builder.Services.AddSingleton<BB.Common.IClock, BB.Common.SystemClock>();
@@ -190,6 +197,7 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     var sprintDb = scope.ServiceProvider.GetRequiredService<SprintDbContext>();
     var issueLinkDb = scope.ServiceProvider.GetRequiredService<IssueLinkDbContext>();
     var auditLogDb = scope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
+    var formMgmtDb = scope.ServiceProvider.GetRequiredService<FormManagementDbContext>();
     await EnsureSchemaAsync(identityDb, bootstrapLogger);
     await EnsureSchemaAsync(workflowDb, bootstrapLogger);
     await EnsureSchemaAsync(projectDb, bootstrapLogger);
@@ -203,12 +211,14 @@ if (args.Contains("--migrate") || builder.Configuration.GetValue<bool>("Database
     await EnsureSchemaAsync(sprintDb, bootstrapLogger);
     await EnsureSchemaAsync(issueLinkDb, bootstrapLogger);
     await EnsureSchemaAsync(auditLogDb, bootstrapLogger);
+    await EnsureSchemaAsync(formMgmtDb, bootstrapLogger);
 }
 
 await app.Services.SeedIdentityAsync();
 await Workflow.Infrastructure.Seed.WorkflowSeeder.SeedDefaultsAsync(app.Services);
 await CustomField.Infrastructure.Seed.CustomFieldSeeder.SeedDefaultsAsync(app.Services);
 await Notification.Infrastructure.Seed.EmailTemplateSeeder.SeedDefaultsAsync(app.Services);
+await FormManagement.Infrastructure.Seed.FormManagementSeeder.SeedDefaultsAsync(app.Services);
 await Api.Host.Bootstrap.CustomFieldDemoProjectBinderBackfill.RunAsync(app.Services);
 
 app.Run();
@@ -218,7 +228,7 @@ static async Task EnsureSchemaAsync(DbContext ctx, Microsoft.Extensions.Logging.
     var migrationsAssembly = ctx.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrationsAssembly>();
     if (migrationsAssembly.Migrations.Count > 0)
     {
-        await ctx.Database.MigrateAsync();
+        //await ctx.Database.MigrateAsync();
         return;
     }
 

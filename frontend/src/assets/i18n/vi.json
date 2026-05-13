@@ -38,7 +38,115 @@
     "admin_section": "Quản trị",
     "admin_email_templates": "Mẫu email",
     "admin_email_logs": "Nhật ký email",
-    "admin_audit": "Audit log"
+    "admin_audit": "Audit log",
+    "form_management": "Biểu mẫu",
+    "form_metadata": "Trường biểu mẫu"
+  },
+  "form_mgmt": {
+    "editor": {
+      "title": "Soạn biểu mẫu",
+      "intro": "Soạn template hợp đồng/biểu mẫu. Import file Word có sẵn hoặc tạo mới rồi chèn các trường MERGEFIELD.",
+      "btn_import": "Import Word",
+      "btn_save_sfdt": "Lưu SFDT",
+      "btn_save_docx": "Tải DOCX",
+      "btn_reload_sidebar": "Tải lại sidebar"
+    },
+    "sidebar": {
+      "title": "Metadata",
+      "hint": "Click hoặc kéo-thả vào editor để chèn MERGEFIELD.",
+      "search_placeholder": "Tìm trường…",
+      "empty": "Chưa có metadata — tạo ở trang Trường biểu mẫu."
+    },
+    "mention": {
+      "hint": "↑↓ chọn — Enter/Tab chèn — Esc thoát",
+      "empty": "Không có metadata khớp."
+    },
+    "placeholders": {
+      "title": "Đã phát hiện {{count}} chỗ cần điền",
+      "hint": "Click vào item để highlight trong editor.",
+      "pattern_dots": "Dấu chấm",
+      "pattern_underscores": "Gạch dưới",
+      "pattern_brackets": "[ngoặc vuông]",
+      "pattern_guillemets": "«guillemets»"
+    },
+    "import": {
+      "success": "Đã import — phát hiện {{count}} placeholder"
+    },
+    "metadata": {
+      "title": "Trường biểu mẫu (Metadata Library)",
+      "intro": "Quản lý các trường dùng chèn MERGEFIELD vào template. Mã trường viết HOA, group tự suy từ ký tự đầu.",
+      "new": "Thêm metadata",
+      "edit": "Sửa metadata",
+      "search_placeholder": "Tìm theo mã hoặc nhãn…",
+      "all_groups": "— Tất cả group —",
+      "empty": "Chưa có metadata nào.",
+      "col_value": "Mã",
+      "col_label": "Nhãn",
+      "col_type": "Kiểu",
+      "col_group": "Group",
+      "col_desc": "Mô tả",
+      "value_hint": "HOA / số / _ , bắt đầu bằng chữ. Vd: BSO_HD, CTEN, ITONG_PHI.",
+      "validation_json": "Validation (JSON, tùy chọn)",
+      "validation_hint": "JSON cấu trúc rule: {min, max, pattern, required}…",
+      "delete_confirm_title": "Xóa metadata",
+      "delete_confirm_detail": "Xóa metadata {{value}}? Template đang dùng mã này sẽ thiếu data khi mail-merge.",
+      "value": {
+        "required": "Mã trường là bắt buộc",
+        "invalid": "Mã trường không hợp lệ (HOA / số / _ , bắt đầu bằng chữ)",
+        "duplicated": "Mã trường đã tồn tại"
+      },
+      "label": { "required": "Nhãn trường là bắt buộc" },
+      "type": { "invalid": "Kiểu trường không hợp lệ" },
+      "not_found": "Không tìm thấy metadata",
+      "created": { "success": "Đã tạo metadata {{value}}" },
+      "updated": { "success": "Đã cập nhật metadata {{value}}" },
+      "deleted": { "success": "Đã xóa metadata {{value}}" },
+      "type_opt": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "currency": "Currency",
+        "textarea": "Textarea"
+      },
+      "group": {
+        "B": "Thông tin hợp đồng",
+        "C": "Bên A — Khách hàng",
+        "D": "Số tiền bảo hiểm",
+        "F": "Điều khoản",
+        "G": "Mức khấu trừ",
+        "I": "Phí bảo hiểm",
+        "J": "Thanh toán",
+        "K": "Người ký",
+        "L": "Nội dung",
+        "M": "Khác"
+      }
+    },
+    "template": {
+      "code": {
+        "required": "Mã template là bắt buộc",
+        "invalid": "Mã template không hợp lệ",
+        "duplicated": "Mã template đã tồn tại"
+      },
+      "name": { "required": "Tên template là bắt buộc" },
+      "content": { "required": "Nội dung template không được rỗng" },
+      "status": { "invalid": "Trạng thái template không hợp lệ" },
+      "not_found": "Không tìm thấy template",
+      "created": { "success": "Đã tạo template {{code}}" },
+      "updated": { "success": "Đã cập nhật template {{code}}" },
+      "content_saved": { "success": "Đã lưu nội dung template {{code}} (v{{version}})" },
+      "published": { "success": "Đã phát hành template {{code}}" },
+      "archived": { "success": "Đã lưu trữ template {{code}}" },
+      "deleted": { "success": "Đã xóa template {{code}}" }
+    },
+    "submission": {
+      "data": { "required": "Cần nhập dữ liệu cho biểu mẫu" },
+      "not_found": "Không tìm thấy submission",
+      "submitted": { "success": "Đã sinh biểu mẫu {{code}}" }
+    },
+    "conversion": {
+      "unsupported": "Tính năng chuyển đổi Word chưa được kích hoạt (Phase 6 — Syncfusion DocIO)",
+      "failed": "Chuyển đổi file thất bại"
+    }
   },
   "admin": {
     "audit": {

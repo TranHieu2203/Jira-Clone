@@ -38,7 +38,115 @@
     "admin_section": "Administration",
     "admin_email_templates": "Email templates",
     "admin_email_logs": "Email logs",
-    "admin_audit": "Audit log"
+    "admin_audit": "Audit log",
+    "form_management": "Forms",
+    "form_metadata": "Form metadata"
+  },
+  "form_mgmt": {
+    "editor": {
+      "title": "Form template editor",
+      "intro": "Author contract / form templates. Import an existing Word file or start blank and insert MERGEFIELD placeholders.",
+      "btn_import": "Import Word",
+      "btn_save_sfdt": "Save SFDT",
+      "btn_save_docx": "Download DOCX",
+      "btn_reload_sidebar": "Reload sidebar"
+    },
+    "sidebar": {
+      "title": "Metadata",
+      "hint": "Click or drag into the editor to insert a MERGEFIELD.",
+      "search_placeholder": "Search fields…",
+      "empty": "No metadata yet — create some on the Form metadata page."
+    },
+    "mention": {
+      "hint": "↑↓ navigate — Enter/Tab insert — Esc cancel",
+      "empty": "No matching metadata."
+    },
+    "placeholders": {
+      "title": "Detected {{count}} placeholders",
+      "hint": "Click an item to highlight it in the editor.",
+      "pattern_dots": "Dots",
+      "pattern_underscores": "Underscores",
+      "pattern_brackets": "[brackets]",
+      "pattern_guillemets": "«guillemets»"
+    },
+    "import": {
+      "success": "Imported — {{count}} placeholders detected"
+    },
+    "metadata": {
+      "title": "Form metadata (Metadata Library)",
+      "intro": "Manage fields used to insert MERGEFIELDs into templates. Codes are UPPER; group is derived from the first character.",
+      "new": "New metadata",
+      "edit": "Edit metadata",
+      "search_placeholder": "Search by code or label…",
+      "all_groups": "— All groups —",
+      "empty": "No metadata yet.",
+      "col_value": "Code",
+      "col_label": "Label",
+      "col_type": "Type",
+      "col_group": "Group",
+      "col_desc": "Description",
+      "value_hint": "UPPER / digits / _ , starting with a letter. E.g. BSO_HD, CTEN, ITONG_PHI.",
+      "validation_json": "Validation (JSON, optional)",
+      "validation_hint": "Rule JSON, e.g. {min, max, pattern, required}…",
+      "delete_confirm_title": "Delete metadata",
+      "delete_confirm_detail": "Delete metadata {{value}}? Templates using this code will have missing data on mail-merge.",
+      "value": {
+        "required": "Metadata code is required",
+        "invalid": "Metadata code must be UPPER letters / digits / _ starting with a letter",
+        "duplicated": "Metadata code already exists"
+      },
+      "label": { "required": "Metadata label is required" },
+      "type": { "invalid": "Metadata type is invalid" },
+      "not_found": "Metadata not found",
+      "created": { "success": "Metadata {{value}} created" },
+      "updated": { "success": "Metadata {{value}} updated" },
+      "deleted": { "success": "Metadata {{value}} deleted" },
+      "type_opt": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "currency": "Currency",
+        "textarea": "Textarea"
+      },
+      "group": {
+        "B": "Contract info",
+        "C": "Party A — Customer",
+        "D": "Sum insured",
+        "F": "Clauses",
+        "G": "Deductibles",
+        "I": "Premium",
+        "J": "Payment",
+        "K": "Signatories",
+        "L": "Content",
+        "M": "Other"
+      }
+    },
+    "template": {
+      "code": {
+        "required": "Template code is required",
+        "invalid": "Template code is invalid",
+        "duplicated": "Template code already exists"
+      },
+      "name": { "required": "Template name is required" },
+      "content": { "required": "Template content must not be empty" },
+      "status": { "invalid": "Invalid template status transition" },
+      "not_found": "Template not found",
+      "created": { "success": "Template {{code}} created" },
+      "updated": { "success": "Template {{code}} updated" },
+      "content_saved": { "success": "Template {{code}} content saved (v{{version}})" },
+      "published": { "success": "Template {{code}} published" },
+      "archived": { "success": "Template {{code}} archived" },
+      "deleted": { "success": "Template {{code}} deleted" }
+    },
+    "submission": {
+      "data": { "required": "Form data is required" },
+      "not_found": "Submission not found",
+      "submitted": { "success": "Form {{code}} generated" }
+    },
+    "conversion": {
+      "unsupported": "Word conversion is not enabled yet (Phase 6 — Syncfusion DocIO)",
+      "failed": "Document conversion failed"
+    }
   },
   "admin": {
     "audit": {

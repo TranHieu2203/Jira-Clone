@@ -167,5 +167,52 @@
   },
   "permission": {
     "denied": "Bạn không có quyền thực hiện hành động này"
+  },
+  "form_mgmt": {
+    "metadata": {
+      "value": {
+        "required": "Mã trường là bắt buộc",
+        "invalid": "Mã trường không hợp lệ (HOA, số, _; bắt đầu bằng chữ)",
+        "duplicated": "Mã trường đã tồn tại"
+      },
+      "label": { "required": "Nhãn trường là bắt buộc" },
+      "type": { "invalid": "Kiểu trường không hợp lệ" },
+      "not_found": "Không tìm thấy metadata",
+      "created": { "success": "Đã tạo metadata {{value}}" },
+      "updated": { "success": "Đã cập nhật metadata {{value}}" },
+      "deleted": { "success": "Đã xóa metadata {{value}}" }
+    },
+    "template": {
+      "code": {
+        "required": "Mã template là bắt buộc",
+        "invalid": "Mã template không hợp lệ (HOA / số / -_)",
+        "duplicated": "Mã template đã tồn tại"
+      },
+      "name": { "required": "Tên template là bắt buộc" },
+      "content": { "required": "Nội dung template không được rỗng" },
+      "status": { "invalid": "Trạng thái template không hợp lệ" },
+      "not_found": "Không tìm thấy template",
+      "created": { "success": "Đã tạo template {{code}}" },
+      "updated": { "success": "Đã cập nhật template {{code}}" },
+      "content_saved": { "success": "Đã lưu nội dung template {{code}} (v{{version}})" },
+      "published": { "success": "Đã phát hành template {{code}}" },
+      "archived": { "success": "Đã lưu trữ template {{code}}" },
+      "deleted": { "success": "Đã xóa template {{code}}" }
+    },
+    "submission": {
+      "data": { "required": "Cần nhập dữ liệu cho biểu mẫu" },
+      "not_found": "Không tìm thấy submission",
+      "submitted": { "success": "Đã sinh biểu mẫu {{code}}" }
+    },
+    "conversion": {
+      "unsupported": "Tính năng chuyển đổi file Word chưa được kích hoạt (cần Syncfusion DocIO ở Phase 7)",
+      "failed": "Chuyển đổi file thất bại"
+    },
+    "import": {
+      "success": "Đã import — phát hiện {{count}} placeholder"
+    },
+    "export": {
+      "success": "Đã sinh file ({{fields}} field)"
+    }
   }
 }

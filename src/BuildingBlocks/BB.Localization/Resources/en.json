@@ -167,5 +167,52 @@
   },
   "permission": {
     "denied": "You do not have permission to perform this action"
+  },
+  "form_mgmt": {
+    "metadata": {
+      "value": {
+        "required": "Metadata code is required",
+        "invalid": "Metadata code must be UPPER letters / digits / underscore starting with a letter",
+        "duplicated": "Metadata code already exists"
+      },
+      "label": { "required": "Metadata label is required" },
+      "type": { "invalid": "Metadata type is invalid" },
+      "not_found": "Metadata not found",
+      "created": { "success": "Metadata {{value}} created" },
+      "updated": { "success": "Metadata {{value}} updated" },
+      "deleted": { "success": "Metadata {{value}} deleted" }
+    },
+    "template": {
+      "code": {
+        "required": "Template code is required",
+        "invalid": "Template code must be UPPER letters / digits / -_",
+        "duplicated": "Template code already exists"
+      },
+      "name": { "required": "Template name is required" },
+      "content": { "required": "Template content must not be empty" },
+      "status": { "invalid": "Invalid template status transition" },
+      "not_found": "Template not found",
+      "created": { "success": "Template {{code}} created" },
+      "updated": { "success": "Template {{code}} updated" },
+      "content_saved": { "success": "Template {{code}} content saved (v{{version}})" },
+      "published": { "success": "Template {{code}} published" },
+      "archived": { "success": "Template {{code}} archived" },
+      "deleted": { "success": "Template {{code}} deleted" }
+    },
+    "submission": {
+      "data": { "required": "Form data is required" },
+      "not_found": "Submission not found",
+      "submitted": { "success": "Form {{code}} generated" }
+    },
+    "conversion": {
+      "unsupported": "Word conversion is not enabled yet (requires Syncfusion DocIO — Phase 7)",
+      "failed": "Document conversion failed"
+    },
+    "import": {
+      "success": "Imported — {{count}} placeholders detected"
+    },
+    "export": {
+      "success": "File generated ({{fields}} fields)"
+    }
   }
 }

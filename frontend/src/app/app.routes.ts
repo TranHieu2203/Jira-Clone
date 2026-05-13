@@ -103,6 +103,16 @@ export const routes: Routes = [
           import('@features/settings/app-settings.page').then((m) => m.AppSettingsPageComponent)
       },
       {
+        path: 'form-management/editor',
+        loadComponent: () =>
+          import('@features/form-management/template-editor.page').then((m) => m.TemplateEditorPageComponent)
+      },
+      {
+        path: 'form-management/metadata',
+        loadComponent: () =>
+          import('@features/form-management/metadata-list.page').then((m) => m.MetadataListPageComponent)
+      },
+      {
         path: 'admin',
         canActivate: [adminRoleGuard],
         children: [
