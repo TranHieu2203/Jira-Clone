@@ -55,10 +55,16 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
             // FE Syncfusion DocumentEditor v33 không có client-side DOCX converter (cần serviceUrl HOẶC SFDT input);
             // ta serialize SFDT ở BE → trả qua API → FE gọi documentEditor.open(sfdt).
             var sfdt = ConvertToSfdt(fileBytes, ext);
+            // Extract watermark từ DocIO (SFDT format không preserve watermark — Syncfusion limitation).
+            // FE sẽ render CSS overlay với text này lên editor canvas; mail-merge BE-side vẫn dùng
+            // DocxBytes gốc để keep nguyên watermark trong output.
+            var watermarkText = ExtractWatermarkText(fileBytes, ext);
+            // Encode DOCX gốc → FE giữ trong state, gửi kèm save template để BE persist DocxBytes.
+            var docxBase64 = Convert.ToBase64String(fileBytes);
 
-            var dto = new TemplateImportResultDto(sfdt, placeholders);
-            _logger.LogInformation("Imported {File}: {Count} placeholders detected, SFDT {Bytes} bytes",
-                fileName, placeholders.Count, sfdt.Length);
+            var dto = new TemplateImportResultDto(sfdt, placeholders, docxBase64, watermarkText);
+            _logger.LogInformation("Imported {File}: {Count} placeholders, SFDT {SfdtBytes}b, watermark={Watermark}",
+                fileName, placeholders.Count, sfdt.Length, watermarkText ?? "(none)");
             return Task.FromResult(Result.Success(dto, "form_mgmt.import.success", new { count = placeholders.Count }));
         }
         catch (NotSupportedException)
@@ -83,6 +89,38 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
             ErrorType.Conflict,
             FormManagementErrors.MsgConversionUnsupported,
             new[] { new ResultError(FormManagementErrors.ConversionUnsupported, FormManagementErrors.MsgConversionUnsupported) }));
+    }
+
+    /// <summary>
+    /// Extract text watermark từ Word document dùng Syncfusion.DocIO. SFDT không preserve watermark
+    /// → FE render CSS overlay từ text này. Trả null nếu không có watermark hoặc là PictureWatermark.
+    /// </summary>
+    private static string? ExtractWatermarkText(byte[] bytes, string ext)
+    {
+        try
+        {
+            using var stream = new MemoryStream(bytes);
+            var docioFormat = ext switch
+            {
+                ".docx" => Syncfusion.DocIO.FormatType.Docx,
+                ".xml"  => Syncfusion.DocIO.FormatType.WordML,
+                ".rtf"  => Syncfusion.DocIO.FormatType.Rtf,
+                ".doc"  => Syncfusion.DocIO.FormatType.Doc,
+                _ => Syncfusion.DocIO.FormatType.Automatic
+            };
+            using var doc = new Syncfusion.DocIO.DLS.WordDocument(stream, docioFormat);
+            var wm = doc.Watermark;
+            if (wm is Syncfusion.DocIO.DLS.TextWatermark txt && !string.IsNullOrWhiteSpace(txt.Text))
+            {
+                return txt.Text.Trim();
+            }
+            return null;
+        }
+        catch
+        {
+            // Nếu DocIO không parse được watermark (corrupt header, format lạ…) — không block import.
+            return null;
+        }
     }
 
     /// <summary>

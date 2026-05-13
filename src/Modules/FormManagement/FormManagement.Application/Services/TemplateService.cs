@@ -69,7 +69,15 @@ public sealed class TemplateService : ITemplateService
         }
 
         var usedFieldsJson = Mappers.SerializeUsedFields(request.UsedFields ?? Array.Empty<string>());
-        var entity = new DocumentTemplate(code, request.Name, request.SfdtContent, request.Category, null, usedFieldsJson);
+        // DocxBase64 (nếu user import từ Word) → decode + persist DocxBytes. Bytes gốc cần cho
+        // mail-merge BE-side giữ nguyên watermark/formatting mà SFDT bị strip (Syncfusion limitation).
+        byte[]? docxBytes = null;
+        if (!string.IsNullOrWhiteSpace(request.DocxBase64))
+        {
+            try { docxBytes = Convert.FromBase64String(request.DocxBase64); }
+            catch (FormatException) { docxBytes = null; /* Base64 lỗi → ignore, không block create. */ }
+        }
+        var entity = new DocumentTemplate(code, request.Name, request.SfdtContent, request.Category, docxBytes, usedFieldsJson);
         await _repo.AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
 

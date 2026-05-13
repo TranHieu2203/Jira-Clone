@@ -96,6 +96,15 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
                                      (created)="onEditorCreated()">
         </ejs-documenteditorcontainer>
 
+        @if (watermarkText()) {
+          <!-- Visual watermark overlay: Syncfusion DocumentEditor v33 không render watermark từ SFDT.
+               Đây là CSS overlay text từ DocIO BE-side extracted; mail-merge export vẫn dùng DocxBytes
+               gốc nên file output thực có watermark thật trong header.xml. -->
+          <div class="watermark-overlay" aria-hidden="true">
+            <span>{{ watermarkText() }}</span>
+          </div>
+        }
+
         @if (mentionActive()) {
           <app-mention-popup #mention
                              [metadata]="metadata()"
@@ -190,6 +199,29 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
       box-shadow: inset 0 0 0 2px var(--c-text);
     }
 
+    /* Watermark visual overlay — pointer-events: none để không chặn click editor.
+       Position absolute centered, rotate -30deg như Word watermark mặc định. */
+    .watermark-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .watermark-overlay span {
+      font-size: clamp(48px, 8vw, 120px);
+      font-weight: 700;
+      color: rgba(120, 120, 120, 0.15);
+      transform: rotate(-30deg);
+      white-space: nowrap;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      user-select: none;
+    }
+
     .placeholders { display: flex; flex-direction: column; }
     .ph-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--c-border); }
     .ph-head strong { font-size: 13px; font-weight: 600; }
@@ -268,6 +300,11 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
   // Placeholders panel state
   readonly placeholders = signal<DetectedPlaceholder[]>([]);
   readonly activePlaceholderIndex = signal<number>(-1);
+
+  // Watermark visual overlay — text extracted từ DocIO BE-side (Syncfusion editor không
+  // render watermark gốc trong canvas). DocxBase64 giữ DOCX gốc để mail-merge sau preserve watermark thật.
+  readonly watermarkText = signal<string | null>(null);
+  private docxBase64: string | null = null;
 
   // Resizer state — width sidebar có thể chỉnh giữa min 200px - max 600px.
   private static readonly SIDEBAR_MIN = 200;
@@ -419,6 +456,8 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
         this.disableTrackChanges();
         this.placeholders.set([]);
         this.activePlaceholderIndex.set(-1);
+        this.watermarkText.set(null);
+        this.docxBase64 = null;
         this.status.set(`Loaded ${file.name}`);
         this.cdr.markForCheck();
       };
@@ -437,7 +476,11 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
           }
           this.placeholders.set(res.placeholders);
           this.activePlaceholderIndex.set(-1);
-          this.status.set(`Loaded ${file.name} — ${res.placeholders.length} placeholders.`);
+          // Lưu watermark + DOCX gốc cho overlay + future mail-merge save.
+          this.watermarkText.set(res.watermarkText ?? null);
+          this.docxBase64 = res.docxBase64 ?? null;
+          const wmInfo = res.watermarkText ? ` · watermark: ${res.watermarkText}` : '';
+          this.status.set(`Loaded ${file.name} — ${res.placeholders.length} placeholders${wmInfo}.`);
           this.cdr.markForCheck();
         }
       });

@@ -123,3 +123,10 @@ a:hover { text-decoration: underline; }
   border-color: var(--c-border) !important;
 }
 .p-datatable .p-datatable-tbody > tr:hover { background: var(--c-surface-2) !important; }
+
+
+/* Hide Syncfusion trial / invalid-license banner — global vì Syncfusion render directly under <body>.
+   Banner đặc trưng bởi inline style chứa "z-index: 999999999" + "position: fixed". */
+body > div[style*="z-index: 999999999"][style*="position: fixed"] {
+  display: none !important;
+}

@@ -12,9 +12,37 @@ export interface DetectedPlaceholder {
 }
 
 export interface TemplateImportResult {
-  /** BE Phase 6 trả rỗng — FE load file qua Syncfusion client-side. Phase 7 sẽ điền SFDT. */
+  /** SFDT JSON — FE truyền vào documentEditor.open(). */
   sfdtContent: string;
   placeholders: DetectedPlaceholder[];
+  /** DOCX gốc encoded base64 — giữ trong component state, gửi khi save template để mail-merge sau preserve formatting/watermark. */
+  docxBase64?: string;
+  /** Text watermark extracted từ DocIO — render CSS overlay vì Syncfusion DocumentEditor không hiển thị. */
+  watermarkText?: string | null;
+}
+
+export interface CreateTemplateRequest {
+  code: string;
+  name: string;
+  category?: string | null;
+  sfdtContent: string;
+  usedFields?: string[];
+  /** DOCX gốc base64 (từ TemplateImportResult.docxBase64). BE persist để mail-merge keep watermark. */
+  docxBase64?: string | null;
+}
+
+export interface TemplateDetail {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  sfdtContent: string;
+  usedFields: string[];
+  version: number;
+  status: number;
+  hasOriginalDocx: boolean;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,5 +56,9 @@ export class TemplateService {
     const fd = new FormData();
     fd.append('file', file);
     return this.http.post<TemplateImportResult>(`${this.base}/import`, fd);
+  }
+
+  create(body: CreateTemplateRequest): Observable<TemplateDetail> {
+    return this.http.post<TemplateDetail>(this.base, body);
   }
 }
