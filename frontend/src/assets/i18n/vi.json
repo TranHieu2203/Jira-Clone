@@ -18,7 +18,8 @@
     "yes": "Có",
     "no": "Không",
     "logout": "Đăng xuất",
-    "clear": "Xóa"
+    "clear": "Xóa",
+    "close": "Đóng"
   },
   "theme": {
     "toggle_aria": "Đổi giao diện sáng hoặc tối"
@@ -49,7 +50,8 @@
       "btn_import": "Import Word",
       "btn_save_sfdt": "Lưu SFDT",
       "btn_save_docx": "Tải DOCX",
-      "btn_reload_sidebar": "Tải lại sidebar"
+      "btn_reload_sidebar": "Tải lại sidebar",
+      "resize_handle": "Kéo để thay đổi rộng sidebar"
     },
     "sidebar": {
       "title": "Metadata",

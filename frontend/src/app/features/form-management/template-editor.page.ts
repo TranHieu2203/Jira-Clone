@@ -62,12 +62,21 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
               [label]="'form_mgmt.editor.btn_reload_sidebar' | translate"></button>
     </div>
 
-    <div class="workspace" [class.with-placeholders]="placeholders().length > 0">
+    <div class="workspace" [class.with-placeholders]="placeholders().length > 0"
+         [style.--sidebar-width.px]="sidebarWidth()">
       <app-metadata-sidebar
         class="sidebar"
         [metadata]="metadata()"
         (insert)="onInsertMetadata($event)">
       </app-metadata-sidebar>
+
+      <div class="resizer"
+           (mousedown)="onResizerMouseDown($event)"
+           [class.dragging]="isResizing()"
+           [attr.aria-label]="'form_mgmt.editor.resize_handle' | translate"
+           role="separator"
+           aria-orientation="vertical">
+      </div>
 
       <div #editorHost
            class="editor-host"
@@ -81,6 +90,7 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
                                      [enableTrackChanges]="false"
                                      [enableComment]="false"
                                      [restrictEditing]="false"
+                                     [showPropertiesPane]="false"
                                      serviceUrl=""
                                      height="100%"
                                      (created)="onEditorCreated()">
@@ -134,15 +144,40 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
     .toolbar .spacer { flex: 1; }
     .workspace {
       display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 12px;
+      grid-template-columns: var(--sidebar-width, 280px) 6px 1fr;
+      gap: 0;
       height: calc(100vh - 220px);
       min-height: 480px;
     }
     .workspace.with-placeholders {
-      grid-template-columns: 280px 1fr 300px;
+      grid-template-columns: var(--sidebar-width, 280px) 6px 1fr 300px;
     }
     .sidebar, .placeholders { border-radius: var(--radius); border: 1px solid var(--c-border); overflow: hidden; background: var(--c-surface); }
+    .placeholders { margin-left: 12px; }
+
+    /* Draggable resizer giữa sidebar và editor — drag horizontal để chỉnh sidebarWidth. */
+    .resizer {
+      cursor: col-resize;
+      background: transparent;
+      position: relative;
+      transition: background 0.12s ease;
+    }
+    .resizer::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0; left: 50%;
+      width: 1px;
+      background: var(--c-border);
+      transform: translateX(-50%);
+      transition: background 0.12s ease, width 0.12s ease;
+    }
+    .resizer:hover::before, .resizer.dragging::before {
+      background: var(--c-text);
+      width: 2px;
+    }
+    .resizer.dragging {
+      background: rgba(0, 0, 0, 0.04);
+    }
     .editor-host {
       border: 1px solid var(--c-border);
       border-radius: var(--radius);
@@ -170,6 +205,15 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
     .ph-pattern { font-size: 10px; color: var(--c-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
     .ph-text { font-family: ui-monospace, monospace; font-size: 12px; color: var(--c-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+    /* Force-hide Syncfusion property pane (right side TEXT/Paragraph format panel).
+       LƯU Ý: KHÔNG hide .e-documenteditor-optionspane — đó là wrapper chứa LUÔN cả canvas editor.
+       Đúng selector: .e-de-pane (sibling của .e-documenteditor trong flex parent
+       .e-de-tool-ctnr-properties-pane). Cộng với toggle button. */
+    :host ::ng-deep .e-de-pane,
+    :host ::ng-deep .e-de-ctnr-properties-pane-btn {
+      display: none !important;
+    }
+
     /* Force-hide Syncfusion track-changes / review UI để user không vô tình toggle.
        Cấm Review tab, Track Changes pane, Restrict Editing button. */
     :host ::ng-deep .e-de-tc-button,
@@ -190,7 +234,9 @@ import { DetectedPlaceholder, TemplateService } from './template.service';
       .workspace, .workspace.with-placeholders { grid-template-columns: 1fr; height: auto; }
       .sidebar { height: 320px; }
       .editor-host { height: calc(100vh - 560px); min-height: 360px; }
-      .placeholders { height: 240px; }
+      .placeholders { height: 240px; margin-left: 0; }
+      /* Resizer chỉ hợp lý ở desktop grid 2-3 cột — hide ở mobile stack. */
+      .resizer { display: none; }
     }
   `]
 })
@@ -223,6 +269,16 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
   readonly placeholders = signal<DetectedPlaceholder[]>([]);
   readonly activePlaceholderIndex = signal<number>(-1);
 
+  // Resizer state — width sidebar có thể chỉnh giữa min 200px - max 600px.
+  private static readonly SIDEBAR_MIN = 200;
+  private static readonly SIDEBAR_MAX = 600;
+  readonly sidebarWidth = signal<number>(280);
+  readonly isResizing = signal<boolean>(false);
+  private resizeStartX = 0;
+  private resizeStartWidth = 0;
+  private resizeMoveListener?: (e: MouseEvent) => void;
+  private resizeUpListener?: () => void;
+
   private dropEnterCount = 0;
 
   private get container(): SfDocEditorContainer | undefined {
@@ -248,6 +304,9 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
       });
     }
     this.iframeObserver?.disconnect();
+    // Cleanup resize listeners nếu component destroy giữa drag.
+    if (this.resizeMoveListener) document.removeEventListener('mousemove', this.resizeMoveListener);
+    if (this.resizeUpListener) document.removeEventListener('mouseup', this.resizeUpListener);
     this.container?.destroy?.();
   }
 
@@ -427,6 +486,43 @@ export class TemplateEditorPageComponent implements OnInit, AfterViewInit, OnDes
 
   truncate(text: string): string {
     return text.length > 28 ? text.slice(0, 28) + '…' : text;
+  }
+
+  // ============== Resizer (drag sidebar/editor divider) ==============
+  onResizerMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    this.resizeStartX = event.clientX;
+    this.resizeStartWidth = this.sidebarWidth();
+    this.isResizing.set(true);
+
+    // Listener attach lên document để vẫn bắt mousemove khi cursor rời resizer.
+    this.resizeMoveListener = (e: MouseEvent) => this.onResizerMouseMove(e);
+    this.resizeUpListener = () => this.onResizerMouseUp();
+    document.addEventListener('mousemove', this.resizeMoveListener);
+    document.addEventListener('mouseup', this.resizeUpListener);
+    // Disable text selection trong khi drag.
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  }
+
+  private onResizerMouseMove(event: MouseEvent): void {
+    const delta = event.clientX - this.resizeStartX;
+    const next = this.resizeStartWidth + delta;
+    const clamped = Math.max(
+      TemplateEditorPageComponent.SIDEBAR_MIN,
+      Math.min(TemplateEditorPageComponent.SIDEBAR_MAX, next)
+    );
+    this.sidebarWidth.set(clamped);
+  }
+
+  private onResizerMouseUp(): void {
+    this.isResizing.set(false);
+    if (this.resizeMoveListener) document.removeEventListener('mousemove', this.resizeMoveListener);
+    if (this.resizeUpListener) document.removeEventListener('mouseup', this.resizeUpListener);
+    this.resizeMoveListener = undefined;
+    this.resizeUpListener = undefined;
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
   }
 
   // ============== Drag-drop ==============

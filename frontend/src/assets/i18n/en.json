@@ -18,7 +18,8 @@
     "yes": "Yes",
     "no": "No",
     "logout": "Logout",
-    "clear": "Clear"
+    "clear": "Clear",
+    "close": "Close"
   },
   "theme": {
     "toggle_aria": "Switch light or dark theme"
@@ -49,7 +50,8 @@
       "btn_import": "Import Word",
       "btn_save_sfdt": "Save SFDT",
       "btn_save_docx": "Download DOCX",
-      "btn_reload_sidebar": "Reload sidebar"
+      "btn_reload_sidebar": "Reload sidebar",
+      "resize_handle": "Drag to resize sidebar"
     },
     "sidebar": {
       "title": "Metadata",
