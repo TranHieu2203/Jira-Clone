@@ -14,7 +14,7 @@ internal static class Mappers
             t.CreatedAt, t.UpdatedAt);
 
     public static TemplateDetailDto ToDetailDto(DocumentTemplate t) =>
-        new(t.Id, t.Code, t.Name, t.Category, t.SfdtContent,
+        new(t.Id, t.Code, t.Name, t.Category,
             ParseUsedFields(t.UsedFieldsJson),
             t.Version, t.Status,
             HasOriginalDocx: t.DocxBytes is { Length: > 0 },

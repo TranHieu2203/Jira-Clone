@@ -69,15 +69,17 @@ public sealed class TemplateService : ITemplateService
         }
 
         var usedFieldsJson = Mappers.SerializeUsedFields(request.UsedFields ?? Array.Empty<string>());
-        // DocxBase64 (nếu user import từ Word) → decode + persist DocxBytes. Bytes gốc cần cho
-        // mail-merge BE-side giữ nguyên watermark/formatting mà SFDT bị strip (Syncfusion limitation).
-        byte[]? docxBytes = null;
-        if (!string.IsNullOrWhiteSpace(request.DocxBase64))
+        // DocxBase64 = DOCX gốc từ FE import. Decode + persist vào DocumentTemplate.DocxBytes.
+        // OnlyOffice DocServer sẽ fetch bytes này qua GET /templates/{id}/file để render.
+        byte[] docxBytes;
+        try { docxBytes = Convert.FromBase64String(request.DocxBase64); }
+        catch (FormatException)
         {
-            try { docxBytes = Convert.FromBase64String(request.DocxBase64); }
-            catch (FormatException) { docxBytes = null; /* Base64 lỗi → ignore, không block create. */ }
+            return Result.Failure<TemplateDetailDto>(
+                ErrorType.Validation, FormManagementErrors.MsgTemplateContentRequired,
+                new[] { new ResultError(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired, "docxBase64") });
         }
-        var entity = new DocumentTemplate(code, request.Name, request.SfdtContent, request.Category, docxBytes, usedFieldsJson);
+        var entity = new DocumentTemplate(code, request.Name, docxBytes, request.Category, usedFieldsJson);
         await _repo.AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
 
@@ -105,7 +107,15 @@ public sealed class TemplateService : ITemplateService
         var t = await _repo.GetByIdAsync(id, ct);
         if (t is null) return Result.Failure<TemplateDetailDto>(ErrorType.NotFound, FormManagementErrors.MsgTemplateNotFound);
 
-        t.UpdateContent(request.SfdtContent, Mappers.SerializeUsedFields(request.UsedFields));
+        byte[] docxBytes;
+        try { docxBytes = Convert.FromBase64String(request.DocxBase64); }
+        catch (FormatException)
+        {
+            return Result.Failure<TemplateDetailDto>(
+                ErrorType.Validation, FormManagementErrors.MsgTemplateContentRequired,
+                new[] { new ResultError(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired, "docxBase64") });
+        }
+        t.UpdateContent(docxBytes, Mappers.SerializeUsedFields(request.UsedFields));
         _repo.Update(t);
         await _uow.SaveChangesAsync(ct);
         return Result.Success(Mappers.ToDetailDto(t), "form_mgmt.template.content_saved.success", new { code = t.Code, version = t.Version });
@@ -147,4 +157,27 @@ public sealed class TemplateService : ITemplateService
 
     public Task<Result<TemplateImportResultDto>> ImportFromWordAsync(byte[] fileBytes, string fileName, CancellationToken ct = default) =>
         _conversion.ImportFromWordAsync(fileBytes, fileName, ct);
+
+    public async Task<Result<byte[]>> GetDocxBytesAsync(Guid id, CancellationToken ct = default)
+    {
+        var t = await _repo.GetByIdAsync(id, ct);
+        if (t is null) return Result.Failure<byte[]>(ErrorType.NotFound, FormManagementErrors.MsgTemplateNotFound);
+        if (t.DocxBytes is null || t.DocxBytes.Length == 0)
+            return Result.Failure<byte[]>(ErrorType.NotFound, FormManagementErrors.MsgTemplateContentRequired);
+        return Result.Success(t.DocxBytes);
+    }
+
+    public async Task<Result> ReplaceDocxBytesAsync(Guid id, byte[] docxBytes, CancellationToken ct = default)
+    {
+        if (docxBytes is null || docxBytes.Length == 0)
+            return Result.Failure(ErrorType.Validation, FormManagementErrors.MsgTemplateContentRequired);
+        var t = await _repo.GetByIdAsync(id, ct);
+        if (t is null) return Result.Failure(ErrorType.NotFound, FormManagementErrors.MsgTemplateNotFound);
+
+        t.UpdateContent(docxBytes, t.UsedFieldsJson);
+        _repo.Update(t);
+        await _uow.SaveChangesAsync(ct);
+        _logger.LogInformation("Template {Code} (Id={Id}) DOCX updated via OnlyOffice callback, version={V}", t.Code, t.Id, t.Version);
+        return Result.Success(messageKey: "form_mgmt.template.content_saved.success", messageArgs: new { code = t.Code, version = t.Version });
+    }
 }

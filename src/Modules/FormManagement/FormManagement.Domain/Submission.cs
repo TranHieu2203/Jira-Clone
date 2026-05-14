@@ -12,11 +12,11 @@ public sealed class Submission : AggregateRoot
     /// <summary>JSON serialized data { fieldValue: data }. Oracle-neutral CLOB/TEXT.</summary>
     public string DataJson { get; private set; } = "{}";
     public string? OutputPath { get; private set; }
-    public ExportFormat ExportFormat { get; private set; } = ExportFormat.WordML2003;
+    public ExportFormat ExportFormat { get; private set; } = ExportFormat.Docx;
 
     private Submission() { }
 
-    public Submission(Guid templateId, int templateVersion, string dataJson, ExportFormat exportFormat = ExportFormat.WordML2003)
+    public Submission(Guid templateId, int templateVersion, string dataJson, ExportFormat exportFormat = ExportFormat.Docx)
     {
         if (templateId == Guid.Empty)
             throw new DomainException(FormManagementErrors.TemplateNotFound, FormManagementErrors.MsgTemplateNotFound);

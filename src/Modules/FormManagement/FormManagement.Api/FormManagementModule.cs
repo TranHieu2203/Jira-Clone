@@ -26,11 +26,9 @@ public static class FormManagementModule
         services.AddScoped<ITemplateService, TemplateService>();
         services.AddScoped<ISubmissionService, SubmissionService>();
 
-        // Phase 7: Syncfusion DocIO cho mail-merge (export Word 2003 XML / Docx).
-        // Import (Phase 6) vẫn delegate sang OpenXmlDocumentConversionService — lightweight, không cần license.
-        // Cần register cả 2: composite Syncfusion service được Inject vào ITemplateService/ISubmissionService.
-        services.AddScoped<OpenXmlDocumentConversionService>();
-        services.AddScoped<IDocumentConversionService, SyncfusionDocumentConversionService>();
+        // OpenXml + Clippit cho cả detect placeholder + mail-merge. Không Syncfusion → không license.
+        // FE OnlyOffice DocServer render DOCX native, BE chỉ cần parse + mail-merge bytes.
+        services.AddScoped<IDocumentConversionService, OpenXmlDocumentConversionService>();
 
         services.AddValidatorsFromAssemblyContaining<CreateMetadataValidator>();
         return services;

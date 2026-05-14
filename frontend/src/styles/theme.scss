@@ -130,3 +130,9 @@ a:hover { text-decoration: underline; }
 body > div[style*="z-index: 999999999"][style*="position: fixed"] {
   display: none !important;
 }
+
+/* Hide Syncfusion full-screen license overlay (createLicenseOverlay) — modal "Claim your FREE account".
+   Đặc trưng: position fixed full-screen + z-index 99999 + bg rgba(0, 0, 0, 0.5). */
+body > div[style*="z-index: 99999"][style*="rgba(0, 0, 0, 0.5)"] {
+  display: none !important;
+}

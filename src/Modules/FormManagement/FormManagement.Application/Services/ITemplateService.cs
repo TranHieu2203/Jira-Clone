@@ -15,6 +15,12 @@ public interface ITemplateService
     Task<Result<TemplateDetailDto>> ArchiveAsync(Guid id, CancellationToken ct = default);
     Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Import .docx / Word XML qua DocIO → SFDT + danh sách placeholder detected.</summary>
+    /// <summary>Parse DOCX để detect placeholder + trả về base64 cho FE state. Không persist template.</summary>
     Task<Result<TemplateImportResultDto>> ImportFromWordAsync(byte[] fileBytes, string fileName, CancellationToken ct = default);
+
+    /// <summary>Lấy raw DOCX bytes của template (OnlyOffice DocServer fetch qua endpoint này).</summary>
+    Task<Result<byte[]>> GetDocxBytesAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>OnlyOffice DocServer save callback: replace DOCX bytes + bump version.</summary>
+    Task<Result> ReplaceDocxBytesAsync(Guid id, byte[] docxBytes, CancellationToken ct = default);
 }

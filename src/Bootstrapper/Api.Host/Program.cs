@@ -40,10 +40,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseBbSerilog();
 
-// Phase 7: register Syncfusion BE license ngay đầu startup (trước khi DocIO bị load).
-// Key đọc từ appsettings:Syncfusion:LicenseKey hoặc env SYNCFUSION__LICENSEKEY.
-FormManagement.Infrastructure.SyncfusionLicense.Register(builder.Configuration);
-
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection(DatabaseOptions.SectionName));
 
 builder.Services.AddBbWeb();

@@ -68,10 +68,9 @@ public enum TemplateStatus
     Archived = 3
 }
 
-/// <summary>Format export khi mail-merge submission.</summary>
+/// <summary>Format export khi mail-merge submission. DOCX là default; PDF qua OnlyOffice DocServer.</summary>
 public enum ExportFormat
 {
-    WordML2003 = 1,
     Docx = 2,
     Pdf = 3
 }

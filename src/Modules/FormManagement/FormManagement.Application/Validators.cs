@@ -48,7 +48,7 @@ public sealed class CreateTemplateValidator : AbstractValidator<CreateTemplateRe
         RuleFor(x => x.Name).NotEmpty().MaximumLength(255)
             .WithErrorCode(FormManagementErrors.TemplateNameRequired)
             .WithMessage(FormManagementErrors.MsgTemplateNameRequired);
-        RuleFor(x => x.SfdtContent).NotEmpty()
+        RuleFor(x => x.DocxBase64).NotEmpty()
             .WithErrorCode(FormManagementErrors.TemplateContentRequired)
             .WithMessage(FormManagementErrors.MsgTemplateContentRequired);
     }
@@ -68,7 +68,7 @@ public sealed class UpdateTemplateContentValidator : AbstractValidator<UpdateTem
 {
     public UpdateTemplateContentValidator()
     {
-        RuleFor(x => x.SfdtContent).NotEmpty()
+        RuleFor(x => x.DocxBase64).NotEmpty()
             .WithErrorCode(FormManagementErrors.TemplateContentRequired)
             .WithMessage(FormManagementErrors.MsgTemplateContentRequired);
     }

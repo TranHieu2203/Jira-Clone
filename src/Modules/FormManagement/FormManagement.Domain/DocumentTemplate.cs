@@ -30,7 +30,12 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
 
     private DocumentTemplate() { }
 
-    public DocumentTemplate(string code, string name, string sfdtContent, string? category = null, byte[]? docxBytes = null, string? usedFieldsJson = null)
+    /// <summary>
+    /// Tạo template. Phase OnlyOffice: <paramref name="docxBytes"/> là source of truth (FE editor
+    /// fetch DOCX bytes qua endpoint, OnlyOffice DocServer render native). <c>SfdtContent</c> kept
+    /// trong domain để giữ migration cũ — empty cho template tạo qua OnlyOffice flow.
+    /// </summary>
+    public DocumentTemplate(string code, string name, byte[] docxBytes, string? category = null, string? usedFieldsJson = null)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new DomainException(FormManagementErrors.TemplateCodeRequired, FormManagementErrors.MsgTemplateCodeRequired);
@@ -39,13 +44,13 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
             throw new DomainException(FormManagementErrors.TemplateCodeInvalid, FormManagementErrors.MsgTemplateCodeInvalid);
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException(FormManagementErrors.TemplateNameRequired, FormManagementErrors.MsgTemplateNameRequired);
-        if (string.IsNullOrWhiteSpace(sfdtContent))
+        if (docxBytes is null || docxBytes.Length == 0)
             throw new DomainException(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired);
 
         Code = trimmedCode;
         Name = name.Trim();
         Category = category?.Trim();
-        SfdtContent = sfdtContent;
+        SfdtContent = string.Empty;
         DocxBytes = docxBytes;
         UsedFieldsJson = usedFieldsJson ?? "[]";
     }
@@ -58,12 +63,12 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
         Category = category?.Trim();
     }
 
-    /// <summary>Update nội dung soạn thảo. Tăng version để FE biết submission cũ có thể đã lệch schema.</summary>
-    public void UpdateContent(string sfdtContent, string usedFieldsJson)
+    /// <summary>Replace DOCX bytes + bumped version (cho callback từ OnlyOffice DocServer).</summary>
+    public void UpdateContent(byte[] docxBytes, string usedFieldsJson)
     {
-        if (string.IsNullOrWhiteSpace(sfdtContent))
+        if (docxBytes is null || docxBytes.Length == 0)
             throw new DomainException(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired);
-        SfdtContent = sfdtContent;
+        DocxBytes = docxBytes;
         UsedFieldsJson = usedFieldsJson;
         Version++;
     }

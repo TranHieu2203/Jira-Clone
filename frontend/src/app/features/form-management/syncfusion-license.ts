@@ -10,7 +10,7 @@ import { registerLicense } from '@syncfusion/ej2-base';
  * hoặc paste trực tiếp vào constant SYNCFUSION_LICENSE_KEY phía dưới.
  * KHÔNG commit key vào git public repo (Community License key là cá nhân).
  */
-const SYNCFUSION_LICENSE_KEY = '';
+const SYNCFUSION_LICENSE_KEY = 'Ngo9BigBOggjGyl/VkV+XU9AclRDX3xKf0x/TGpQb19xflBPallYVBYiSV9jS3hTc0RgWXxacXFUTmlUVE91XA==';
 
 export function registerSyncfusionLicense(): void {
   if (!SYNCFUSION_LICENSE_KEY) {

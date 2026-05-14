@@ -53,11 +53,10 @@ public sealed class TemplatesController : BaseController
         ToResponse(await _service.DeleteAsync(id, ct));
 
     /// <summary>
-    /// Import file .docx / Word XML → SFDT JSON + danh sách placeholder.
-    /// Phase 2 trả 409 ConversionUnsupported (stub). Phase 6 sẽ thay bằng Syncfusion DocIO impl.
+    /// Parse DOCX, detect placeholder + return base64 — FE giữ trong state, gửi kèm khi save template.
     /// </summary>
     [HttpPost("import")]
-    [RequestSizeLimit(20 * 1024 * 1024)] // 20MB cap cho file Word.
+    [RequestSizeLimit(20 * 1024 * 1024)] // 20MB cap cho file DOCX.
     public async Task<IActionResult> ImportFromWord([FromForm] IFormFile file, CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -67,4 +66,57 @@ public sealed class TemplatesController : BaseController
         await file.CopyToAsync(ms, ct);
         return ToResponse(await _service.ImportFromWordAsync(ms.ToArray(), file.FileName, ct));
     }
+
+    /// <summary>
+    /// OnlyOffice Document Server fetch DOCX bytes của template qua endpoint này.
+    /// AllowAnonymous: OnlyOffice DocServer chạy server-to-server không có user JWT — security
+    /// nên via IP whitelist hoặc OnlyOffice JWT (chưa enable ở POC).
+    /// </summary>
+    [HttpGet("{id:guid}/file")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DownloadDocx(Guid id, CancellationToken ct)
+    {
+        var result = await _service.GetDocxBytesAsync(id, ct);
+        if (result.IsFailure) return ToResponse(result);
+        var bytes = result.Data!;
+        return File(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            fileDownloadName: $"{id}.docx");
+    }
+
+    /// <summary>
+    /// OnlyOffice Document Server callback endpoint — gọi khi user save document trong editor.
+    /// DocServer POST JSON với status/url. status=2 (ready to save) hoặc 6 (force save).
+    /// Spec: https://api.onlyoffice.com/editors/callback
+    /// </summary>
+    [HttpPost("{id:guid}/callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> OnlyOfficeCallback(Guid id, [FromBody] OnlyOfficeCallbackPayload payload, CancellationToken ct)
+    {
+        // Status 2 = MustSave (closed by all users); 6 = MustForcesave (autosave/manual save).
+        if (payload?.Status is 2 or 6 && !string.IsNullOrWhiteSpace(payload.Url))
+        {
+            using var http = new HttpClient();
+            byte[] docxBytes = await http.GetByteArrayAsync(payload.Url, ct);
+            var result = await _service.ReplaceDocxBytesAsync(id, docxBytes, ct);
+            if (result.IsFailure)
+            {
+                // OnlyOffice docs: trả error != 0 để DocServer biết save fail.
+                return Ok(new { error = 1 });
+            }
+        }
+        // OnlyOffice required ack: { error: 0 }.
+        return Ok(new { error = 0 });
+    }
+}
+
+/// <summary>
+/// Payload từ OnlyOffice Document Server callback. Spec: https://api.onlyoffice.com/editors/callback
+/// </summary>
+public sealed class OnlyOfficeCallbackPayload
+{
+    public int Status { get; set; }
+    public string? Url { get; set; }
+    public string? Key { get; set; }
+    public string[]? Users { get; set; }
+    public string? UserData { get; set; }
 }

@@ -90,7 +90,6 @@ public sealed class SubmissionService : ISubmissionService
     private static (string FileName, string ContentType) MapExportFormat(string templateCode, ExportFormat format) =>
         format switch
         {
-            ExportFormat.WordML2003 => ($"{templateCode}.xml", "application/vnd.ms-word"),
             ExportFormat.Docx => ($"{templateCode}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             ExportFormat.Pdf => ($"{templateCode}.pdf", "application/pdf"),
             _ => ($"{templateCode}.bin", "application/octet-stream")

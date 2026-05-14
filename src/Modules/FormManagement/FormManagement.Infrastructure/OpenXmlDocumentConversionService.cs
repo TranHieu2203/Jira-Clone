@@ -1,34 +1,35 @@
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 using BB.Common;
+using Clippit;
+using Clippit.Word;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using FormManagement.Application;
 using FormManagement.Application.Services;
 using FormManagement.Domain;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using EjWord = Syncfusion.EJ2.DocumentEditor;
 
 namespace FormManagement.Infrastructure;
 
 /// <summary>
-/// Hiện thực <see cref="IDocumentConversionService"/> bằng DocumentFormat.OpenXml (MIT, Microsoft official).
-/// Phase 6 chỉ cần detect placeholder — SFDT JSON sẽ do FE Syncfusion DocumentEditor tự load qua
-/// <c>documentEditor.open(file)</c> client-side.
-///
-/// Mail-merge (Phase 7) vẫn chưa hỗ trợ vì cần Syncfusion DocIO/DocumentEditor server-side (license-locked).
+/// DOCX-only document service: detect placeholders + mail-merge.
+/// <para>Stack: DocumentFormat.OpenXml (Microsoft, MIT) cho parsing + Clippit (OpenXmlPowerTools fork, MIT)
+/// cho mail-merge field replacement. Không Syncfusion → không license, không trial watermark.</para>
+/// <para>FE OnlyOffice DocumentEditor render DOCX native — BE không cần convert SFDT.</para>
 /// </summary>
 public sealed class OpenXmlDocumentConversionService : IDocumentConversionService
 {
-    // 4 pattern theo form.md §2 + value extract regex riêng cho «...» để lưu tên field.
+    private static readonly CultureInfo VnCulture = CultureInfo.GetCultureInfo("vi-VN");
+
+    // 4 pattern theo form.md §2.
     private static readonly (string Pattern, Regex Regex)[] Patterns =
     {
-        ("dots",        new Regex(@"\.{3,}",         RegexOptions.Compiled)),
-        ("underscores", new Regex(@"_{3,}",          RegexOptions.Compiled)),
+        ("dots",        new Regex(@"\.{3,}",          RegexOptions.Compiled)),
+        ("underscores", new Regex(@"_{3,}",           RegexOptions.Compiled)),
         ("brackets",    new Regex(@"\[[^\]]{1,50}\]", RegexOptions.Compiled)),
-        ("guillemets",  new Regex(@"«([^»]+)»",      RegexOptions.Compiled))
+        ("guillemets",  new Regex(@"«([^»]+)»",       RegexOptions.Compiled))
     };
 
     private readonly ILogger<OpenXmlDocumentConversionService> _logger;
@@ -38,40 +39,25 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
         _logger = logger;
     }
 
-    public Task<Result<TemplateImportResultDto>> ImportFromWordAsync(byte[] fileBytes, string fileName, CancellationToken ct = default)
+    public Task<Result<TemplateImportResultDto>> ImportFromWordAsync(byte[] docxBytes, string fileName, CancellationToken ct = default)
     {
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
-        try
-        {
-            string text = ext switch
-            {
-                ".docx" => ExtractTextFromDocx(fileBytes),
-                ".xml"  => ExtractTextFromWord2003Xml(fileBytes),
-                _ => throw new NotSupportedException($"Unsupported file format: {ext}")
-            };
-
-            var placeholders = DetectPlaceholders(text);
-            // Convert DOCX/Word2003XML → SFDT JSON dùng Syncfusion.EJ2.WordEditor.AspNet.Core.
-            // FE Syncfusion DocumentEditor v33 không có client-side DOCX converter (cần serviceUrl HOẶC SFDT input);
-            // ta serialize SFDT ở BE → trả qua API → FE gọi documentEditor.open(sfdt).
-            var sfdt = ConvertToSfdt(fileBytes, ext);
-            // Extract watermark từ DocIO (SFDT format không preserve watermark — Syncfusion limitation).
-            // FE sẽ render CSS overlay với text này lên editor canvas; mail-merge BE-side vẫn dùng
-            // DocxBytes gốc để keep nguyên watermark trong output.
-            var watermarkText = ExtractWatermarkText(fileBytes, ext);
-            // Encode DOCX gốc → FE giữ trong state, gửi kèm save template để BE persist DocxBytes.
-            var docxBase64 = Convert.ToBase64String(fileBytes);
-
-            var dto = new TemplateImportResultDto(sfdt, placeholders, docxBase64, watermarkText);
-            _logger.LogInformation("Imported {File}: {Count} placeholders, SFDT {SfdtBytes}b, watermark={Watermark}",
-                fileName, placeholders.Count, sfdt.Length, watermarkText ?? "(none)");
-            return Task.FromResult(Result.Success(dto, "form_mgmt.import.success", new { count = placeholders.Count }));
-        }
-        catch (NotSupportedException)
+        if (ext != ".docx")
         {
             return Task.FromResult(Result.Failure<TemplateImportResultDto>(
                 ErrorType.Validation, FormManagementErrors.MsgConversionUnsupported,
                 new[] { new ResultError(FormManagementErrors.ConversionUnsupported, FormManagementErrors.MsgConversionUnsupported, "file") }));
+        }
+
+        try
+        {
+            var text = ExtractTextFromDocx(docxBytes);
+            var placeholders = DetectPlaceholders(text);
+
+            var dto = new TemplateImportResultDto(placeholders, Convert.ToBase64String(docxBytes));
+            _logger.LogInformation("Imported {File}: {Count} placeholders, {Bytes} bytes",
+                fileName, placeholders.Count, docxBytes.Length);
+            return Task.FromResult(Result.Success(dto, "form_mgmt.import.success", new { count = placeholders.Count }));
         }
         catch (Exception ex)
         {
@@ -82,149 +68,83 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
         }
     }
 
-    public Task<Result<byte[]>> MailMergeAsync(byte[] docxBytes, IReadOnlyDictionary<string, object?> data, ExportFormat format, CancellationToken ct = default)
+    public Task<Result<byte[]>> MailMergeAsync(
+        byte[] docxBytes,
+        IReadOnlyDictionary<string, object?> data,
+        ExportFormat format,
+        CancellationToken ct = default)
     {
-        // Phase 7 sẽ implement bằng Syncfusion.DocIO.Net.Core. Hiện trả ConversionUnsupported.
-        return Task.FromResult(Result.Failure<byte[]>(
-            ErrorType.Conflict,
-            FormManagementErrors.MsgConversionUnsupported,
-            new[] { new ResultError(FormManagementErrors.ConversionUnsupported, FormManagementErrors.MsgConversionUnsupported) }));
-    }
+        if (docxBytes is null || docxBytes.Length == 0)
+        {
+            return Task.FromResult(Result.Failure<byte[]>(
+                ErrorType.Validation, FormManagementErrors.MsgConversionUnsupported,
+                new[] { new ResultError(FormManagementErrors.ConversionUnsupported, FormManagementErrors.MsgConversionUnsupported) }));
+        }
 
-    /// <summary>
-    /// Extract text watermark từ Word document dùng Syncfusion.DocIO. SFDT không preserve watermark
-    /// → FE render CSS overlay từ text này. Trả null nếu không có watermark hoặc là PictureWatermark.
-    /// </summary>
-    private static string? ExtractWatermarkText(byte[] bytes, string ext)
-    {
         try
         {
-            using var stream = new MemoryStream(bytes);
-            var docioFormat = ext switch
+            // Pre-format data theo prefix/suffix tên field (vi-VN) trước khi merge.
+            var formatted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kv in data)
             {
-                ".docx" => Syncfusion.DocIO.FormatType.Docx,
-                ".xml"  => Syncfusion.DocIO.FormatType.WordML,
-                ".rtf"  => Syncfusion.DocIO.FormatType.Rtf,
-                ".doc"  => Syncfusion.DocIO.FormatType.Doc,
-                _ => Syncfusion.DocIO.FormatType.Automatic
-            };
-            using var doc = new Syncfusion.DocIO.DLS.WordDocument(stream, docioFormat);
-            var wm = doc.Watermark;
-            if (wm is Syncfusion.DocIO.DLS.TextWatermark txt && !string.IsNullOrWhiteSpace(txt.Text))
-            {
-                return txt.Text.Trim();
+                formatted[kv.Key] = FormatFieldValue(kv.Key, kv.Value);
             }
-            return null;
+
+            byte[] outputDocx = ReplaceMergeFieldsInDocx(docxBytes, formatted);
+
+            if (format == ExportFormat.Docx)
+            {
+                _logger.LogInformation("Mail-merge done: {Fields} fields, {Bytes}b DOCX", formatted.Count, outputDocx.Length);
+                return Task.FromResult(Result.Success(outputDocx, "form_mgmt.export.success", new { fields = formatted.Count }));
+            }
+
+            // PDF: cần OnlyOffice DocServer convert (Phase R7+). Hiện trả error rõ ràng.
+            return Task.FromResult(Result.Failure<byte[]>(
+                ErrorType.Validation, FormManagementErrors.MsgConversionUnsupported,
+                new[] { new ResultError(FormManagementErrors.ConversionUnsupported, FormManagementErrors.MsgConversionUnsupported) }));
         }
-        catch
+        catch (Exception ex)
         {
-            // Nếu DocIO không parse được watermark (corrupt header, format lạ…) — không block import.
-            return null;
+            _logger.LogError(ex, "Mail-merge failed");
+            return Task.FromResult(Result.Failure<byte[]>(
+                ErrorType.Unexpected, FormManagementErrors.MsgConversionFailed,
+                new[] { new ResultError(FormManagementErrors.ConversionFailed, FormManagementErrors.MsgConversionFailed) }));
         }
     }
 
-    /// <summary>
-    /// Convert DOCX/DOC/Word 2003 XML/RTF → SFDT JSON dùng Syncfusion.EJ2.WordEditor.AspNet.Core.
-    /// FE editor sẽ gọi <c>documentEditor.open(sfdtString)</c>.
-    /// </summary>
-    private static string ConvertToSfdt(byte[] bytes, string ext)
-    {
-        using var stream = new MemoryStream(bytes);
-        var format = ext switch
-        {
-            ".docx" => EjWord.FormatType.Docx,
-            ".doc"  => EjWord.FormatType.Doc,
-            ".xml"  => EjWord.FormatType.WordML,
-            ".rtf"  => EjWord.FormatType.Rtf,
-            ".txt"  => EjWord.FormatType.Txt,
-            _ => EjWord.FormatType.Docx
-        };
-        var document = EjWord.WordDocument.Load(stream, format);
-        var sfdt = JsonConvert.SerializeObject(document);
-        document.Dispose();
-        // Scrub track-changes / revisions flag từ SFDT trước khi gửi xuống FE:
-        // Syncfusion editor restore enableTrackChanges từ documentSettings ngay sau open() →
-        // override property set ở client. Cách an toàn nhất: bỏ flag ngay trong JSON gốc.
-        return ScrubTrackChanges(sfdt);
-    }
+    // ============== Extraction + detection ==============
 
     /// <summary>
-    /// Patch SFDT JSON: set protectionType=NoProtection, clear revisions array, đặt
-    /// trackChanges/enforcement=false. Idempotent — không thêm field nếu chưa tồn tại.
-    /// </summary>
-    private static string ScrubTrackChanges(string sfdt)
-    {
-        try
-        {
-            var obj = Newtonsoft.Json.Linq.JObject.Parse(sfdt);
-            // Common SFDT v33 settings field names. Set false nếu tồn tại.
-            foreach (var key in new[] { "trackChanges", "enforcement", "isLockChanges" })
-            {
-                if (obj[key] != null) obj[key] = false;
-            }
-            // Clear revisions collection (existing tracked-changes từ Word gốc).
-            if (obj["revisions"] is Newtonsoft.Json.Linq.JArray)
-            {
-                obj["revisions"] = new Newtonsoft.Json.Linq.JArray();
-            }
-            return obj.ToString(Newtonsoft.Json.Formatting.None);
-        }
-        catch
-        {
-            // Nếu parse fail vì SFDT shape khác kỳ vọng → trả SFDT gốc, không block import.
-            return sfdt;
-        }
-    }
-
-    /// <summary>
-    /// Đọc text từ .docx bằng OpenXml SDK. DOCX là ZIP package chứa word/document.xml;
-    /// text trong nhiều phần tử &lt;w:t&gt; có thể bị tách bởi format runs — ta concatenate
-    /// theo thứ tự document để regex thấy chuỗi liên tục.
+    /// Đọc text từ DOCX bằng OpenXml SDK. Text trong nhiều &lt;w:t&gt; có thể bị tách bởi format
+    /// runs → concatenate theo thứ tự để regex thấy chuỗi liên tục. Cũng đọc text trong header/footer.
     /// </summary>
     private static string ExtractTextFromDocx(byte[] bytes)
     {
         using var ms = new MemoryStream(bytes);
         using var doc = WordprocessingDocument.Open(ms, isEditable: false);
-        var body = doc.MainDocumentPart?.Document?.Body;
-        if (body is null) return string.Empty;
 
         var sb = new System.Text.StringBuilder();
-        foreach (var para in body.Descendants<Paragraph>())
+        // Body
+        AppendParagraphsText(doc.MainDocumentPart?.Document?.Body, sb);
+        // Headers + footers (watermark/page header có thể có placeholder).
+        if (doc.MainDocumentPart is not null)
         {
-            foreach (var t in para.Descendants<Text>())
-            {
-                sb.Append(t.Text);
-            }
-            // Newline giữa paragraph để regex không vượt biên đoạn (vd dấu "..." cuối câu).
-            sb.AppendLine();
+            foreach (var hp in doc.MainDocumentPart.HeaderParts) AppendParagraphsText(hp.Header, sb);
+            foreach (var fp in doc.MainDocumentPart.FooterParts) AppendParagraphsText(fp.Footer, sb);
         }
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Đọc text từ Word 2003 XML (file XML thuần, namespace w="http://schemas.microsoft.com/office/word/2003/wordml").
-    /// </summary>
-    private static string ExtractTextFromWord2003Xml(byte[] bytes)
+    private static void AppendParagraphsText(DocumentFormat.OpenXml.OpenXmlElement? root, System.Text.StringBuilder sb)
     {
-        using var ms = new MemoryStream(bytes);
-        var xdoc = XDocument.Load(ms);
-        XNamespace w = "http://schemas.microsoft.com/office/word/2003/wordml";
-
-        var sb = new System.Text.StringBuilder();
-        foreach (var para in xdoc.Descendants(w + "p"))
+        if (root is null) return;
+        foreach (var para in root.Descendants<Paragraph>())
         {
-            foreach (var t in para.Descendants(w + "t"))
-            {
-                sb.Append(t.Value);
-            }
+            foreach (var t in para.Descendants<Text>()) sb.Append(t.Text);
             sb.AppendLine();
         }
-        return sb.ToString();
     }
 
-    /// <summary>
-    /// Chạy 4 regex pattern → trả list placeholder (text gốc + pattern name + offset trong text concat).
-    /// </summary>
     private static List<DetectedPlaceholderDto> DetectPlaceholders(string text)
     {
         var found = new List<DetectedPlaceholderDto>();
@@ -233,13 +153,160 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
             foreach (Match match in regex.Matches(text))
             {
                 if (!match.Success) continue;
-                found.Add(new DetectedPlaceholderDto(
-                    Text: match.Value,
-                    Pattern: name,
-                    CharOffset: match.Index));
+                found.Add(new DetectedPlaceholderDto(match.Value, name, match.Index));
             }
         }
-        // Sort theo vị trí xuất hiện để FE highlight tuần tự — UX panel "Đã phát hiện ...".
         return found.OrderBy(p => p.CharOffset).ToList();
+    }
+
+    // ============== Mail-merge ==============
+
+    /// <summary>
+    /// Replace MERGEFIELD trong DOCX. 2 strategy:
+    /// <list type="number">
+    /// <item>Walk fldChar/instrText structure (real MERGEFIELD từ DOCX template import).</item>
+    /// <item>Regex replace plain text «VALUE» (field user insert qua OnlyOffice editor — chưa wrap fldChar).</item>
+    /// </list>
+    /// </summary>
+    private static byte[] ReplaceMergeFieldsInDocx(byte[] docxBytes, IReadOnlyDictionary<string, string> dataFormatted)
+    {
+        using var ms = new MemoryStream();
+        ms.Write(docxBytes, 0, docxBytes.Length);
+        ms.Position = 0;
+
+        using (var doc = WordprocessingDocument.Open(ms, isEditable: true))
+        {
+            // Strategy 1: real MERGEFIELD walking.
+            ReplaceInElement(doc.MainDocumentPart?.Document?.Body, dataFormatted);
+            if (doc.MainDocumentPart is not null)
+            {
+                foreach (var hp in doc.MainDocumentPart.HeaderParts) ReplaceInElement(hp.Header, dataFormatted);
+                foreach (var fp in doc.MainDocumentPart.FooterParts) ReplaceInElement(fp.Footer, dataFormatted);
+            }
+            // Strategy 2: plain text «VALUE» fallback (OnlyOffice insert).
+            ReplaceGuillemetsText(doc.MainDocumentPart?.Document?.Body, dataFormatted);
+            if (doc.MainDocumentPart is not null)
+            {
+                foreach (var hp in doc.MainDocumentPart.HeaderParts) ReplaceGuillemetsText(hp.Header, dataFormatted);
+                foreach (var fp in doc.MainDocumentPart.FooterParts) ReplaceGuillemetsText(fp.Footer, dataFormatted);
+            }
+            doc.MainDocumentPart?.Document.Save();
+        }
+        return ms.ToArray();
+    }
+
+    /// <summary>
+    /// Replace plain text «VALUE» trong từng &lt;w:t&gt;. Lưu ý: text có thể bị tách runs do format,
+    /// nên gom paragraph trước rồi replace bằng cách edit Text elements tuần tự.
+    /// Simple version: per-paragraph, concatenate all w:t, regex replace, redistribute first Text + clear rest.
+    /// </summary>
+    private static void ReplaceGuillemetsText(DocumentFormat.OpenXml.OpenXmlElement? root, IReadOnlyDictionary<string, string> dataFormatted)
+    {
+        if (root is null) return;
+        var fieldPattern = new Regex(@"«([^»]+)»", RegexOptions.Compiled);
+        foreach (var para in root.Descendants<Paragraph>())
+        {
+            var texts = para.Descendants<Text>().ToList();
+            if (texts.Count == 0) continue;
+            var concat = string.Concat(texts.Select(t => t.Text));
+            if (!concat.Contains('«')) continue;
+
+            var replaced = fieldPattern.Replace(concat, match =>
+            {
+                var key = match.Groups[1].Value;
+                return dataFormatted.TryGetValue(key, out var val) ? val : match.Value;
+            });
+            if (replaced == concat) continue;
+
+            // Put entire replaced string into first Text; clear others.
+            texts[0].Text = replaced;
+            texts[0].Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve;
+            for (int i = 1; i < texts.Count; i++) texts[i].Text = string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Walk OpenXml structure tìm MERGEFIELD complex field. Format:
+    /// <code>
+    /// &lt;w:fldChar w:fldCharType="begin"/&gt;
+    /// &lt;w:instrText&gt; MERGEFIELD FieldName &lt;/w:instrText&gt;
+    /// &lt;w:fldChar w:fldCharType="separate"/&gt;
+    /// &lt;w:t&gt;«FieldName»&lt;/w:t&gt;            ← runs ở giữa được replace
+    /// &lt;w:fldChar w:fldCharType="end"/&gt;
+    /// </code>
+    /// </summary>
+    private static void ReplaceInElement(DocumentFormat.OpenXml.OpenXmlElement? root, IReadOnlyDictionary<string, string> dataFormatted)
+    {
+        if (root is null) return;
+
+        // Regex extract field name từ instrText (vd " MERGEFIELD BSO_HD ").
+        var fieldNameRegex = new Regex(@"\s*MERGEFIELD\s+(?<name>\S+)", RegexOptions.IgnoreCase);
+
+        // Mỗi paragraph có thể có nhiều fields. Walk all runs để tìm fldChar begin/separate/end.
+        var allRuns = root.Descendants<Run>().ToList();
+
+        for (int i = 0; i < allRuns.Count; i++)
+        {
+            // Tìm fldChar begin
+            var beginChar = allRuns[i].Descendants<FieldChar>().FirstOrDefault(f => f.FieldCharType?.Value == FieldCharValues.Begin);
+            if (beginChar is null) continue;
+
+            // Đọc instrText (có thể nằm trong run kế tiếp hoặc cùng run).
+            string? fieldCode = null;
+            int separateIdx = -1, endIdx = -1;
+            for (int j = i; j < allRuns.Count; j++)
+            {
+                var instr = allRuns[j].Descendants<FieldCode>().FirstOrDefault();
+                if (instr is not null && fieldCode is null) fieldCode = instr.Text;
+                var fc = allRuns[j].Descendants<FieldChar>().FirstOrDefault();
+                if (fc is null) continue;
+                if (fc.FieldCharType?.Value == FieldCharValues.Separate) separateIdx = j;
+                else if (fc.FieldCharType?.Value == FieldCharValues.End) { endIdx = j; break; }
+            }
+            if (fieldCode is null || separateIdx < 0 || endIdx < 0) continue;
+
+            var match = fieldNameRegex.Match(fieldCode);
+            if (!match.Success) continue;
+            var fieldName = match.Groups["name"].Value;
+            if (!dataFormatted.TryGetValue(fieldName, out var value)) continue;
+
+            // Replace text trong runs giữa separate (exclusive) và end (exclusive).
+            // Cách đơn giản: gom các Text giữa khoảng này thành 1, set value vào Text đầu tiên, xóa các Text khác.
+            bool first = true;
+            for (int j = separateIdx + 1; j < endIdx; j++)
+            {
+                foreach (var t in allRuns[j].Descendants<Text>().ToList())
+                {
+                    if (first) { t.Text = value; first = false; }
+                    else t.Text = string.Empty;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Format value theo prefix/suffix tên field (form.md §7). I* → currency, *NGAY/THANG/NAM → date parts.
+    /// </summary>
+    private static string FormatFieldValue(string fieldName, object? raw)
+    {
+        var s = raw?.ToString() ?? string.Empty;
+        if (string.IsNullOrEmpty(s)) return string.Empty;
+
+        // Currency: prefix "I"
+        if (fieldName.StartsWith("I", StringComparison.OrdinalIgnoreCase) &&
+            decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out var amount))
+        {
+            return amount.ToString("#,##0", VnCulture);
+        }
+
+        // Date parts: suffix
+        if (DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+        {
+            if (fieldName.EndsWith("NGAY", StringComparison.OrdinalIgnoreCase)) return date.ToString("dd", VnCulture);
+            if (fieldName.EndsWith("THANG", StringComparison.OrdinalIgnoreCase)) return date.ToString("MM", VnCulture);
+            if (fieldName.EndsWith("NAM", StringComparison.OrdinalIgnoreCase)) return date.ToString("yyyy", VnCulture);
+        }
+
+        return s;
     }
 }
