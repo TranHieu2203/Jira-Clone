@@ -28,10 +28,12 @@ export default function SubmissionPage() {
   });
 
   // Field cần fill: template.usedFields ∩ metadata library. Map metadata cho mỗi field code.
+  // Dedupe usedFields vì DOCX có thể có cùng MERGEFIELD lặp ở nhiều chỗ — chỉ cần fill 1 lần.
   const fields = useMemo(() => {
     if (!template) return [];
     const meta = new Map(allMetadata.map((m) => [m.value, m]));
-    return template.usedFields
+    const uniqueCodes = Array.from(new Set(template.usedFields));
+    return uniqueCodes
       .map((code) => meta.get(code) ?? { id: code, value: code, label: code, type: MetadataType.Text, fieldGroup: code[0], description: null, validationJson: null, createdAt: '' })
       .sort((a, b) => (a.fieldGroup ?? '').localeCompare(b.fieldGroup ?? '') || a.value.localeCompare(b.value));
   }, [template, allMetadata]);

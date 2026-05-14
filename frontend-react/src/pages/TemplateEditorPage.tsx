@@ -29,9 +29,9 @@ export default function TemplateEditorPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [editorReady, setEditorReady] = useState(false);
   const [pluginReady, setPluginReady] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   // @mention: trigger keyword đã match + filtered metadata để render popup ở host.
   const [mention, setMention] = useState<{ trigger: string; query: string; items: MetadataDto[]; activeIdx: number } | null>(null);
+  const mentionPopupRef = useRef<HTMLDivElement>(null);
 
   const { data: template, isLoading } = useQuery({
     queryKey: ['template', id],
@@ -65,7 +65,7 @@ export default function TemplateEditorPage() {
         lang: 'vi',
         customization: { autosave: true, forcesave: true, chat: false, comments: false },
         plugins: {
-          autostart: ['asc.{F0124567-1234-4321-9876-ABCDEF012350}'],
+          autostart: ['asc.{F0124567-1234-4321-9876-ABCDEF012360}'],
           pluginsData: [PLUGIN_CONFIG_URL],
         },
       },
@@ -93,57 +93,136 @@ export default function TemplateEditorPage() {
         postMetadataToPlugin();
         return;
       }
-      // Mention-probe path đã thay bằng OnlyOffice native InputHelper trong plugin — không cần ở host.
+      const m = d as { type: string; trigger?: string };
+      if (m.type === 'mention-show') {
+        // User gõ '@' trong editor → plugin detect → host mở popup native style.
+        // trigger = '@' (ký tự user vừa gõ). Popup search input auto focus →
+        // user gõ filter tiếp + Up/Down/Enter để pick.
+        openMentionPopup(String(m.trigger || '@'));
+        return;
+      }
+      if (m.type === 'mention-hide') {
+        // KHÔNG auto-close khi plugin hide event — user có thể đang gõ trong popup search.
+        // Chỉ hide nếu popup đang trong trạng thái mention-from-@ (trigger không empty).
+        return;
+      }
     }
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metadataItems]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function _unused_handleMentionProbe(text: string) {
-    // Tìm trigger '@KEYWORD' BẤT CỨ ĐÂU trong doc (cursor có thể ở giữa). Yêu cầu:
-    //  - '@' ở đầu chuỗi HOẶC đứng sau ký tự không phải word (tránh email foo@bar.com).
-    //  - Lấy match CUỐI CÙNG — heuristic: nó nhiều khả năng là chỗ user vừa gõ.
-    const re = /(^|[^A-Za-z0-9_])@([A-Za-z0-9_]*)/g;
-    let last: RegExpExecArray | null = null;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) last = m;
-    if (!last) {
-      if (mention) setMention(null);
-      return;
-    }
-    const keyword = last[2] || '';
-    const trigger = '@' + keyword;
-    const query = keyword.toUpperCase();
+  /** Mở popup chèn metadata. trigger='' khi gọi từ button/hotkey, trigger='@' khi từ plugin. */
+  function openMentionPopup(trigger: string = '') {
+    const filtered = (metadataItems ?? []).slice(0, 8);
+    setMention({ trigger, query: '', items: filtered, activeIdx: 0 });
+  }
+
+  /** Update filter trong popup khi user gõ vào search input. */
+  function updateMentionQuery(query: string) {
+    const q = query.toUpperCase();
     const filtered = (metadataItems ?? [])
       .filter(
         (it) =>
-          (it.value || '').toUpperCase().includes(query) ||
-          (it.label || '').toUpperCase().includes(query)
+          (it.value || '').toUpperCase().includes(q) ||
+          (it.label || '').toUpperCase().includes(q)
       )
       .slice(0, 8);
-    if (filtered.length === 0) {
-      if (mention) setMention(null);
-      return;
-    }
-    setMention({ trigger, query, items: filtered, activeIdx: 0 });
+    setMention((m) => (m ? { ...m, query, items: filtered, activeIdx: 0 } : null));
   }
 
   function pickMention(item: MetadataDto) {
+    // eslint-disable-next-line no-console
+    console.log('[FormMgmt] pickMention called: trigger=', mention?.trigger, 'item=', item?.value, 'pluginRef=', !!pluginWindowRef.current);
     const w = pluginWindowRef.current;
-    if (!w || !mention) return;
-    w.postMessage(
-      {
-        target: 'formmgmt-plugin',
-        type: 'replace-trigger',
-        trigger: mention.trigger,
-        value: item.value,
-      },
-      '*'
-    );
+    if (!w) return;
+    if (mention && mention.trigger && mention.trigger.charAt(0) === '@') {
+      // eslint-disable-next-line no-console
+      console.log('[FormMgmt] posting replace-trigger:', mention.trigger, '→', item.value);
+      w.postMessage(
+        { target: 'formmgmt-plugin', type: 'replace-trigger', trigger: mention.trigger, value: item.value },
+        '*'
+      );
+    } else {
+      // eslint-disable-next-line no-console
+      console.log('[FormMgmt] posting insert:', item.value);
+      postInsertToPlugin(item.value);
+    }
     setMention(null);
+    returnFocusToEditor();
   }
+
+  // Auto-focus popup khi vừa mở. KEY ISSUE: browser KHÔNG tự transfer focus từ cross-origin
+  // iframe (OnlyOffice canvas) sang host element. Phải force qua nhiều bước:
+  //   1. iframe.blur() — bỏ focus khỏi iframe element
+  //   2. setTimeout — đợi React render input + browser xử lý blur
+  //   3. input.focus() — đặt focus vào popup search input
+  useEffect(() => {
+    if (!mention) return;
+    const editorIframe = document.querySelector('iframe[name="frameEditor"]') as HTMLIFrameElement | null;
+    editorIframe?.blur();
+    if ((document.activeElement as HTMLElement | null)?.blur) {
+      (document.activeElement as HTMLElement).blur();
+    }
+    const timer = window.setTimeout(() => {
+      const input = document.querySelector('input[placeholder*="Tìm theo"]') as HTMLInputElement | null;
+      input?.focus();
+      // eslint-disable-next-line no-console
+      console.log('[FormMgmt] focus shift → activeEl=', document.activeElement?.tagName, 'isInput=', document.activeElement === input);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [mention?.trigger]);
+
+  function returnFocusToEditor() {
+    const w = pluginWindowRef.current;
+    if (w) w.postMessage({ target: 'formmgmt-plugin', type: 'focus-editor' }, '*');
+  }
+
+  // Keyboard handler khi popup mở. Document-level keydown capture phase.
+  useEffect(() => {
+    if (!mention) return;
+    function onKey(e: KeyboardEvent) {
+      if (!mention) return;
+      // eslint-disable-next-line no-console
+      console.log('[FormMgmt] popup keydown:', e.key, 'shift=', e.shiftKey, 'activeEl=', document.activeElement?.tagName);
+      if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMention((m) => (m ? { ...m, activeIdx: (m.activeIdx + 1) % m.items.length } : null));
+      } else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMention((m) => (m ? { ...m, activeIdx: (m.activeIdx - 1 + m.items.length) % m.items.length } : null));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const it = mention.items[mention.activeIdx];
+        if (it) pickMention(it);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMention(null);
+        returnFocusToEditor();
+      }
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [mention]);
+
+  // Hotkey toàn cục Ctrl+Shift+M / Cmd+Shift+M để mở popup. Chọn combo có Shift để tránh đụng
+  // shortcut native của OnlyOffice (Ctrl+M có thể được editor dùng).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openMentionPopup();
+      }
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metadataItems]);
 
   function postMetadataToPlugin() {
     const w = pluginWindowRef.current;
@@ -172,54 +251,8 @@ export default function TemplateEditorPage() {
     postInsertToPlugin(m.value);
   }
 
-  // ============ Drag-drop overlay ============
-  // Vấn đề: drop trên iframe OnlyOffice (cross-origin) bypass React's onDrop. Browser fires native
-  // drop event INSIDE iframe, host page không nhận được.
-  // Giải pháp: trong khi user đang drag từ sidebar (có MIME riêng), bật overlay div phủ lên iframe
-  // với pointer-events:auto → overlay nuốt dragover/drop trước khi iframe nhận → insert via plugin.
-  useEffect(() => {
-    function onDragStart(e: DragEvent) {
-      const types = e.dataTransfer?.types;
-      if (types && Array.from(types).includes('application/x-form-mgmt-metadata')) {
-        setDragActive(true);
-      }
-    }
-    function onDragEnd() {
-      setDragActive(false);
-    }
-    // Bubble phase: listener chạy SAU khi sidebar's onDragStart đã call setData() → types đã có MIME.
-    window.addEventListener('dragstart', onDragStart, false);
-    window.addEventListener('dragend', onDragEnd, false);
-    window.addEventListener('drop', onDragEnd, false);
-    return () => {
-      window.removeEventListener('dragstart', onDragStart, false);
-      window.removeEventListener('dragend', onDragEnd, false);
-      window.removeEventListener('drop', onDragEnd, false);
-    };
-  }, []);
-
-  // Overlay capture drop + route qua plugin với cursor đã track. OnlyOffice cross-origin canvas
-  // không reliably accept text/plain drops từ external origin (browser shows not-allowed),
-  // nên ta tự handle drop trên overlay và insert tại vị trí cursor đã track gần nhất.
-  // Trade-off: drop không bám đúng toạ độ thả; nhưng nhất quán với click-insert.
-  function onOverlayDragOver(e: React.DragEvent) {
-    if (e.dataTransfer.types.includes('application/x-form-mgmt-metadata')) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  }
-  function onOverlayDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setDragActive(false);
-    const raw = e.dataTransfer.getData('application/x-form-mgmt-metadata');
-    if (!raw) return;
-    try {
-      const data = JSON.parse(raw) as { value: string };
-      if (data.value) postInsertToPlugin(data.value);
-    } catch {
-      /* */
-    }
-  }
+  // Drag-drop đã bị bỏ — OnlyOffice cross-iframe drop không reliable position theo toạ độ thả.
+  // Chỉ giữ click-insert. (User confirmed bỏ feature này.)
 
   useEffect(() => {
     if (editorReady) {
@@ -247,11 +280,18 @@ export default function TemplateEditorPage() {
               </span>
             </div>
             <div className="text-[11px] text-ink-500 mt-0.5">
-              💡 Click vào vị trí muốn chèn trong doc <span className="font-semibold">trước</span>, rồi click/drag metadata
+              💡 Gõ <span className="font-mono font-semibold">@</span> trong doc, hoặc <kbd className="px-1 py-0.5 bg-ink-100 border border-ink-300 rounded font-mono text-[10px]">Ctrl+Shift+M</kbd>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className="btn-ghost btn-sm"
+            onClick={openMentionPopup}
+            title="Mở popup chèn MERGEFIELD (Ctrl+Shift+M)"
+          >
+            📋 Chèn metadata <kbd className="ml-1 px-1 py-0.5 bg-ink-100 border border-ink-300 rounded font-mono text-[10px]">Ctrl+Shift+M</kbd>
+          </button>
           <button className="btn-ghost btn-sm" onClick={() => setReloadKey((k) => k + 1)}>
             <RefreshCwIcon size={14} /> Reload
           </button>
@@ -265,28 +305,39 @@ export default function TemplateEditorPage() {
         <div className="flex-1 min-w-0 relative" ref={editorWrapperRef}>
           {editorConfig && (
             <DocumentEditor
-              id={`onlyoffice-editor-${template.id}`}
+              id={`onlyoffice-editor-${template.id}-${reloadKey}`}
               documentServerUrl={DOC_SERVER_URL}
               config={editorConfig as any}
               events_onAppReady={(() => setEditorReady(true)) as any}
               onLoadComponentError={(code, desc) => console.error('[OnlyOffice] Load error', code, desc)}
             />
           )}
-          {/* @mention native popup giờ chạy bởi OnlyOffice InputHelper trong canvas — KHÔNG cần host overlay.
-              Mention state vẫn giữ làm legacy fallback nếu InputHelper không khả dụng. */}
-          {false && mention && (
-            <div className="absolute bottom-6 right-6 w-72 bg-white border border-ink-300 rounded-md shadow-lg overflow-hidden z-30">
-              <div className="px-3 py-1.5 text-[11px] bg-ink-50 border-b border-ink-200 flex items-center justify-between">
-                <span>
-                  Gợi ý cho <span className="font-mono font-semibold">{mention.trigger}</span>
-                </span>
+          {/* Popup chèn metadata. Mở qua button hoặc Ctrl+M. Focus tự nhảy về search input
+              → user gõ filter + Up/Down/Enter/Esc đều work vì host page có focus. */}
+          {mention && (
+            <div
+              ref={mentionPopupRef}
+              className="absolute top-4 left-1/2 -translate-x-1/2 w-96 bg-white border border-ink-300 rounded-md shadow-lg overflow-hidden z-30"
+            >
+              <div className="px-3 py-2 bg-ink-50 border-b border-ink-200 flex items-center justify-between">
+                <span className="text-xs font-semibold">Chèn MERGEFIELD vào cursor</span>
                 <button
                   className="text-ink-400 hover:text-ink-700"
-                  onClick={() => setMention(null)}
+                  onClick={() => { setMention(null); returnFocusToEditor(); }}
                   title="Đóng (Esc)"
                 >
                   ✕
                 </button>
+              </div>
+              <div className="px-3 py-2 border-b border-ink-200">
+                <input
+                  autoFocus
+                  type="text"
+                  value={mention.query}
+                  onChange={(e) => updateMentionQuery(e.target.value)}
+                  placeholder="Tìm theo mã hoặc tên trường…"
+                  className="w-full px-2 py-1.5 text-sm border border-ink-300 rounded focus:outline-none focus:ring-2 focus:ring-ink-700/20"
+                />
               </div>
               <ul className="max-h-72 overflow-y-auto">
                 {mention.items.map((it, idx) => (
@@ -308,19 +359,7 @@ export default function TemplateEditorPage() {
                 ))}
               </ul>
               <div className="px-3 py-1 text-[10px] text-ink-400 border-t border-ink-100">
-                Click để chèn — sẽ thay {mention.trigger} bằng «VALUE»
-              </div>
-            </div>
-          )}
-          {/* Overlay capture drop. Insert tại vị trí cursor cuối cùng đã track. */}
-          {dragActive && (
-            <div
-              className="absolute inset-0 border-2 border-dashed border-ink-700 bg-ink-900/5"
-              onDragOver={onOverlayDragOver}
-              onDrop={onOverlayDrop}
-            >
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 text-xs font-semibold bg-white px-3 py-1.5 rounded shadow border border-ink-200">
-                Thả để chèn tại vị trí con trỏ cuối cùng trong doc
+                ↑↓ chọn · Enter chèn · Esc đóng
               </div>
             </div>
           )}

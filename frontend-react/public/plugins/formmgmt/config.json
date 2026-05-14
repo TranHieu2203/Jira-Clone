@@ -1,13 +1,15 @@
 {
   "name": "Form Management Bridge",
-  "guid": "asc.{F0124567-1234-4321-9876-ABCDEF012350}",
+  "guid": "asc.{F0124567-1234-4321-9876-ABCDEF012360}",
   "variations": [
     {
-      "description": "Bridge: insert MERGEFIELD + native InputHelper popup tại cursor.",
+      "description": "Bridge: insert MERGEFIELD via PasteText + @mention native InputHelper.",
       "url": "index.html",
       "icons": [],
       "isViewer": true,
       "isVisual": false,
+      "isInsideMode": true,
+      "initOnSelectionChanged": false,
       "EditorsSupport": ["word"],
       "events": ["onInputHelperClear", "onInputHelperInput", "onInputHelperItemClick"]
     }

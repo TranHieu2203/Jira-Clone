@@ -48,12 +48,7 @@ export function MetadataSidebar({ onInsert }: Props) {
     setOpenGroups(next);
   }
 
-  // Drag-drop: payload chứa value để OnlyOffice editor (qua bridge postMessage) insert tại drop point.
-  function onDragStart(e: React.DragEvent, m: MetadataDto) {
-    e.dataTransfer.setData('application/x-form-mgmt-metadata', JSON.stringify({ value: m.value, label: m.label }));
-    e.dataTransfer.setData('text/plain', `«${m.value}»`);
-    e.dataTransfer.effectAllowed = 'copy';
-  }
+  // Drag-drop đã bỏ — OnlyOffice cross-iframe không có API position theo toạ độ thả.
 
   return (
     <aside className="w-72 shrink-0 border-r border-ink-200 bg-ink-50/40 flex flex-col overflow-hidden">
@@ -94,14 +89,10 @@ export function MetadataSidebar({ onInsert }: Props) {
                     <li key={m.id}>
                       <button
                         type="button"
-                        draggable
-                        onDragStart={(e) => onDragStart(e, m)}
-                        // KHÔNG preventDefault mousedown vì sẽ chặn drag-init. Plugin PasteText
-                        // xử lý cursor native — không cần giữ iframe focus.
                         onClick={() => onInsert(m)}
                         className={clsx(
                           'w-full text-left px-2 py-1.5 rounded flex items-start gap-1.5',
-                          'hover:bg-white hover:border-ink-200 border border-transparent cursor-grab active:cursor-grabbing'
+                          'hover:bg-white hover:border-ink-200 border border-transparent cursor-pointer'
                         )}
                         title={m.description ?? m.label}
                       >
