@@ -174,10 +174,19 @@ public sealed class TemplateService : ITemplateService
         var t = await _repo.GetByIdAsync(id, ct);
         if (t is null) return Result.Failure(ErrorType.NotFound, FormManagementErrors.MsgTemplateNotFound);
 
-        t.UpdateContent(docxBytes, t.UsedFieldsJson);
+        // Re-detect placeholders từ bytes mới: union MERGEFIELD instrText + plain text «NAME».
+        // Cần thiết vì user có thể add/remove field qua OnlyOffice editor — FE callback không gửi list.
+        // Nếu detect rỗng (parse fail) → giữ list cũ để không mất data hiện hữu.
+        var detected = _conversion.ExtractUsedFields(docxBytes);
+        var usedFieldsJson = detected.Count > 0
+            ? Mappers.SerializeUsedFields(detected)
+            : t.UsedFieldsJson;
+
+        t.UpdateContent(docxBytes, usedFieldsJson);
         _repo.Update(t);
         await _uow.SaveChangesAsync(ct);
-        _logger.LogInformation("Template {Code} (Id={Id}) DOCX updated via OnlyOffice callback, version={V}", t.Code, t.Id, t.Version);
+        _logger.LogInformation("Template {Code} (Id={Id}) DOCX updated via OnlyOffice callback, version={V}, usedFields={Count}",
+            t.Code, t.Id, t.Version, detected.Count);
         return Result.Success(messageKey: "form_mgmt.template.content_saved.success", messageArgs: new { code = t.Code, version = t.Version });
     }
 }

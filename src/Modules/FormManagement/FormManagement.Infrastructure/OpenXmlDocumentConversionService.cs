@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using BB.Common;
 using Clippit;
 using Clippit.Word;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using FormManagement.Application;
@@ -203,7 +204,10 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
     private static void ReplaceGuillemetsText(DocumentFormat.OpenXml.OpenXmlElement? root, IReadOnlyDictionary<string, string> dataFormatted)
     {
         if (root is null) return;
-        var fieldPattern = new Regex(@"«([^»]+)»", RegexOptions.Compiled);
+        // Strict identifier pattern (cùng lý do với ExtractUsedFields): tránh greedy match qua
+        // nested « khi OnlyOffice split display run của MERGEFIELD và chèn plain «NEW» vào giữa,
+        // tạo chuỗi như "«CCHUC_VU«NEW»" — greedy regex sẽ bắt nguyên cụm, fail dict lookup, miss NEW.
+        var fieldPattern = new Regex(@"«([A-Za-z]\w*)»", RegexOptions.Compiled);
         foreach (var para in root.Descendants<Paragraph>())
         {
             var texts = para.Descendants<Text>().ToList();
@@ -223,6 +227,245 @@ public sealed class OpenXmlDocumentConversionService : IDocumentConversionServic
             texts[0].Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve;
             for (int i = 1; i < texts.Count; i++) texts[i].Text = string.Empty;
         }
+    }
+
+    /// <summary>
+    /// Post-process DOCX vừa save từ OnlyOffice: scan plain text «VALUE» trong document.xml →
+    /// wrap thành real OOXML MERGEFIELD (fldChar begin/instrText/separate/end).
+    /// Lần sau OnlyOffice mở doc, sẽ render field với gray shading + Alt+F9 toggle.
+    /// </summary>
+    /// <summary>
+    /// Detect distinct field codes trong DOCX. Strategy:
+    ///  - MERGEFIELD: walk &lt;w:instrText&gt; tìm pattern "MERGEFIELD NAME".
+    ///  - Plain «NAME»: regex trên concatenated text body+headers+footers.
+    /// Filter ra code hợp lệ ([A-Za-z][A-Za-z0-9_]*) để bỏ noise.
+    /// Trả về unique theo thứ tự xuất hiện (Word + plain).
+    /// </summary>
+    public IReadOnlyList<string> ExtractUsedFields(byte[] docxBytes)
+    {
+        if (docxBytes is null || docxBytes.Length == 0) return Array.Empty<string>();
+        var ordered = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var codeRegex = new Regex(@"^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
+        var mergeFieldNameRegex = new Regex(@"\s*MERGEFIELD\s+(?<name>\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        // Strict identifier match: dùng `[A-Za-z]\w*` thay vì `[^»]+` để không bị greedy
+        // bắt qua các « lồng nhau khi OnlyOffice split display run của MERGEFIELD và chèn plain
+        // «CEMAIL» vào giữa — ví dụ concat "«CCHUC_VU«CEMAIL»" với greedy thì match cả "CCHUC_VU«CEMAIL"
+        // rồi fail identifier filter → mất CEMAIL.
+        var guillemetRegex = new Regex(@"«([A-Za-z]\w*)»", RegexOptions.Compiled);
+
+        void Add(string raw)
+        {
+            var name = raw.Trim().TrimEnd('\\').Trim();
+            if (string.IsNullOrEmpty(name)) return;
+            if (!codeRegex.IsMatch(name)) return;
+            if (seen.Add(name)) ordered.Add(name);
+        }
+
+        try
+        {
+            using var ms = new MemoryStream();
+            ms.Write(docxBytes, 0, docxBytes.Length);
+            ms.Position = 0;
+            using var doc = WordprocessingDocument.Open(ms, isEditable: false);
+
+            void ScanInstr(OpenXmlElement? root)
+            {
+                if (root is null) return;
+                foreach (var instr in root.Descendants<FieldCode>())
+                {
+                    var m = mergeFieldNameRegex.Match(instr.Text ?? string.Empty);
+                    if (m.Success) Add(m.Groups["name"].Value);
+                }
+            }
+            void ScanGuillemets(OpenXmlElement? root)
+            {
+                if (root is null) return;
+                var sb = new System.Text.StringBuilder();
+                foreach (var para in root.Descendants<Paragraph>())
+                {
+                    foreach (var t in para.Descendants<Text>()) sb.Append(t.Text);
+                    sb.AppendLine();
+                }
+                foreach (Match m in guillemetRegex.Matches(sb.ToString()))
+                {
+                    Add(m.Groups[1].Value);
+                }
+            }
+
+            ScanInstr(doc.MainDocumentPart?.Document?.Body);
+            ScanGuillemets(doc.MainDocumentPart?.Document?.Body);
+            if (doc.MainDocumentPart is not null)
+            {
+                foreach (var hp in doc.MainDocumentPart.HeaderParts) { ScanInstr(hp.Header); ScanGuillemets(hp.Header); }
+                foreach (var fp in doc.MainDocumentPart.FooterParts) { ScanInstr(fp.Footer); ScanGuillemets(fp.Footer); }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ExtractUsedFields failed — return partial {Count}", ordered.Count);
+        }
+        return ordered;
+    }
+
+    public byte[] WrapGuillemetsAsMergeFields(byte[] docxBytes)
+    {
+        if (docxBytes is null || docxBytes.Length == 0) return docxBytes ?? Array.Empty<byte>();
+        var pattern = new Regex(@"«([A-Za-z][A-Za-z0-9_]*)»", RegexOptions.Compiled);
+
+        using var ms = new MemoryStream();
+        ms.Write(docxBytes, 0, docxBytes.Length);
+        ms.Position = 0;
+        try
+        {
+            using (var doc = WordprocessingDocument.Open(ms, true))
+            {
+                var body = doc.MainDocumentPart?.Document?.Body;
+                if (body is null) return docxBytes;
+
+                void WrapRoot(OpenXmlElement? root)
+                {
+                    if (root is null) return;
+                    foreach (var para in root.Descendants<Paragraph>().ToList())
+                    {
+                        WrapInParagraph(para, pattern);
+                    }
+                }
+
+                WrapRoot(body);
+                if (doc.MainDocumentPart is not null)
+                {
+                    foreach (var hp in doc.MainDocumentPart.HeaderParts) { WrapRoot(hp.Header); hp.Header.Save(); }
+                    foreach (var fp in doc.MainDocumentPart.FooterParts) { WrapRoot(fp.Footer); fp.Footer.Save(); }
+                }
+                doc.MainDocumentPart!.Document.Save();
+            }
+            return ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "WrapGuillemetsAsMergeFields fail — return original bytes");
+            return docxBytes;
+        }
+    }
+
+    /// <summary>
+    /// Per-RUN wrap với fldChar depth tracking. Chiến lược:
+    ///  1. Walk runs theo doc order, track depth từ fldChar begin/end.
+    ///  2. Mỗi Run được phân loại "starts-in-field" (depth>0 khi bắt đầu Run) hoặc free.
+    ///  3. Chỉ wrap «NAME» trong các Run free (depth=0) VÀ không chứa fldChar/FieldCode.
+    ///     → KHÔNG động chạm display run của MERGEFIELD hiện hữu (depth>0).
+    ///     → KHÔNG re-wrap fldChar scaffolding runs (begin/instrText/separate/end).
+    ///     → CÓ wrap «NEW» plain mới chèn vào paragraph dù paragraph đã có MERGEFIELD khác.
+    ///
+    /// Trade-off: «...» bị split qua nhiều Run (vd OnlyOffice tách "«X" và "»" ra 2 Run) sẽ
+    /// không match per-Run → giữ plain. Mail-merge regex Strategy 2 vẫn substitute đúng.
+    /// </summary>
+    private static void WrapInParagraph(Paragraph para, Regex pattern)
+    {
+        var runs = para.Elements<Run>().ToList();
+        if (runs.Count == 0) return;
+
+        // Bước 1: pre-compute "starts-in-field" cho mỗi Run dựa trên fldChar order.
+        var startsInField = new bool[runs.Count];
+        int depth = 0;
+        for (int i = 0; i < runs.Count; i++)
+        {
+            startsInField[i] = depth > 0;
+            foreach (var fc in runs[i].Descendants<FieldChar>())
+            {
+                var type = fc.FieldCharType?.Value;
+                if (type == FieldCharValues.Begin) depth++;
+                else if (type == FieldCharValues.End) depth = Math.Max(0, depth - 1);
+                // Separate giữ nguyên depth.
+            }
+        }
+
+        // Bước 2: với mỗi Run free + không chứa fldChar/FieldCode + text có «NAME» → wrap inline.
+        // Dùng snapshot list runs (không enum trực tiếp para.Elements để tránh modify-while-iterate).
+        for (int i = 0; i < runs.Count; i++)
+        {
+            var run = runs[i];
+            if (run.Parent is null) continue; // đã bị remove ở vòng trước (không xảy ra với logic này)
+            if (startsInField[i]) continue;
+            bool hasFieldStuff = run.Descendants<FieldChar>().Any() || run.Descendants<FieldCode>().Any();
+            if (hasFieldStuff) continue;
+
+            var texts = run.Descendants<Text>().ToList();
+            if (texts.Count == 0) continue;
+            var concat = string.Concat(texts.Select(t => t.Text));
+            if (!concat.Contains('«')) continue;
+            var matches = pattern.Matches(concat);
+            if (matches.Count == 0) continue;
+
+            var rPrTemplate = run.RunProperties?.CloneNode(true) as RunProperties;
+            var newElements = new List<OpenXmlElement>();
+            int cursor = 0;
+            foreach (Match m in matches)
+            {
+                if (m.Index > cursor)
+                    newElements.Add(BuildPlainRun(concat.Substring(cursor, m.Index - cursor), rPrTemplate));
+                newElements.AddRange(BuildMergeFieldRuns(m.Groups[1].Value, rPrTemplate));
+                cursor = m.Index + m.Length;
+            }
+            if (cursor < concat.Length)
+                newElements.Add(BuildPlainRun(concat.Substring(cursor), rPrTemplate));
+
+            // Insert sau Run hiện tại theo thứ tự, rồi remove Run cũ.
+            OpenXmlElement prev = run;
+            foreach (var el in newElements)
+            {
+                run.Parent!.InsertAfter(el, prev);
+                prev = el;
+            }
+            run.Remove();
+        }
+    }
+
+    private static Run BuildPlainRun(string text, RunProperties? rPrTemplate)
+    {
+        var run = new Run();
+        if (rPrTemplate is not null) run.AppendChild(rPrTemplate.CloneNode(true));
+        run.AppendChild(new Text(text) { Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve });
+        return run;
+    }
+
+    /// <summary>
+    /// Tạo sequence 3 Run cho MERGEFIELD complex field:
+    ///  1. Run với fldChar begin + instrText "MERGEFIELD NAME \* MERGEFORMAT"
+    ///  2. Run với fldChar separate + Text "«NAME»" (display value)
+    ///  3. Run với fldChar end
+    /// </summary>
+    private static IEnumerable<Run> BuildMergeFieldRuns(string fieldName, RunProperties? rPrTemplate)
+    {
+        // Run 1: begin + instrText
+        var run1 = new Run();
+        if (rPrTemplate is not null) run1.AppendChild(rPrTemplate.CloneNode(true));
+        run1.AppendChild(new FieldChar { FieldCharType = FieldCharValues.Begin });
+        var instr = new FieldCode($" MERGEFIELD {fieldName} \\* MERGEFORMAT ")
+        {
+            Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve
+        };
+        run1.AppendChild(instr);
+        // Có version đẩy separate vào run riêng — để tương thích, tách run.
+        yield return run1;
+
+        // Run 2: separate + display text «NAME»
+        var run2 = new Run();
+        if (rPrTemplate is not null) run2.AppendChild(rPrTemplate.CloneNode(true));
+        run2.AppendChild(new FieldChar { FieldCharType = FieldCharValues.Separate });
+        yield return run2;
+
+        var run3 = new Run();
+        if (rPrTemplate is not null) run3.AppendChild(rPrTemplate.CloneNode(true));
+        run3.AppendChild(new Text($"«{fieldName}»") { Space = DocumentFormat.OpenXml.SpaceProcessingModeValues.Preserve });
+        yield return run3;
+
+        // Run 4: end
+        var run4 = new Run();
+        if (rPrTemplate is not null) run4.AppendChild(rPrTemplate.CloneNode(true));
+        run4.AppendChild(new FieldChar { FieldCharType = FieldCharValues.End });
+        yield return run4;
     }
 
     /// <summary>

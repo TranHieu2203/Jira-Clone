@@ -18,7 +18,6 @@ export function AppShell() {
       <aside className="w-60 shrink-0 border-r border-ink-200 bg-ink-50/40 flex flex-col">
         <div className="px-4 py-4 border-b border-ink-200">
           <h1 className="text-sm font-semibold tracking-wide">Form Management</h1>
-          <p className="text-xs text-ink-500 mt-0.5">POC · OnlyOffice + .NET</p>
         </div>
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           <NavItem to="/templates" icon={<FileTextIcon size={16} />} label="Biểu mẫu" />

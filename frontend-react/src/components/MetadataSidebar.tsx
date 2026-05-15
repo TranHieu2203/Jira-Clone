@@ -52,10 +52,6 @@ export function MetadataSidebar({ onInsert }: Props) {
 
   return (
     <aside className="w-72 shrink-0 border-r border-ink-200 bg-ink-50/40 flex flex-col overflow-hidden">
-      <header className="px-3 py-2 border-b border-ink-200">
-        <div className="text-xs font-semibold">Metadata</div>
-        <p className="text-[11px] text-ink-500 mt-0.5">Click để chèn MERGEFIELD vào cursor.</p>
-      </header>
       <div className="p-2 border-b border-ink-200">
         <div className="relative">
           <SearchIcon size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-ink-400" />

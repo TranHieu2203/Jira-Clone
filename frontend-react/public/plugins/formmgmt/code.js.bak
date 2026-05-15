@@ -1,0 +1,252 @@
+/* eslint-disable */
+// FormMgmt OnlyOffice Bridge Plugin (DS 9.3.x).
+//
+// @mention design:
+//   - DS 9.3.1 native InputHelper bị bug 'innerHTML null' khi setItems → popup KHÔNG render được
+//   - Workaround: plugin chỉ DETECT trigger '@' qua onInputHelperInput, gửi 'mention-show' lên host
+//   - Host (React) render popup tự, focus shift để Up/Down/Enter/Esc work
+//   - User pick → host post 'replace-trigger' → plugin SearchAndReplace
+//
+// Insert command:
+//   - 'insert' từ host → executeMethod('PasteText') tại cursor
+(function () {
+  'use strict';
+
+  function postToHost(payload) {
+    var msg = Object.assign({ src: 'formmgmt-plugin' }, payload);
+    try { window.top.postMessage(msg, '*'); }
+    catch (e) { try { window.parent.postMessage(msg, '*'); } catch (_) {} }
+  }
+  function log() { try { console.log.apply(console, ['[FormMgmt Plugin]'].concat([].slice.call(arguments))); } catch (_) {} }
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.target !== 'formmgmt-plugin') return;
+    log('msg from host:', d.type);
+    if (d.type === 'insert') {
+      // 'value' = field name (vd 'BSO_HD') KHÔNG bao gồm '«»'. Plugin sẽ chèn MERGEFIELD chuẩn,
+      // fallback plain text '«VALUE»' nếu Builder API không support.
+      insertMergeField(String(d.value || ''));
+      return;
+    }
+    if (d.type === 'replace-trigger') {
+      replaceTriggerWith(String(d.trigger || ''), String(d.value || ''));
+      return;
+    }
+    if (d.type === 'focus-editor') {
+      // Thử các method names khả dĩ của OnlyOffice để focus về canvas editor.
+      var methodsToTry = ['SetEditorFocus', 'OnFocusEditor', 'FocusEditor'];
+      for (var i = 0; i < methodsToTry.length; i++) {
+        try {
+          window.Asc.plugin.executeMethod(methodsToTry[i], [], function (r) {
+            log('focus-editor via', methodsToTry[i], ':', r);
+          });
+          break; // Try first one only; if it doesn't exist, OnlyOffice silently no-ops or errors caught.
+        } catch (e) { log('focus-editor', methodsToTry[i], 'err:', e && e.message); }
+      }
+      return;
+    }
+  });
+
+  /** Insert «VALUE» as plain text — fallback nếu MERGEFIELD API không khả dụng. */
+  function insertAsPlainText(text) {
+    if (!text) return;
+    try {
+      if (typeof window.Asc.plugin.executeMethod === 'function') {
+        window.Asc.plugin.executeMethod('PasteText', [text], function (result) { log('PasteText:', result); });
+      }
+    } catch (e) {}
+  }
+
+  /** Insert real OOXML MERGEFIELD tại cursor — structured field, không phải plain text.
+   *  Probe các API có sẵn: AddMergeField, CreateField, hoặc fallback PasteText '«VALUE»'.
+   *  fieldName: tên field (vd 'BSO_HD') — không bao gồm '«»'.
+   */
+  function insertMergeField(fieldName) {
+    if (!fieldName) return;
+    window.Asc.scope.fieldName = fieldName;
+    window.Asc.scope.displayText = '«' + fieldName + '»';
+    window.Asc.plugin.callCommand(function () {
+      var diag = { tried: [] };
+      try {
+        var oDoc = Api.GetDocument();
+        // Probe field-related methods để biết DS version expose API gì.
+        var docMethods = [];
+        for (var k in oDoc) {
+          if (k.toLowerCase().indexOf('field') !== -1 || k.toLowerCase().indexOf('merge') !== -1) docMethods.push(k);
+        }
+        var apiMethods = [];
+        for (var k2 in Api) {
+          if (k2.toLowerCase().indexOf('field') !== -1 || k2.toLowerCase().indexOf('merge') !== -1) apiMethods.push(k2);
+          else if (k2.indexOf('Create') === 0) apiMethods.push(k2);
+        }
+        diag.docFieldMethods = docMethods;
+        diag.apiCreateMethods = apiMethods;
+
+        // Strategy A: oDoc.AddMailMergeField (capital MailMerge, đúng tên trong sdkjs nếu có).
+        if (typeof oDoc.AddMailMergeField === 'function') {
+          diag.tried.push('AddMailMergeField');
+          try { oDoc.AddMailMergeField(Asc.scope.fieldName); diag.method = 'AddMailMergeField'; return JSON.stringify(diag); }
+          catch (eA) { diag.errA = eA && eA.message; }
+        }
+        // Strategy B: oDoc.AddMergeField.
+        if (typeof oDoc.AddMergeField === 'function') {
+          diag.tried.push('AddMergeField');
+          try { oDoc.AddMergeField(Asc.scope.fieldName); diag.method = 'AddMergeField'; return JSON.stringify(diag); }
+          catch (eB) { diag.errB = eB && eB.message; }
+        }
+        // Strategy C: Api.CreateField + InsertContent.
+        if (typeof Api.CreateField === 'function') {
+          diag.tried.push('CreateField');
+          try {
+            var instruction = 'MERGEFIELD ' + Asc.scope.fieldName + ' \\* MERGEFORMAT';
+            var oField = Api.CreateField(instruction, Asc.scope.displayText);
+            if (oField && typeof oDoc.InsertContent === 'function') {
+              oDoc.InsertContent([oField], true);
+              diag.method = 'CreateField+InsertContent';
+              return JSON.stringify(diag);
+            }
+            diag.createFieldOk = !!oField;
+          } catch (eC) { diag.errC = eC && eC.message; }
+        }
+        // Strategy D-pre: CreateTextForm — OnlyOffice Form control render với placeholder brackets,
+        // tương đương MERGEFIELD visually. Available trên DS 9.x.
+        if (typeof Api.CreateTextForm === 'function') {
+          diag.tried.push('TextForm');
+          try {
+            var oForm = Api.CreateTextForm({
+              key: Asc.scope.fieldName,
+              tip: Asc.scope.fieldName,
+              required: false,
+              placeholder: Asc.scope.displayText,
+              comb: false,
+              maxCharacters: 0,
+              autoFit: true,
+            });
+            diag.formCreated = !!oForm;
+            if (oForm && typeof oDoc.InsertContent === 'function') {
+              oDoc.InsertContent([oForm], true);
+              diag.method = 'TextForm';
+              return JSON.stringify(diag);
+            }
+          } catch (eForm) { diag.errForm = eForm && eForm.message; }
+        }
+
+        // Strategy D: ApiInlineLvlSdt — Sdt mặc định có 1 placeholder run. AddText APPEND (count → 2),
+        // KHÔNG replace. Workaround: modify default run trực tiếp.
+        if (typeof Api.CreateInlineLvlSdt === 'function') {
+          diag.tried.push('InlineLvlSdt');
+          try {
+            var oSdt = Api.CreateInlineLvlSdt();
+            diag.sdtCountBefore = oSdt.GetElementsCount ? oSdt.GetElementsCount() : -1;
+
+            // Lấy element 0 (default placeholder) và inspect.
+            var defaultEl = null;
+            if (typeof oSdt.GetElement === 'function') {
+              try { defaultEl = oSdt.GetElement(0); } catch (_) {}
+            }
+            if (defaultEl) {
+              diag.defaultElType = typeof defaultEl.GetClassType === 'function' ? defaultEl.GetClassType() : 'unknown';
+              // Thử AddText vào default element (overwrite placeholder).
+              if (typeof defaultEl.AddText === 'function') {
+                try { defaultEl.AddText(Asc.scope.displayText); diag.addedVia = 'defaultEl.AddText'; }
+                catch (e) { diag.errDefAdd = e && e.message; }
+              }
+            }
+            diag.sdtCountAfter = oSdt.GetElementsCount ? oSdt.GetElementsCount() : -1;
+
+            // Metadata identifier.
+            if (typeof oSdt.SetAlias === 'function') oSdt.SetAlias(Asc.scope.fieldName);
+            if (typeof oSdt.SetTag === 'function') oSdt.SetTag('MERGEFIELD:' + Asc.scope.fieldName);
+            // SetAppearance để Sdt render với tags (visible brackets).
+            if (typeof oSdt.SetAppearance === 'function') {
+              try { oSdt.SetAppearance('Tags'); } catch (_) {}
+            }
+
+            if (typeof oDoc.InsertContent === 'function') {
+              oDoc.InsertContent([oSdt], true);
+              diag.method = 'InlineLvlSdt';
+              return JSON.stringify(diag);
+            }
+          } catch (eD) { diag.errD = eD && eD.message; }
+        }
+        diag.method = 'no-field-api';
+        return JSON.stringify(diag);
+      } catch (err) { return JSON.stringify({ err: err && err.message }); }
+    }, false, false, function (result) {
+      log('insertMergeField result:', result);
+      try {
+        var parsed = typeof result === 'string' ? JSON.parse(result) : null;
+        if (!parsed || parsed.method === 'no-field-api') {
+          log('falling back to plain text');
+          insertAsPlainText('«' + fieldName + '»');
+        }
+      } catch (_) {
+        insertAsPlainText('«' + fieldName + '»');
+      }
+    });
+  }
+
+  function replaceTriggerWith(trigger, value) {
+    log('replaceTriggerWith trigger=', trigger, 'value=', value);
+    if (!trigger) return;
+    window.Asc.scope.trigger = trigger;
+    // Strategy: Search trigger → select last range → DELETE selection → insert MERGEFIELD tại đó.
+    window.Asc.plugin.callCommand(function () {
+      try {
+        var oDoc = Api.GetDocument();
+        if (typeof oDoc.Search !== 'function') return 'no-search-api';
+        var ranges = oDoc.Search(Asc.scope.trigger);
+        if (!ranges || ranges.length === 0) return 'no-match';
+        var lastRange = ranges[ranges.length - 1];
+        if (typeof lastRange.Select !== 'function') return 'no-select';
+        lastRange.Select();
+        return 'selected';
+      } catch (e) { return 'err:' + (e && e.message); }
+    }, false, false, function (selRes) {
+      log('Search+Select result:', selRes);
+      if (selRes !== 'selected') { log('cannot select trigger; insert skipped'); return; }
+      // Delete selection (the trigger '@KEYWORD') then insert MERGEFIELD.
+      try {
+        window.Asc.plugin.executeMethod('PasteText', [''], function () {
+          // After delete, cursor at trigger position. Insert MERGEFIELD.
+          insertMergeField(value);
+        });
+      } catch (e) {
+        log('delete trigger err:', e && e.message);
+        // Fallback: directly insert (trigger sẽ còn lại trong doc).
+        insertMergeField(value);
+      }
+    });
+  }
+
+  window.Asc.plugin.init = function () {
+    var p = window.Asc.plugin;
+    log('init editorType=', p.info && p.info.editorType);
+    postToHost({ type: 'ready' });
+  };
+
+  // OnlyOffice fire khi user gõ word char trong editor. DS 9.3 pass cả '@' trong data.text.
+  // Plugin chỉ FORWARD lên host — không tự render popup vì InputHelper bị bug.
+  window.Asc.plugin.event_onInputHelperInput = function (data) {
+    log('onInputHelperInput', JSON.stringify(data));
+    if (!data || data.add === false) {
+      postToHost({ type: 'mention-hide' });
+      return;
+    }
+    var text = String(data.text || '');
+    if (text.charAt(0) !== '@' || text.indexOf('@', 1) !== -1) {
+      // Không bắt đầu '@' hoặc có '@' thứ 2 → không phải trigger mention
+      postToHost({ type: 'mention-hide' });
+      return;
+    }
+    postToHost({ type: 'mention-show', trigger: text });
+  };
+
+  window.Asc.plugin.event_onInputHelperClear = function () {
+    log('onInputHelperClear');
+    postToHost({ type: 'mention-hide' });
+  };
+
+  // onInputHelperItemClick không fire vì popup native không render. Không cần handle.
+})();

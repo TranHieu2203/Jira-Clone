@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DocumentEditor } from '@onlyoffice/document-editor-react';
-import { ArrowLeftIcon, RefreshCwIcon, SendIcon } from 'lucide-react';
-import { templateApi } from '@/api/template';
+import { ArrowLeftIcon, DownloadIcon, RefreshCwIcon, SaveIcon, SendIcon } from 'lucide-react';
+import { templateApi, type TemplateDetail } from '@/api/template';
 import { metadataApi, type MetadataDto } from '@/api/metadata';
 import { useAuthStore } from '@/stores/auth';
 import { MetadataSidebar } from '@/components/MetadataSidebar';
@@ -23,12 +23,19 @@ const PLUGIN_CONFIG_URL =
 export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const pluginWindowRef = useRef<Window | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [editorReady, setEditorReady] = useState(false);
   const [pluginReady, setPluginReady] = useState(false);
+  // Autosave: mặc định OFF (tránh popup error periodic). User có thể bật bằng checkbox.
+  // Persist trong localStorage để giữ preference qua sessions.
+  const [autosaveOn, setAutosaveOn] = useState<boolean>(() => {
+    try { return localStorage.getItem('fm.autosave') === '1'; } catch { return false; }
+  });
+  const [saveBusy, setSaveBusy] = useState(false);
   // @mention: trigger keyword đã match + filtered metadata để render popup ở host.
   const [mention, setMention] = useState<{ trigger: string; query: string; items: MetadataDto[]; activeIdx: number } | null>(null);
   const mentionPopupRef = useRef<HTMLDivElement>(null);
@@ -43,6 +50,9 @@ export default function TemplateEditorPage() {
     queryFn: () => metadataApi.search(),
   });
 
+  // KHÔNG include autosaveOn trong docKey — nếu include, toggle sẽ làm DocServer thấy 2 session
+  // khác nhau → cache content không share → user thấy "data khác nhau" giữa on/off.
+  // Customization.autosave thay đổi chỉ áp dụng khi editor RELOAD thủ công (click Reload button).
   const docKey = useMemo(
     () => (template ? `${template.id}-v${template.version}-${reloadKey}` : null),
     [template, reloadKey]
@@ -63,14 +73,16 @@ export default function TemplateEditorPage() {
         callbackUrl: `${API_BASE_FOR_DOCSERVER}/api/v1/form-management/templates/${template.id}/callback`,
         user: { id: user?.id ?? 'anon', name: user?.displayName ?? 'Anonymous' },
         lang: 'vi',
-        customization: { autosave: true, forcesave: true, chat: false, comments: false },
+        // autosave: theo state user toggle. forcesave: true → cho phép trigger save thủ công
+        // (Ctrl+S trong editor hoặc serviceCommand từ host) qua callback status=6.
+        customization: { autosave: autosaveOn, forcesave: true, chat: false, comments: false },
         plugins: {
-          autostart: ['asc.{F0124567-1234-4321-9876-ABCDEF012360}'],
+          autostart: ['asc.{F0124567-1234-4321-9876-ABCDEF01236D}'],
           pluginsData: [PLUGIN_CONFIG_URL],
         },
       },
     };
-  }, [template, docKey, user]);
+  }, [template, docKey, user, autosaveOn]);
 
   // ============ Host ↔ Plugin postMessage bridge ============
   useEffect(() => {
@@ -174,8 +186,13 @@ export default function TemplateEditorPage() {
   }, [mention?.trigger]);
 
   function returnFocusToEditor() {
+    // Hai approach song song để chắc chắn focus về editor:
+    //   1. postMessage plugin gọi executeMethod('SetEditorFocus') — OnlyOffice native
+    //   2. focus() trực tiếp iframe element trên host — fallback nếu (1) fail
     const w = pluginWindowRef.current;
     if (w) w.postMessage({ target: 'formmgmt-plugin', type: 'focus-editor' }, '*');
+    const iframe = document.querySelector('iframe[name="frameEditor"]') as HTMLIFrameElement | null;
+    iframe?.focus();
   }
 
   // Keyboard handler khi popup mở. Document-level keydown capture phase.
@@ -224,6 +241,51 @@ export default function TemplateEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metadataItems]);
 
+  /**
+   * Background poller: detect Office Save (user bấm Save trong toolbar OnlyOffice → DS tự fire
+   * callback status=6 → BE wrap + persist + version bump). FE không có signal trực tiếp →
+   * poll /templates/{id} mỗi 3s, nếu version cao hơn version đang render → gọi
+   * docEditor.refreshFile() để reload bytes mới (đã wrapped MERGEFIELD) vào editor IN-PLACE.
+   *
+   * Skip khi saveBusy (đang chạy saveTemplate handler — handler đó tự refreshFile rồi).
+   */
+  useEffect(() => {
+    if (!template?.id) return;
+    const tplId = template.id;
+    let lastSeenVersion = template.version;
+    const interval = window.setInterval(async () => {
+      if (saveBusy) return;
+      try {
+        const fresh = await templateApi.getById(tplId);
+        if (fresh.version > lastSeenVersion) {
+          // eslint-disable-next-line no-console
+          console.log(`[FormMgmt] poller detected version bump ${lastSeenVersion} → ${fresh.version} (Office Save?)`);
+          lastSeenVersion = fresh.version;
+          queryClient.setQueryData(['template', tplId], fresh);
+
+          const editorId = `onlyoffice-editor-${tplId}-${reloadKey}`;
+          const inst = (window as unknown as { DocEditor?: { instances?: Record<string, unknown> } }).DocEditor?.instances?.[editorId] as
+            | { refreshFile?: (config: unknown) => void }
+            | undefined;
+          if (inst?.refreshFile) {
+            inst.refreshFile({
+              document: {
+                fileType: 'docx',
+                key: `${fresh.id}-v${fresh.version}-${reloadKey}`,
+                title: `${fresh.code} — ${fresh.name}.docx`,
+                url: `${API_BASE_FOR_DOCSERVER}/api/v1/form-management/templates/${fresh.id}/file`,
+              },
+            });
+          }
+        }
+      } catch {
+        // silent — network blip, retry next tick
+      }
+    }, 3000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template?.id, reloadKey, saveBusy]);
+
   function postMetadataToPlugin() {
     const w = pluginWindowRef.current;
     if (!w) return;
@@ -249,6 +311,117 @@ export default function TemplateEditorPage() {
 
   function insertMergeField(m: MetadataDto) {
     postInsertToPlugin(m.value);
+    // Sau insert, focus về editor để user tiếp tục gõ ngay phía sau «VALUE».
+    // setTimeout đợi PasteText hoàn tất + cursor positioned by OnlyOffice.
+    setTimeout(returnFocusToEditor, 50);
+  }
+
+  function toggleAutosave(next: boolean) {
+    // Chỉ cập nhật state + persist. docKey KHÔNG đổi nên DocServer session giữ nguyên, content không mất.
+    // Setting autosave trong OnlyOffice chỉ áp dụng khi editor mount mới — user cần bấm Reload
+    // hoặc F5 để config mới active. Hiển thị hint qua title button.
+    setAutosaveOn(next);
+    try { localStorage.setItem('fm.autosave', next ? '1' : '0'); } catch { /* */ }
+  }
+
+  /** Save template — chạy CÙNG flow như khi user bấm Save trong toolbar OnlyOffice:
+   *  1. POST /trigger-save → BE proxy lên DS CommandService.ashx { c:"forcesave", key:docKey }.
+   *  2. DS nhận → flush cached doc → fire callback status=6 tới /callback → BE Wrap «...»
+   *     thành MERGEFIELD + ExtractUsedFields + persist DB version bump.
+   *  3. FE poll /templates/{id} mỗi 250ms (max 6s) để detect version bump.
+   *  4. Khi version bump → gọi docEditor.refreshFile() reload bytes IN-PLACE — KHÔNG unmount
+   *     React component (tránh removeChild crash + popup "Đã thay đổi phiên bản").
+   *
+   *  Office Save toolbar button (DS internal) cũng đi qua /callback flow này → background
+   *  poller (xem useEffect bên dưới) cũng auto refreshFile khi version bump từ Office Save. */
+  async function saveTemplate() {
+    if (!template) return;
+    setSaveBusy(true);
+    const editorId = `onlyoffice-editor-${template.id}-${reloadKey}`;
+    const inst = (window as unknown as { DocEditor?: { instances?: Record<string, unknown> } }).DocEditor?.instances?.[editorId] as
+      | { refreshFile?: (config: unknown) => void; serviceCommand?: (cmd: string, data?: unknown) => void }
+      | undefined;
+    const startVersion = template.version;
+    const docKey = `${template.id}-v${template.version}-${reloadKey}`;
+    try {
+      // Step 1: trigger DS force-save (BE proxy CommandService).
+      const resp = await templateApi.triggerSave(template.id, docKey);
+      // eslint-disable-next-line no-console
+      console.log('[FormMgmt] trigger-save resp:', resp);
+
+      // Step 2: poll for version bump. Callback fires async on DS side (~500-2000ms).
+      let bumpedTemplate: TemplateDetail | null = null;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 200));
+        try {
+          const fresh = await templateApi.getById(template.id);
+          if (fresh.version > startVersion) {
+            bumpedTemplate = fresh;
+            // Sync React Query cache với fresh data → các hook khác (vd sidebar count) auto re-render.
+            queryClient.setQueryData(['template', template.id], fresh);
+            break;
+          }
+        } catch {
+          // network blip, retry
+        }
+      }
+
+      if (!bumpedTemplate) {
+        // eslint-disable-next-line no-console
+        console.warn('[FormMgmt] save timed out — no version bump trong 6s. Có thể DS không có changes để save (error:4).');
+        return;
+      }
+
+      // Step 3: reload editor IN-PLACE bằng OO refreshFile API. KHÔNG remount → không crash.
+      const newDocKey = `${bumpedTemplate.id}-v${bumpedTemplate.version}-${reloadKey}`;
+      const newConfig = {
+        document: {
+          fileType: 'docx',
+          key: newDocKey,
+          title: `${bumpedTemplate.code} — ${bumpedTemplate.name}.docx`,
+          url: `${API_BASE_FOR_DOCSERVER}/api/v1/form-management/templates/${bumpedTemplate.id}/file`,
+        },
+        editorConfig: {
+          callbackUrl: `${API_BASE_FOR_DOCSERVER}/api/v1/form-management/templates/${bumpedTemplate.id}/callback`,
+        },
+      };
+      if (inst?.refreshFile) {
+        inst.refreshFile(newConfig);
+        // eslint-disable-next-line no-console
+        console.log('[FormMgmt] save complete: refreshFile() called với key=', newDocKey);
+      } else {
+        // eslint-disable-next-line no-console
+        console.warn('[FormMgmt] refreshFile API không có — DS version cũ. User cần F5.');
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[FormMgmt] saveTemplate failed:', e);
+    } finally {
+      setSaveBusy(false);
+    }
+  }
+
+  /** Download template DOCX hiện đang lưu ở BE. KHÔNG bao gồm edits chưa save trong editor —
+   *  để có version mới nhất, click "Lưu template" trước rồi download. */
+  async function downloadTemplate() {
+    if (!template) return;
+    try {
+      const res = await fetch(`/api/v1/form-management/templates/${template.id}/file`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${template.code}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[FormMgmt] download template fail:', e);
+      alert('Tải template thất bại — kiểm tra console log.');
+    }
   }
 
   // Drag-drop đã bị bỏ — OnlyOffice cross-iframe drop không reliable position theo toạ độ thả.
@@ -279,20 +452,38 @@ export default function TemplateEditorPage() {
                 {pluginReady ? '● plugin ready' : '○ plugin loading…'}
               </span>
             </div>
-            <div className="text-[11px] text-ink-500 mt-0.5">
-              💡 Gõ <span className="font-mono font-semibold">@</span> trong doc, hoặc <kbd className="px-1 py-0.5 bg-ink-100 border border-ink-300 rounded font-mono text-[10px]">Ctrl+Shift+M</kbd>
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          
+          <label
+            className="flex items-center gap-1 text-xs select-none cursor-pointer"
+            title="Bật để OnlyOffice tự save định kỳ. Đổi setting xong cần bấm Reload để editor áp dụng."
+          >
+            <input
+              type="checkbox"
+              checked={autosaveOn}
+              onChange={(e) => toggleAutosave(e.target.checked)}
+              className="cursor-pointer"
+            />
+            Autosave
+          </label>
           <button
             className="btn-ghost btn-sm"
-            onClick={openMentionPopup}
-            title="Mở popup chèn MERGEFIELD (Ctrl+Shift+M)"
+            onClick={saveTemplate}
+            disabled={saveBusy}
+            title="Lưu template về server (Ctrl+S trong editor cũng work)"
           >
-            📋 Chèn metadata <kbd className="ml-1 px-1 py-0.5 bg-ink-100 border border-ink-300 rounded font-mono text-[10px]">Ctrl+Shift+M</kbd>
+            <SaveIcon size={14} /> {saveBusy ? 'Đang lưu…' : 'Lưu template'}
           </button>
-          <button className="btn-ghost btn-sm" onClick={() => setReloadKey((k) => k + 1)}>
+          <button className="btn-ghost btn-sm" onClick={downloadTemplate} title="Tải template DOCX về máy">
+            <DownloadIcon size={14} /> Tải template
+          </button>
+          <button
+            className="btn-ghost btn-sm"
+            onClick={() => window.location.reload()}
+            title="Reload editor với bytes mới nhất từ server (full page reload — tránh canvas trắng do OO wrapper bug)"
+          >
             <RefreshCwIcon size={14} /> Reload
           </button>
           <button className="btn-primary btn-sm" onClick={() => nav(`/templates/${template.id}/submit`)}>
@@ -305,12 +496,24 @@ export default function TemplateEditorPage() {
         <div className="flex-1 min-w-0 relative" ref={editorWrapperRef}>
           {editorConfig && (
             <DocumentEditor
+              // KHÔNG dùng `key` prop — sẽ trigger React unmount → OnlyOffice library internal
+              // cleanup xung đột với React DOM removal → crash `removeChild`. Chỉ thay `id` prop:
+              // OnlyOffice React wrapper detect id change + destroy/recreate iframe internally
+              // (đã chứng minh work với nút Reload).
               id={`onlyoffice-editor-${template.id}-${reloadKey}`}
               documentServerUrl={DOC_SERVER_URL}
               config={editorConfig as any}
               events_onAppReady={(() => setEditorReady(true)) as any}
               onLoadComponentError={(code, desc) => console.error('[OnlyOffice] Load error', code, desc)}
             />
+          )}
+          {saveBusy && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 pointer-events-auto">
+              <div className="flex flex-col items-center gap-3 text-sm text-ink-700">
+                <div className="h-8 w-8 border-2 border-ink-300 border-t-ink-700 rounded-full animate-spin" />
+                <div>Đang lưu template — wrap MERGEFIELD + refresh editor…</div>
+              </div>
+            </div>
           )}
           {/* Popup chèn metadata. Mở qua button hoặc Ctrl+M. Focus tự nhảy về search input
               → user gõ filter + Up/Down/Enter/Esc đều work vì host page có focus. */}
