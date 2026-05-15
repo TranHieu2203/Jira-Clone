@@ -108,6 +108,14 @@ public sealed class TemplatesController : BaseController
     }
 
     /// <summary>
+    /// Admin: backfill legacy DB-blob templates lên S3. Quét tất cả templates có DocxBytes
+    /// nhưng chưa có StorageKey → upload bytes → set key → clear bytes. Idempotent.
+    /// </summary>
+    [HttpPost("backfill-s3")]
+    public async Task<IActionResult> BackfillS3(CancellationToken ct) =>
+        ToResponse(await _service.BackfillToS3Async(ct));
+
+    /// <summary>
     /// Trigger DocServer force-save cho 1 docKey đang mở. BE proxy lên DS CommandService
     /// vì DS chạy cùng docker network, FE không access trực tiếp được (cross-origin + JWT
     /// inside container).

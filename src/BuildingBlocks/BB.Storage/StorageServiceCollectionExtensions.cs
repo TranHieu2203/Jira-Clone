@@ -22,11 +22,24 @@ public static class StorageServiceCollectionExtensions
                 S3StorageOptions s3 = snapshot.S3;
                 AmazonS3Config cfg = new()
                 {
-                    ServiceURL = s3.ServiceUrl,
-                    ForcePathStyle = s3.ForcePathStyle
+                    ForcePathStyle = s3.ForcePathStyle,
+                    // AuthenticationRegion bắt buộc cho SDK ký request, nhưng ServiceURL override
+                    // endpoint resolution → request đi tới LocalStack chứ không AWS public.
+                    AuthenticationRegion = string.IsNullOrWhiteSpace(s3.Region) ? "us-east-1" : s3.Region
                 };
-                if (!string.IsNullOrWhiteSpace(s3.Region))
+                // Set ServiceURL SAU AuthenticationRegion để override default region endpoint
+                // (nếu set RegionEndpoint trước, SDK pre-resolve URL → redirect 301).
+                if (!string.IsNullOrWhiteSpace(s3.ServiceUrl))
+                {
+                    cfg.ServiceURL = s3.ServiceUrl;
+                    // Custom endpoint (LocalStack / MinIO) thường http, không https.
+                    cfg.UseHttp = s3.ServiceUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+                }
+                else if (!string.IsNullOrWhiteSpace(s3.Region))
+                {
+                    // Real AWS path: dùng RegionEndpoint.
                     cfg.RegionEndpoint = RegionEndpoint.GetBySystemName(s3.Region);
+                }
 
                 BasicAWSCredentials creds = new(s3.AccessKey, s3.SecretKey);
                 return new AmazonS3Client(creds, cfg);

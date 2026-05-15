@@ -62,6 +62,9 @@ public sealed class FormManagementDbContext : BaseDbContext
             e.Property(x => x.SfdtContent).HasColumnType(isPostgres ? "text" : "CLOB").IsRequired();
             e.Property(x => x.UsedFieldsJson).HasColumnType(isPostgres ? "text" : "CLOB").IsRequired();
             e.Property(x => x.DocxBytes).HasColumnType(isPostgres ? "bytea" : "BLOB");
+            // S3 storage key (nullable cho transition period — template cũ vẫn dùng DocxBytes).
+            // Max length 512 đủ cho path dạng `templates/{guid}/v{n}.docx` + prefix tương lai.
+            e.Property(x => x.StorageKey).HasMaxLength(512);
             e.Property(x => x.CreatedBy).HasMaxLength(64);
             e.Property(x => x.UpdatedBy).HasMaxLength(64);
             e.Property(x => x.DeletedBy).HasMaxLength(64);

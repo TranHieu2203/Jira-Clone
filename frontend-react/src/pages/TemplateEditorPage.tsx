@@ -511,7 +511,7 @@ export default function TemplateEditorPage() {
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 pointer-events-auto">
               <div className="flex flex-col items-center gap-3 text-sm text-ink-700">
                 <div className="h-8 w-8 border-2 border-ink-300 border-t-ink-700 rounded-full animate-spin" />
-                <div>Đang lưu template — wrap MERGEFIELD + refresh editor…</div>
+                <div>Đang lưu tài liệu...</div>
               </div>
             </div>
           )}

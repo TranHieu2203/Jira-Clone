@@ -13,5 +13,6 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Common\BB.Common.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Persistence\BB.Persistence.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BB.Security\BB.Security.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BB.Storage\BB.Storage.csproj" />
   </ItemGroup>
 </Project>

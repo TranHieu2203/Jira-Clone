@@ -3,6 +3,7 @@ using System;
 using FormManagement.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FormManagement.Infrastructure.Migrations
 {
     [DbContext(typeof(FormManagementDbContext))]
-    partial class FormManagementDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260515065835_AddTemplateStorageKey")]
+    partial class AddTemplateStorageKey
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

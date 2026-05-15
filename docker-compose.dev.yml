@@ -36,10 +36,20 @@ services:
       OnlyOffice__DocumentServerUrl: http://localhost:8080/
       OnlyOffice__ApiBaseUrl: http://api:8080
       OnlyOffice__JwtEnabled: "false"
+      # S3-compatible storage. Docker DNS `localstack` resolve sang container, không phải host.
+      Storage__Provider: S3
+      Storage__S3__ServiceUrl: http://localstack:4566
+      Storage__S3__Bucket: jira-clone
+      Storage__S3__AccessKey: test
+      Storage__S3__SecretKey: test
+      Storage__S3__Region: us-east-1
+      Storage__S3__ForcePathStyle: "true"
     ports:
       - "5000:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
 
   onlyoffice:
@@ -83,9 +93,55 @@ services:
     volumes:
       - minio_data:/data
 
+  # S3 management UI cho LocalStack. Mở http://localhost:8081 để browse bucket
+  # `jira-clone`: list / upload / download / delete object. Connect tới LocalStack qua
+  # docker DNS `localstack:4566` (path-style addressing để hợp với ForcePathStyle).
+  s3manager:
+    image: cloudlena/s3manager:latest
+    container_name: jira-clone-s3manager
+    environment:
+      ACCESS_KEY_ID: test
+      SECRET_ACCESS_KEY: test
+      ENDPOINT: localstack:4566
+      REGION: us-east-1
+      USE_SSL: "false"
+      SKIP_SSL_VERIFICATION: "true"
+      FORCE_PATH_STYLE: "true"
+    ports:
+      - "8081:8080"
+    depends_on:
+      localstack:
+        condition: service_healthy
+
+  # AWS LocalStack — mô phỏng S3 + các AWS services khác. Dùng cho dev/test pipeline
+  # giống prod AWS. Bucket được tạo tự động bởi script init-bucket.sh khi LocalStack ready.
+  # Endpoint từ BE container: http://localstack:4566 (docker DNS).
+  # Endpoint từ host: http://localhost:4566.
+  localstack:
+    image: localstack/localstack:3
+    container_name: jira-clone-localstack
+    environment:
+      SERVICES: s3
+      DEBUG: 0
+      # Persistence: bucket + data sống qua container restart.
+      PERSISTENCE: 1
+      DATA_DIR: /var/lib/localstack/data
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      # Init hooks: chạy sau khi LocalStack ready (xem ready.d/* scripts).
+      - ./docker/localstack/init:/etc/localstack/init/ready.d
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   postgres_data:
   minio_data:
+  localstack_data:
   onlyoffice_data:
   onlyoffice_log:
   onlyoffice_cache:

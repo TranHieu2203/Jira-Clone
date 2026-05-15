@@ -23,4 +23,11 @@ public interface ITemplateService
 
     /// <summary>OnlyOffice DocServer save callback: replace DOCX bytes + bump version.</summary>
     Task<Result> ReplaceDocxBytesAsync(Guid id, byte[] docxBytes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Backfill: tìm templates còn lưu DocxBytes trong DB (legacy) → upload bytes lên S3 →
+    /// set StorageKey → clear DocxBytes. Idempotent (template đã có StorageKey được skip).
+    /// Trả về tuple { processed, skipped, failed } qua message args.
+    /// </summary>
+    Task<Result> BackfillToS3Async(CancellationToken ct = default);
 }

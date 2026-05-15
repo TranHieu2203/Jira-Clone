@@ -17,8 +17,17 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
     public string? Category { get; private set; }
     /// <summary>SFDT JSON string — format native của Syncfusion DocumentEditor, load trực tiếp lên FE.</summary>
     public string SfdtContent { get; private set; } = string.Empty;
-    /// <summary>Bản DOCX gốc (nếu import từ Word). Oracle-neutral byte[] → bytea Postgres / BLOB Oracle.</summary>
+    /// <summary>
+    /// Bản DOCX gốc (legacy storage trong DB blob). Sau khi migrate sang S3, field này null.
+    /// Service layer dùng <c>StorageKey</c> trước; fallback đọc <c>DocxBytes</c> nếu key null
+    /// (template cũ chưa migrate).
+    /// </summary>
     public byte[]? DocxBytes { get; private set; }
+    /// <summary>
+    /// S3 object key. Format: <c>templates/{id}/v{version}.docx</c>. Service layer dùng key này
+    /// để Put/Get qua <c>IFileStorage</c>. Null = template cũ chưa migrate (rare; backfill job).
+    /// </summary>
+    public string? StorageKey { get; private set; }
     /// <summary>JSON array các metadata value được dùng. Vd: ["BSO_HD","CTEN","ITONG_PHI"].</summary>
     public string UsedFieldsJson { get; private set; } = "[]";
     public int Version { get; private set; } = 1;
@@ -35,7 +44,7 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
     /// fetch DOCX bytes qua endpoint, OnlyOffice DocServer render native). <c>SfdtContent</c> kept
     /// trong domain để giữ migration cũ — empty cho template tạo qua OnlyOffice flow.
     /// </summary>
-    public DocumentTemplate(string code, string name, byte[] docxBytes, string? category = null, string? usedFieldsJson = null)
+    public DocumentTemplate(string code, string name, byte[]? docxBytes, string? category = null, string? usedFieldsJson = null, string? storageKey = null)
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new DomainException(FormManagementErrors.TemplateCodeRequired, FormManagementErrors.MsgTemplateCodeRequired);
@@ -44,14 +53,18 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
             throw new DomainException(FormManagementErrors.TemplateCodeInvalid, FormManagementErrors.MsgTemplateCodeInvalid);
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException(FormManagementErrors.TemplateNameRequired, FormManagementErrors.MsgTemplateNameRequired);
-        if (docxBytes is null || docxBytes.Length == 0)
+        // Phải có ÍT NHẤT 1 trong 2: docxBytes (legacy DB blob) HOẶC storageKey (S3 path).
+        bool hasBytes = docxBytes is { Length: > 0 };
+        bool hasKey = !string.IsNullOrWhiteSpace(storageKey);
+        if (!hasBytes && !hasKey)
             throw new DomainException(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired);
 
         Code = trimmedCode;
         Name = name.Trim();
         Category = category?.Trim();
         SfdtContent = string.Empty;
-        DocxBytes = docxBytes;
+        DocxBytes = hasBytes ? docxBytes : null;
+        StorageKey = hasKey ? storageKey : null;
         UsedFieldsJson = usedFieldsJson ?? "[]";
     }
 
@@ -63,12 +76,28 @@ public sealed class DocumentTemplate : AggregateRoot, ISoftDeletable
         Category = category?.Trim();
     }
 
-    /// <summary>Replace DOCX bytes + bumped version (cho callback từ OnlyOffice DocServer).</summary>
-    public void UpdateContent(byte[] docxBytes, string usedFieldsJson)
+    /// <summary>
+    /// Replace DOCX content + bumped version (cho callback từ OnlyOffice DocServer).
+    /// <paramref name="storageKey"/>: S3 key trỏ tới bytes vừa upload. Nếu null → giữ bytes
+    /// trong <paramref name="docxBytes"/> như legacy.
+    /// </summary>
+    public void UpdateContent(byte[]? docxBytes, string usedFieldsJson, string? storageKey = null)
     {
-        if (docxBytes is null || docxBytes.Length == 0)
+        bool hasBytes = docxBytes is { Length: > 0 };
+        bool hasKey = !string.IsNullOrWhiteSpace(storageKey);
+        if (!hasBytes && !hasKey)
             throw new DomainException(FormManagementErrors.TemplateContentRequired, FormManagementErrors.MsgTemplateContentRequired);
-        DocxBytes = docxBytes;
+
+        if (hasKey)
+        {
+            // S3 path: clear DB blob để tiết kiệm storage. Bytes giữ ở S3.
+            StorageKey = storageKey;
+            DocxBytes = null;
+        }
+        else
+        {
+            DocxBytes = docxBytes;
+        }
         UsedFieldsJson = usedFieldsJson;
         Version++;
     }
