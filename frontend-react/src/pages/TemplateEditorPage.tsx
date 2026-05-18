@@ -529,18 +529,27 @@ export default function TemplateEditorPage() {
               onLoadComponentError={(code, desc) => console.error('[OnlyOffice] Load error', code, desc)}
             />
           )}
-          {/* Brand badge thay thế logo "ONLYOFFICE" góc top-left toolbar. DocServer 9.x CE
-              lock `customization.logo` (license-gated) → host-side overlay là cách duy nhất.
-              Thay vì để khoảng trắng (xấu), in icon + "Form Editor" theo style toolbar
-              (font-medium, ink-500, bg trắng) → trông như một section header tự nhiên.
+          {/* Brand badge thay logo "ONLYOFFICE" góc top-left toolbar. DocServer 9.x CE lock
+              `customization.logo` → host-side overlay là cách duy nhất.
+              - pointer-events-auto: chặn click pass-through xuống logo OnlyOffice (mở
+                onlyoffice.com).
+              - backdrop-filter blur+saturate(0): nhòe logo OO bên dưới + bg-white/85
+                semi-transparent → blend với toolbar dù màu nền chính xác là gì.
+              - Label = mã tài liệu (template.code) → user nhìn cái này có info, không
+                phải branding rỗng.
               Width 120px chừa chỗ cho nút `<` collapse tab labels (ở ~125px). */}
           <div
-            aria-hidden="true"
-            className="absolute top-0 left-0 z-10 pointer-events-none flex items-center gap-1.5 px-3 text-[12px] font-medium tracking-wide text-ink-500"
-            style={{ width: 120, height: 32, background: '#ffffff' }}
+            className="absolute top-0 left-0 z-10 pointer-events-auto flex items-center justify-center px-2 font-mono text-[11px] font-semibold tracking-wider text-ink-700 cursor-default select-none"
+            style={{
+              width: 140,
+              height: 32,
+              background: 'rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(12px) saturate(0)',
+              WebkitBackdropFilter: 'blur(12px) saturate(0)',
+            }}
+            title={`${template.code} — ${template.name}`}
           >
-            <FileTextIcon size={14} className="text-ink-400" />
-            <span>Form Editor</span>
+            <span className="truncate">{template.code}</span>
           </div>
           {saveBusy && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 pointer-events-auto">
