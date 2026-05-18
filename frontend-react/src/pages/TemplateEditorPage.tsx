@@ -75,7 +75,29 @@ export default function TemplateEditorPage() {
         lang: 'vi',
         // autosave: theo state user toggle. forcesave: true → cho phép trigger save thủ công
         // (Ctrl+S trong editor hoặc serviceCommand từ host) qua callback status=6.
-        customization: { autosave: autosaveOn, forcesave: true, chat: false, comments: false },
+        customization: {
+          autosave: autosaveOn,
+          forcesave: true,
+          chat: false,
+          comments: false,
+          // Ẩn logo "ONLYOFFICE" góc top-left: thay bằng PNG 1×1 trong suốt (data URI).
+          // CE không cho remove element hẳn, nhưng image trong suốt → trông như không có.
+          // Click vẫn navigate tới `url`; set về app FE để khỏi rò sang onlyoffice.com.
+          logo: {
+            image:
+              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=',
+            imageDark:
+              'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkAAIAAAoAAv/lxKUAAAAASUVORK5CYII=',
+            url: typeof window !== 'undefined' ? window.location.origin : '',
+          },
+          // Ẩn About menu (chứa logo + version "Document Server").
+          about: false,
+          // Ẩn promotion tips của OnlyOffice (popup "Try ONLYOFFICE Workspace...").
+          feedback: false,
+          features: { featuresTips: false },
+          // Tùy chọn: header gọn hơn (logo area thu hẹp).
+          compactHeader: true,
+        },
         plugins: {
           autostart: ['asc.{F0124567-1234-4321-9876-ABCDEF01236D}'],
           pluginsData: [PLUGIN_CONFIG_URL],
@@ -507,6 +529,17 @@ export default function TemplateEditorPage() {
               onLoadComponentError={(code, desc) => console.error('[OnlyOffice] Load error', code, desc)}
             />
           )}
+          {/* Mask logo "ONLYOFFICE" góc top-left toolbar. DocServer 9.x CE lock
+              `customization.logo` (license-gated) → fallback CSS overlay từ host.
+              Iframe cross-origin nên không inject style được — phải đặt div phủ ngoài.
+              Width 120px chừa chỗ cho nút `<` collapse tab labels (ở ~125px). */}
+          <div
+            aria-hidden="true"
+            className="absolute top-0 left-0 z-10 pointer-events-none bg-white"
+            style={{ width: 120, height: 32 }}
+          />
+          {/* Mặt nạ tương tự ở góc top-right để che branding "ONLYOFFICE" floating khi
+              sidebar bên phải mở rộng / cluster icon → có thể bỏ nếu không cần. */}
           {saveBusy && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 pointer-events-auto">
               <div className="flex flex-col items-center gap-3 text-sm text-ink-700">
