@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DocumentEditor } from '@onlyoffice/document-editor-react';
-import { ArrowLeftIcon, DownloadIcon, RefreshCwIcon, SaveIcon, SendIcon } from 'lucide-react';
+import { ArrowLeftIcon, DownloadIcon, FileTextIcon, RefreshCwIcon, SaveIcon, SendIcon } from 'lucide-react';
 import { templateApi, type TemplateDetail } from '@/api/template';
 import { metadataApi, type MetadataDto } from '@/api/metadata';
 import { useAuthStore } from '@/stores/auth';
@@ -529,17 +529,19 @@ export default function TemplateEditorPage() {
               onLoadComponentError={(code, desc) => console.error('[OnlyOffice] Load error', code, desc)}
             />
           )}
-          {/* Mask logo "ONLYOFFICE" góc top-left toolbar. DocServer 9.x CE lock
-              `customization.logo` (license-gated) → fallback CSS overlay từ host.
-              Iframe cross-origin nên không inject style được — phải đặt div phủ ngoài.
+          {/* Brand badge thay thế logo "ONLYOFFICE" góc top-left toolbar. DocServer 9.x CE
+              lock `customization.logo` (license-gated) → host-side overlay là cách duy nhất.
+              Thay vì để khoảng trắng (xấu), in icon + "Form Editor" theo style toolbar
+              (font-medium, ink-500, bg trắng) → trông như một section header tự nhiên.
               Width 120px chừa chỗ cho nút `<` collapse tab labels (ở ~125px). */}
           <div
             aria-hidden="true"
-            className="absolute top-0 left-0 z-10 pointer-events-none bg-white"
-            style={{ width: 120, height: 32 }}
-          />
-          {/* Mặt nạ tương tự ở góc top-right để che branding "ONLYOFFICE" floating khi
-              sidebar bên phải mở rộng / cluster icon → có thể bỏ nếu không cần. */}
+            className="absolute top-0 left-0 z-10 pointer-events-none flex items-center gap-1.5 px-3 text-[12px] font-medium tracking-wide text-ink-500"
+            style={{ width: 120, height: 32, background: '#ffffff' }}
+          >
+            <FileTextIcon size={14} className="text-ink-400" />
+            <span>Form Editor</span>
+          </div>
           {saveBusy && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-20 pointer-events-auto">
               <div className="flex flex-col items-center gap-3 text-sm text-ink-700">
